@@ -139,9 +139,15 @@ class MatrixTest(unittest.TestCase):
         text = matrix.render_text(self.report)
         self.assertIn("満", text)
         self.assertIn("·", text)
+        # HTMLはJSで描画するため、静的マークアップではなく
+        # 埋め込みデータと、それを描くCSS/JSの存在を検証する
         html_out = matrix.render_html(self.report)
-        self.assertIn('class="so"', html_out)
-        self.assertIn('class="na"', html_out)
+        payload = matrix._payload(self.report, None)
+        cells = payload["rows"][3]["cells"]
+        self.assertEqual(cells[self.report.dates[0].isoformat()], "SO")
+        self.assertIsNone(cells[self.report.dates[1].isoformat()])
+        self.assertIn("td.so{", html_out.replace(" ", ""))
+        self.assertIn("td.na{", html_out.replace(" ", ""))
 
     def test_sold_out_is_excluded_from_average(self) -> None:
         row = matrix.MatrixRow(comp_id="x", name="x", tier="PRIMARY", weight=1.0,
@@ -167,17 +173,38 @@ class MatrixTest(unittest.TestCase):
         for token in ("--ground", "--surface", "--ink", "--line"):
             self.assertIn(token, root_block)
 
-    def test_ramp_is_monotonic_in_value(self) -> None:
-        """価格の大小が濃淡の順序と一致すること（単色ランプの前提）."""
-        lows = [matrix._ramp(v, 0, 100)[0] for v in (10, 50, 90)]
-        lightness = [float(c.split("% ")[-1].rstrip("%)")) for c in lows]
-        self.assertEqual(lightness, sorted(lightness, reverse=True))
+    def test_ramp_darkens_as_value_rises(self) -> None:
+        """価格が高いほど濃くなること（単色ランプの前提）。実装はJS側にある."""
+        out = matrix.render_html(self.report)
+        self.assertIn("96 - t * 46", out)   # 明度は t の増加に対し単調減少
 
     def test_empty_window_renders_without_crashing(self) -> None:
         empty = matrix.build(self.ctx.settings, self.ctx,
                              (date(2030, 1, 1), date(2030, 1, 5)))
         self.assertEqual(empty.dates, [])
         self.assertIn("データがありません", matrix.render_text(empty))
+
+    def test_html_embeds_all_collected_dates_not_just_the_window(self) -> None:
+        """期間切替をブラウザ側で行うため、HTMLは全期間分のデータを持つ必要がある."""
+        full = matrix.build_full(self.ctx.settings, self.ctx, fixture=True)
+        self.assertGreater(len(full.dates), len(self.report.dates))
+        out = matrix.render_html(full, initial=self.window)
+        for day in (full.dates[0], full.dates[-1]):
+            self.assertIn(day.isoformat(), out)
+
+    def test_html_initial_selection_matches_requested_window(self) -> None:
+        full = matrix.build_full(self.ctx.settings, self.ctx, fixture=True)
+        out = matrix.render_html(full, initial=self.window)
+        self.assertIn(f'"from": "{self.window[0].isoformat()}"', out)
+        self.assertIn(f'"to": "{self.window[1].isoformat()}"', out)
+
+    def test_embedded_json_cannot_break_out_of_the_script_tag(self) -> None:
+        """施設名等に </script> が混ざってもページが壊れないこと."""
+        full = matrix.build_full(self.ctx.settings, self.ctx, fixture=True)
+        full.rows[-1].name = 'X</script><script>alert(1)</script>'
+        out = matrix.render_html(full, initial=self.window)
+        self.assertNotIn("</script><script>alert", out)
+        self.assertIn("<\\/script>", out)
 
     def test_markdown_renders_a_github_table(self) -> None:
         """非公開リポジトリを社内共有する運用では、GitHub上でそのまま読めることが要件."""

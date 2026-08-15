@@ -99,12 +99,23 @@ def main() -> int:
     html_path = out_dir / "adr_matrix.html"
     matrix.write_csv(report, csv_path)
     html_path.parent.mkdir(parents=True, exist_ok=True)
-    html_path.write_text(matrix.render_html(report), encoding="utf-8")
+    # HTML は全期間のデータを埋め込み、初期表示だけ指定期間に合わせる。
+    # 画面上で日程を変えられるようにするため。
+    full = matrix.build_full(
+        ctx.settings, ctx,
+        fixture=fixture,
+        radius_m=int(sources["discovery"]["radius_m"]),
+        anonymize=args.anonymize,
+    )
+    html_path.write_text(
+        matrix.render_html(full, initial=(survey_request.start, survey_request.end)),
+        encoding="utf-8")
     md_path = out_dir / "adr_matrix.md"
     md_path.write_text(matrix.render_markdown(report), encoding="utf-8")
 
     print(f"\n出力: {csv_path}")
-    print(f"      {html_path}  ← ブラウザで開くとヒートマップで見られます")
+    print(f"      {html_path}  ← ブラウザで開くと、画面上で日程を変えられます"
+          f"（収集済み {full.dates[0]} 〜 {full.dates[-1]} の範囲で切替可）")
     print(f"      {md_path}  ← GitHub上でそのまま表示されます（社内共有向け）")
 
     if args.open:
