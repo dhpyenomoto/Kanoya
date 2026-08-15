@@ -1,0 +1,33 @@
+# 毎日の観測。この手法は過去に遡れないので、止めた日のデータは永久に戻らない。
+name: snapshot
+
+on:
+  schedule:
+    # 03:10 JST（UTC 18:10）。日付が変わってしばらく後に取る。
+    - cron: "10 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 累計レビュー件数を記録
+        env:
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+        run: python -m kanoya.cli --config config.json snapshot
+
+      - name: 台帳をコミット
+        run: |
+          git config user.name  "kanoya-bot"
+          git config user.email "kanoya-bot@users.noreply.github.com"
+          git add data/snapshots.jsonl
+          git diff --staged --quiet || git commit -m "snapshot: $(date -u +%Y-%m-%d)"
+          git push

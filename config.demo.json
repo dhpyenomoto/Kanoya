@@ -1,0 +1,73 @@
+{
+  "area_label": "奈良公園・春日エリア",
+
+  "property": {
+    "label": "奈良春日 鹿のや",
+    "place_id": "demo-kanoya",
+    "rooms": 5,
+    "restaurant_review_share": 0.45,
+    "rating_floor": 4.6
+  },
+
+  "compset": [
+    {
+      "label": "競合A（奈良公園・小規模ラグジュアリー）",
+      "place_id": "demo-comp-a",
+      "rooms": 8,
+      "restaurant_review_share": 0.20
+    },
+    {
+      "label": "競合B（旅館・1泊2食）",
+      "place_id": "demo-comp-b",
+      "rooms": 12,
+      "restaurant_review_share": 0.05
+    },
+    {
+      "label": "競合C（町家一棟貸し）",
+      "place_id": "demo-comp-c",
+      "rooms": 4,
+      "restaurant_review_share": 0.0
+    },
+    {
+      "label": "競合D（フルサービスホテル）",
+      "place_id": "demo-comp-d",
+      "rooms": 40,
+      "restaurant_review_share": 0.30
+    },
+    {
+      "label": "競合E（デザイン系ブティック）",
+      "place_id": "demo-comp-e",
+      "rooms": 15,
+      "restaurant_review_share": 0.15
+    }
+  ],
+
+  "estimation": {
+    "window_days": 90,
+    "review_lag_days": 10,
+    "unstable_tail_days": 10,
+    "posting_rate_fallback": 0.10,
+    "confidence_high_rse": 0.15,
+    "confidence_mid_rse": 0.25
+  },
+
+  "decision": {
+    "raise_threshold_pt": 6.0,
+    "lower_threshold_pt": 6.0,
+    "share_drop_alert_pt": 1.5,
+    "event_horizon_days": 45
+  },
+
+  "demand_events": [
+    { "date": "2026-03-01", "label": "修二会（お水取り）", "lift": 25, "days": 14 },
+    { "date": "2026-04-05", "label": "桜シーズン", "lift": 20, "days": 12 },
+    { "date": "2026-10-25", "label": "正倉院展", "lift": 30, "days": 17 },
+    { "date": "2026-11-20", "label": "紅葉ピーク", "lift": 25, "days": 14 }
+  ],
+
+  "paths": {
+    "snapshots": "data/snapshots.demo.jsonl",
+    "pms_actuals": "data/pms_actuals.demo.csv",
+    "output": "dist/demo.html"
+  }
+}

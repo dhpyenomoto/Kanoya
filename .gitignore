@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+dist/
+
+# 本番設定。place_id を入れて各自が作る（config.example.json を複製）。
+config.json
+
+# 自社 PMS 実績。売上そのものなのでコミットしない。
+data/pms_actuals.csv
+
+# 合成データ。kanoya demo がいつでも作り直せる。
+data/*.demo.jsonl
+data/*.demo.csv
