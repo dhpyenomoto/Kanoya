@@ -1,0 +1,87 @@
+{
+  "area": {
+    "name": "奈良公園・春日エリア",
+    "timezone": "Asia/Tokyo"
+  },
+
+  "property": {
+    "key": "kanoya",
+    "name": "奈良春日 鹿のや",
+    "place_id": "REPLACE_WITH_GOOGLE_PLACE_ID",
+    "rooms": 5,
+    "restaurant_review_share": 0.0
+  },
+
+  "comp_set": [
+    {
+      "key": "comp_a",
+      "name": "競合A（奈良公園・小規模ラグジュアリー）",
+      "place_id": "REPLACE_WITH_GOOGLE_PLACE_ID",
+      "rooms": 8,
+      "restaurant_review_share": 0.0
+    },
+    {
+      "key": "comp_b",
+      "name": "競合B（旅館・1泊2食）",
+      "place_id": "REPLACE_WITH_GOOGLE_PLACE_ID",
+      "rooms": 12,
+      "restaurant_review_share": 0.05
+    },
+    {
+      "key": "comp_c",
+      "name": "競合C（町家一棟貸し）",
+      "place_id": "REPLACE_WITH_GOOGLE_PLACE_ID",
+      "rooms": 4,
+      "restaurant_review_share": 0.0
+    },
+    {
+      "key": "comp_d",
+      "name": "競合D（フルサービスホテル）",
+      "place_id": "REPLACE_WITH_GOOGLE_PLACE_ID",
+      "rooms": 40,
+      "restaurant_review_share": 0.18
+    },
+    {
+      "key": "comp_e",
+      "name": "競合E（デザイン系ブティック）",
+      "place_id": "REPLACE_WITH_GOOGLE_PLACE_ID",
+      "rooms": 15,
+      "restaurant_review_share": 0.1
+    }
+  ],
+
+  "estimation": {
+    "window_days": 90,
+    "ribbon_days": 181,
+    "review_lag_days": 10,
+    "rolling_days": 7,
+    "default_review_rate": 0.105,
+    "confidence_high_band_pt": 8.0,
+    "confidence_medium_band_pt": 18.0
+  },
+
+  "calibration": {
+    "actuals_csv": "data/pms_actuals.csv",
+    "backtest_bucket_days": 90,
+    "usable_mae_pt": 3.0,
+    "relative_only_mae_pt": 6.0
+  },
+
+  "rules": {
+    "rating_floor": 4.6,
+    "parity_band_pt": 3.0,
+    "raise_threshold_pt": 5.0,
+    "cut_threshold_pt": -5.0,
+    "momentum_flag_pct": 15.0,
+    "event_horizon_days": 45,
+    "stale_snapshot_days": 3,
+    "min_coverage": 0.7
+  },
+
+  "demand_events": [
+    { "date": "2026-03-01", "name": "修二会（お水取り）", "lift_pct": 25 },
+    { "date": "2026-04-05", "name": "桜シーズン", "lift_pct": 20 },
+    { "date": "2026-10-25", "name": "正倉院展", "lift_pct": 30 },
+    { "date": "2026-11-20", "name": "紅葉ピーク", "lift_pct": 25 }
+  ]
+}
