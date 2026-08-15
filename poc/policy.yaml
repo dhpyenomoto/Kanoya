@@ -1,0 +1,95 @@
+# =====================================================================
+# Rate Policy as Code —  奈良春日 鹿のや
+# 経営が決める唯一のファイル。ここ以外に価格の判断根拠を置かない。
+# 変更は必ず Pull Request 経由で行い、変更履歴＝意思決定の記録とする。
+# =====================================================================
+property:
+  name: 奈良春日 鹿のや
+  total_rooms: 5
+  currency: JPY
+
+objectives:
+  target_ari: 115            # コンプセットに対する目標単価指数
+  target_direct_share: 0.40
+  primary_kpi: net_revpar
+
+# 基準料金（Phase 0 で実績から確定する。以下は仮置き）
+bar_base:
+  weekday_low:    68000
+  weekday_high:   88000
+  weekend_low:    88000
+  weekend_high:  118000
+  peak:          148000
+
+floors:
+  brand_floor:   58000       # これ以下では絶対に売らない
+  variable_cost: 22000       # 参考値（変動費積上げ）
+
+ceilings:
+  weekday_low:  180000
+  weekday_high: 200000
+  weekend_low:  240000
+  weekend_high: 260000
+  peak:         320000
+
+guardrails:
+  max_daily_change: 0.15     # 1日あたり価格変動の上限
+  auto_publish_band: 0.10    # この範囲内は自動配信
+  min_compset_coverage: 0.60 # 一次コンプセットの最低観測率
+  max_data_age_hours: 48
+  rate_ladder: 1000          # 丸め単位
+
+sensitivity:
+  alpha_pace: 0.45           # ペース感度
+  beta_comp: 0.50            # 競合価格への追随率（1.0にしない＝値下げ競争の増幅を防ぐ）
+  lambda_shrink: 1.0         # 不確実性による引き戻しの強さ
+
+inventory_ladder:            # 残室数 → 希少性係数（Pace >= 0.9 のときのみ発動）
+  5: 1.00
+  4: 1.03
+  3: 1.08
+  2: 1.16
+  1: 1.28
+
+dpi_weights:
+  so: 0.30                   # コンプセット完売率
+  dp: 0.15                   # コンプセット価格トレンド
+  pace: 0.30                 # 自社ペース
+  ev: 0.15                   # イベント
+  mkt: 0.10                  # 市場季節性
+
+rate_integrity:              # 値下げ禁止則
+  no_discount_within_days: 14
+  emergency_discount_max: 0.08
+  emergency_discount_min_rooms_left: 3
+  emergency_discount_max_pace: 0.70
+
+channels:
+  direct:  {fee: 0.035, priority: 1}
+  ikyu:    {fee: 0.100, priority: 2}
+  rakuten: {fee: 0.100, priority: 2}
+  jalan:   {fee: 0.090, priority: 2}
+  booking: {fee: 0.170, priority: 3}
+  expedia: {fee: 0.200, priority: 3}
+
+high_demand_dpi_threshold: 0.8   # これを超えたら高手数料チャネルを絞る
+
+min_los:
+  demand_ratio_trigger: 1.4      # その日の予測需要率
+  adjacent_soft_max: 0.8         # 隣接日がこれ以下なら2泊縛りが有効
+  min_lead_days: 21
+
+# イベント係数（初期値は仮置き。実績で毎年自動更新する）
+events:
+  - {id: shosoin,    name: 正倉院展,           lift: 0.25, relevance: 1.00}
+  - {id: yamayaki,   name: 若草山焼き,         lift: 0.40, relevance: 1.00}
+  - {id: omizutori,  name: お水取り(籠松明),   lift: 0.30, relevance: 1.00}
+  - {id: koyo,       name: 紅葉ピーク,         lift: 0.30, relevance: 1.00}
+  - {id: sakura,     name: 桜ピーク,           lift: 0.25, relevance: 1.00}
+  - {id: mantoro,    name: 春日大社 万燈籠,    lift: 0.15, relevance: 1.00}
+  - {id: toukae,     name: なら燈花会,         lift: 0.15, relevance: 0.90}
+  - {id: tsunokiri,  name: 鹿の角きり,         lift: 0.10, relevance: 0.80}
+
+compset:
+  primary: []                # Phase 0 で確定（奈良公園周辺ラグジュアリー 3〜5施設）
+  secondary: []              # 一棟貸し・町家、京都/大阪のオーベルジュ等
