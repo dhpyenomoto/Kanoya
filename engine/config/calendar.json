@@ -1,0 +1,63 @@
+{
+  "_note": "奈良固有の需要カレンダー。season は年1回（予算策定時）、events は四半期ごとに見直す。ここに載らない需要は auto_event_detection がコンペセットの挙動から自動検知するため、『イベント表の記入漏れ＝取りこぼし』にはならない設計。",
+
+  "default_season": "SHOULDER",
+
+  "seasons": [
+    { "from": "01-01", "to": "01-03", "season": "PEAK",     "label": "年始" },
+    { "from": "01-04", "to": "02-10", "season": "DEEP_LOW", "label": "厳寒期（最閑散）" },
+    { "from": "02-11", "to": "02-28", "season": "LOW",      "label": "冬" },
+    { "from": "03-01", "to": "03-14", "season": "HIGH",     "label": "修二会・お水取り" },
+    { "from": "03-15", "to": "03-24", "season": "SHOULDER", "label": "春先" },
+    { "from": "03-25", "to": "04-12", "season": "PEAK",     "label": "桜" },
+    { "from": "04-13", "to": "04-27", "season": "SHOULDER", "label": "春" },
+    { "from": "04-28", "to": "05-06", "season": "PEAK",     "label": "ゴールデンウィーク" },
+    { "from": "05-07", "to": "06-10", "season": "SHOULDER", "label": "新緑" },
+    { "from": "06-11", "to": "07-14", "season": "LOW",      "label": "梅雨" },
+    { "from": "07-15", "to": "08-04", "season": "SHOULDER", "label": "初夏" },
+    { "from": "08-05", "to": "08-17", "season": "HIGH",     "label": "なら燈花会・お盆" },
+    { "from": "08-18", "to": "09-14", "season": "LOW",      "label": "晩夏（最閑散の一つ）" },
+    { "from": "09-15", "to": "10-20", "season": "SHOULDER", "label": "秋口" },
+    { "from": "10-21", "to": "11-09", "season": "HIGH",     "label": "正倉院展" },
+    { "from": "11-10", "to": "12-05", "season": "PEAK",     "label": "紅葉" },
+    { "from": "12-06", "to": "12-27", "season": "LOW",      "label": "師走" },
+    { "from": "12-28", "to": "12-31", "season": "PEAK",     "label": "年末" }
+  ],
+
+  "events": [
+    { "from": "2026-08-05", "to": "2026-08-14", "score": 0.70, "label": "なら燈花会" },
+    { "from": "2026-08-13", "to": "2026-08-16", "score": 0.85, "label": "お盆・大文字送り火" },
+    { "from": "2026-09-19", "to": "2026-09-23", "score": 0.60, "label": "秋分連休" },
+    { "from": "2026-10-10", "to": "2026-10-12", "score": 0.55, "label": "スポーツの日連休・鹿の角きり" },
+    { "from": "2026-10-24", "to": "2026-11-09", "score": 0.75, "label": "正倉院展" },
+    { "from": "2026-11-14", "to": "2026-11-30", "score": 0.80, "label": "紅葉ピーク" },
+    { "from": "2026-12-31", "to": "2027-01-03", "score": 0.95, "label": "年末年始" },
+    { "from": "2027-01-23", "to": "2027-01-24", "score": 0.70, "label": "若草山焼き" },
+    { "from": "2027-03-01", "to": "2027-03-14", "score": 0.65, "label": "修二会・お水取り" }
+  ],
+
+  "holidays_2026": [
+    "2026-09-21", "2026-09-22", "2026-09-23", "2026-10-12", "2026-11-03",
+    "2026-11-23", "2026-12-31", "2026-08-11"
+  ],
+
+  "pace_benchmark": {
+    "_note": "リードタイム別の『あるべきOTB比率』（当該日カテゴリの最終販売室数に対する累積比率）。5室規模では日別実績の分散が大きすぎるため、シーズン×曜日の『日カテゴリ』にプールして推定する（縮小推定）。",
+    "curve": [
+      { "lead_days": 120, "ratio": 0.08 },
+      { "lead_days": 90,  "ratio": 0.15 },
+      { "lead_days": 60,  "ratio": 0.28 },
+      { "lead_days": 45,  "ratio": 0.38 },
+      { "lead_days": 30,  "ratio": 0.52 },
+      { "lead_days": 21,  "ratio": 0.62 },
+      { "lead_days": 14,  "ratio": 0.73 },
+      { "lead_days": 7,   "ratio": 0.86 },
+      { "lead_days": 3,   "ratio": 0.94 },
+      { "lead_days": 0,   "ratio": 1.00 }
+    ],
+    "season_multiplier": {
+      "PEAK": 1.25, "HIGH": 1.12, "SHOULDER": 1.00, "LOW": 0.88, "DEEP_LOW": 0.80
+    },
+    "_season_multiplier_note": "繁忙期ほど予約が早く入る（カーブが前倒しになる）ことを表す。上限1.0でクリップ。"
+  }
+}

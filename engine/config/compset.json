@@ -1,0 +1,53 @@
+{
+  "_note": "コンペティティブセット定義。施設名・属性は公開情報ベースの想定値であり、Phase 0 で現地・実データにより確定する。weight は類似度スコア（距離・価格帯重複・規模・食事形態・レビュー属性）から四半期ごとに再算定する。",
+  "_normalization": "各社の掲出価格を『1室2名1泊2食・税サ込』に補正するためのパラメータ。meal_included=none の施設には dinner_uplift/breakfast_uplift を加算し、pricing_basis=per_person の施設は ×2 する。",
+
+  "tiers": {
+    "PRIMARY": { "description": "直接競合。奈良公園・春日野・ならまち圏の高付加価値小規模宿。", "tier_weight": 1.0 },
+    "SECONDARY": { "description": "価格帯代替。奈良市内上位・広域（京都南部）で客が比較検討する層。", "tier_weight": 0.5 },
+    "ASPIRATIONAL": { "description": "目標ポジション。ADR天井の参照点であり、平均値には低ウェイトでのみ算入。", "tier_weight": 0.3 }
+  },
+
+  "competitors": [
+    {
+      "id": "cs01", "name": "ANDO HOTEL 奈良若草山", "tier": "PRIMARY", "weight": 1.00,
+      "rooms": 21, "distance_km": 1.2, "pricing_basis": "per_person", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0
+    },
+    {
+      "id": "cs02", "name": "奈良公園エリア 小規模旅館A（江戸三型）", "tier": "PRIMARY", "weight": 1.00,
+      "rooms": 12, "distance_km": 0.6, "pricing_basis": "per_person", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0
+    },
+    {
+      "id": "cs03", "name": "ならまち 町家一棟／ホテルB", "tier": "PRIMARY", "weight": 0.85,
+      "rooms": 8, "distance_km": 2.1, "pricing_basis": "per_room", "meal_included": "none",
+      "dinner_uplift": 26000, "breakfast_uplift": 8000
+    },
+    {
+      "id": "cs04", "name": "奈良公園エリア デザインホテルC", "tier": "PRIMARY", "weight": 0.80,
+      "rooms": 26, "distance_km": 1.8, "pricing_basis": "per_room", "meal_included": "breakfast",
+      "dinner_uplift": 26000, "breakfast_uplift": 0
+    },
+    {
+      "id": "cs05", "name": "奈良市内 クラシックホテルD", "tier": "PRIMARY", "weight": 0.75,
+      "rooms": 90, "distance_km": 1.5, "pricing_basis": "per_room", "meal_included": "none",
+      "dinner_uplift": 24000, "breakfast_uplift": 9000
+    },
+    {
+      "id": "cs06", "name": "奈良市内 ラグジュアリー温泉旅館E（ふふ型）", "tier": "ASPIRATIONAL", "weight": 1.00,
+      "rooms": 30, "distance_km": 3.4, "pricing_basis": "per_person", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0
+    },
+    {
+      "id": "cs07", "name": "奈良市内 上位ビジネス／ライフスタイルF", "tier": "SECONDARY", "weight": 0.60,
+      "rooms": 120, "distance_km": 2.6, "pricing_basis": "per_room", "meal_included": "breakfast",
+      "dinner_uplift": 22000, "breakfast_uplift": 0
+    },
+    {
+      "id": "cs08", "name": "京都南部 小規模オーベルジュG", "tier": "SECONDARY", "weight": 0.50,
+      "rooms": 10, "distance_km": 22.0, "pricing_basis": "per_person", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0
+    }
+  ]
+}
