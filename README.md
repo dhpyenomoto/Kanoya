@@ -40,7 +40,7 @@
 | 形式 | 見方 |
 |---|---|
 | [Markdown版](docs/sample-adr-matrix.md) | **GitHub上でそのまま表示されます**。スタッフはこれを開けば読めます |
-| [HTML版](docs/sample-adr-matrix.html) | ヒートマップ付き。ダウンロードしてブラウザで開いてください |
+| [HTML版](docs/sample-adr-matrix.html) | ヒートマップ付き。**ページ上で調べたい日程を変えられます**。ダウンロードしてブラウザで開いてください |
 
 いずれも価格は擬似データです（施設名は実名）。実データは `engine/scripts/adr_matrix.py` で生成します。
 

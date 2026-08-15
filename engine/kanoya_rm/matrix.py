@@ -5,10 +5,14 @@ survey レポートは日ごとの判断を出すが、値付けの現場で実�
 価格が1社だけ突出しているのか、市場全体が上がっているのかは、
 中央値だけを見ていても分からない。
 
-出力は3系統:
-  render_text  端末での一覧（千円単位・売止と欠測を区別）
-  render_csv   Excel等での再加工用
-  render_html  ヒートマップ付きの視覚表（ブラウザで開く）
+出力は4系統:
+  render_text      端末での一覧（千円単位・売止と欠測を区別）
+  write_csv        Excel等での再加工用
+  render_markdown  GitHub上でそのまま表示される表（社内共有向け）
+  render_html      ヒートマップ付きの視覚表。**調べたい日程を画面上で変えられる**
+
+HTML版は全期間のデータをページ内に埋め込み、期間の絞り込みをブラウザ側で行う。
+日付を変えるたびに Python を再実行したり HTML を書き換えたりする必要がない。
 
 行の並びは類似度スコア順。自社を最上段に固定し、直下に市場中央値を置くことで、
 「自社が市場のどこにいるか」が縦方向に読めるようにしている。
@@ -18,6 +22,7 @@ from __future__ import annotations
 
 import csv
 import html
+import json
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -87,6 +92,18 @@ def _anon_label(index: int) -> str:
         if n < 0:
             break
     return f"競合{letters}"
+
+
+def build_full(settings: Settings, ctx, **kwargs) -> MatrixReport:
+    """収集済みの全宿泊日でマトリクスを組む.
+
+    HTML版は期間の絞り込みをブラウザ側で行うため、データを全期間分持たせる。
+    こうすると、日付を変えるたびに Python を再実行する必要がなくなる。
+    """
+    days = sorted(ctx.recommendations)
+    if not days:
+        return build(settings, ctx, (date.max, date.min), **kwargs)
+    return build(settings, ctx, (days[0], days[-1]), **kwargs)
 
 
 def build(settings: Settings, ctx, window: tuple[date, date], *,
@@ -289,120 +306,135 @@ def render_markdown(report: MatrixReport) -> str:
 
 # ---- HTML（ヒートマップ） -------------------------------------------------
 
-def _ramp(value: float, lo: float, hi: float) -> tuple[str, str]:
-    """ADRの大きさを単一色相の濃淡へ写す（順序尺度なので単色ランプが正しい）."""
-    if hi <= lo:
-        t = 0.5
-    else:
-        t = min(1.0, max(0.0, (value - lo) / (hi - lo)))
-    # 明度のみを動かす。色相を混ぜると大小関係が読めなくなる。
-    lightness = 96 - t * 46          # 96% → 50%
-    text = "#12312a" if t < 0.55 else "#ffffff"
-    return f"hsl(163 38% {lightness:.0f}%)", text
+
+def _payload(report: MatrixReport, initial: tuple[date, date] | None) -> dict:
+    """ブラウザ側で描画するためのデータ一式."""
+    def cell(value):
+        if value == SOLD_OUT:
+            return "SO"
+        if value == MISSING or not isinstance(value, (int, float)) or value <= 0:
+            return None
+        return round(float(value))
+
+    dates = [d.isoformat() for d in report.dates]
+    lo = (initial[0].isoformat() if initial else (dates[0] if dates else ""))
+    hi = (initial[1].isoformat() if initial else (dates[-1] if dates else ""))
+    return {
+        "property": report.property_name,
+        "asOf": report.as_of.isoformat(),
+        "radiusKm": round(report.radius_m / 1000, 1) if report.radius_m else 0,
+        "fixture": report.fixture,
+        "dates": dates,
+        "dow": {d.isoformat(): report.day_labels[d] for d in report.dates},
+        "events": {d.isoformat(): report.event_labels.get(d, "")
+                   for d in report.dates if report.event_labels.get(d)},
+        "initial": {"from": lo, "to": hi},
+        "rows": [
+            {
+                "name": r.name,
+                "tier": r.tier,
+                "weight": None if (r.is_self or r.is_summary) else round(r.weight, 2),
+                "rooms": r.rooms or None,
+                "distance": round(r.distance_km, 1) if r.distance_km else None,
+                "self": r.is_self,
+                "summary": r.is_summary,
+                "cells": {d.isoformat(): cell(r.cells.get(d, MISSING)) for d in report.dates},
+            }
+            for r in report.rows
+        ],
+    }
 
 
-def render_html(report: MatrixReport) -> str:
-    lo, hi = report.value_range()
+def render_html(report: MatrixReport,
+                initial: tuple[date, date] | None = None) -> str:
+    """調査期間を画面上で切り替えられるADRマトリクス.
+
+    全期間のデータをページ内に埋め込み、日付の絞り込みはブラウザ側で行う。
+    期間を変えるたびに Python を再実行したり HTML を書き換えたりする必要がない。
+    外部リソースを一切参照しないため、ファイル単体で配布・閲覧できる。
+    """
+    data = json.dumps(_payload(report, initial), ensure_ascii=False)
+    data = data.replace("</", "<\\/")   # </script> による早期終了を防ぐ
     esc = html.escape
-
-    head = "".join(
-        f'<th class="d{" ev" if report.event_labels.get(d) else ""}'
-        f'{" we" if report.day_labels[d] in ("SAT", "FRI") else ""}">'
-        f'<span class="md">{d.strftime("%m/%d")}</span>'
-        f'<span class="dw">{report.day_labels[d]}</span></th>'
-        for d in report.dates
-    )
-
-    body_rows: list[str] = []
-    for row in report.rows:
-        classes = []
-        if row.is_self:
-            classes.append("self")
-        if row.is_summary:
-            classes.append("summary")
-        cells = []
-        for d in report.dates:
-            value = row.cells.get(d, MISSING)
-            if value == SOLD_OUT:
-                cells.append('<td class="so" title="売止（在庫なし）">満</td>')
-            elif value == MISSING or not isinstance(value, (int, float)) or value <= 0:
-                cells.append('<td class="na" title="データなし">·</td>')
-            else:
-                if row.is_self or row.is_summary:
-                    cells.append(f'<td class="plain">{value / 1000:,.0f}</td>')
-                else:
-                    bg, fg = _ramp(value, lo, hi)
-                    cells.append(
-                        f'<td style="background:{bg};color:{fg}" '
-                        f'title="{esc(row.name)} {d.isoformat()}: ¥{value:,.0f}">'
-                        f'{value / 1000:,.0f}</td>'
-                    )
-        meta = (f'<td class="m">{row.weight:.2f}</td>'
-                f'<td class="m">{row.rooms or "—"}</td>'
-                f'<td class="m">{row.distance_km:.1f}</td>'
-                if not (row.is_self or row.is_summary)
-                else '<td class="m">—</td><td class="m">—</td><td class="m">—</td>')
-        avg = f'{row.average / 1000:,.0f}' if row.average else "—"
-        body_rows.append(
-            f'<tr class="{" ".join(classes)}">'
-            f'<th class="n">{esc(row.name)}'
-            f'<span class="tier">{esc(row.tier)}</span></th>'
-            f'{"".join(cells)}<td class="avg">{avg}</td>{meta}</tr>'
-        )
-
-    warn = ('<p class="warn">██ フィクスチャ（擬似）データです。実勢価格ではありません。'
-            'APIキーを設定し <code>--source serpapi</code> で再実行してください。</p>'
-            if report.fixture else "")
-    radius = (f'／ 調査範囲 半径{report.radius_m / 1000:.1f}km'
-              if report.radius_m else "")
 
     return f"""<title>{esc(report.property_name)} ADRマトリクス</title>
 <style>
 :root {{
   --ground:#F5F6F2; --surface:#FFFFFF; --alt:#EDEFE9; --ink:#1A211C;
   --ink2:#414B44; --muted:#6B746D; --line:#D8DCD3; --accent:#14584A;
-  --warn:#B8452B; --self:#FFF6E8; --selfline:#C9922E;
+  --warn:#B8452B; --self:#FFF6E8; --selfline:#C9922E; --field:#FFFFFF;
 }}
 @media (prefers-color-scheme:dark) {{
   :root:not([data-theme="light"]) {{
     --ground:#141715; --surface:#1C201D; --alt:#232823; --ink:#E8EBE6;
     --ink2:#C0C7BF; --muted:#949C94; --line:#2E342E; --accent:#4FB49A;
-    --warn:#DD6A46; --self:#2A2317; --selfline:#C9922E;
+    --warn:#DD6A46; --self:#2A2317; --selfline:#C9922E; --field:#232823;
   }}
 }}
 :root[data-theme="dark"] {{
   --ground:#141715; --surface:#1C201D; --alt:#232823; --ink:#E8EBE6;
   --ink2:#C0C7BF; --muted:#949C94; --line:#2E342E; --accent:#4FB49A;
-  --warn:#DD6A46; --self:#2A2317; --selfline:#C9922E;
+  --warn:#DD6A46; --self:#2A2317; --selfline:#C9922E; --field:#232823;
 }}
 *{{box-sizing:border-box}}
-body{{margin:0;padding:28px 22px 64px;background:var(--ground);color:var(--ink);
+body{{margin:0;padding:26px 20px 60px;background:var(--ground);color:var(--ink);
  font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif;font-size:14px}}
 h1{{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
- font-size:24px;font-weight:600;margin:0 0 6px}}
-.sub{{color:var(--muted);font-size:13px;margin:0 0 4px}}
+ font-size:23px;font-weight:600;margin:0 0 5px}}
+.sub{{color:var(--muted);font-size:12.5px;margin:0 0 3px}}
 .warn{{background:var(--warn);color:#fff;padding:9px 14px;font-weight:700;
- margin:14px 0;border-radius:3px;font-size:13px}}
-.legend{{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:16px 0 12px;
+ margin:13px 0;border-radius:3px;font-size:13px}}
+
+/* ── 調査期間の入力 ───────────────────────────────── */
+.panel{{background:var(--surface);border:1px solid var(--line);border-radius:4px;
+ padding:15px 17px;margin:16px 0 14px}}
+.panel h2{{font-size:12px;letter-spacing:.08em;color:var(--accent);margin:0 0 12px;
+ font-weight:700}}
+.fields{{display:flex;flex-wrap:wrap;gap:14px 18px;align-items:flex-end}}
+.field{{display:flex;flex-direction:column;gap:5px}}
+.field label{{font-size:11px;color:var(--muted)}}
+input[type=date],select{{font:inherit;font-size:14px;padding:6px 9px;
+ border:1px solid var(--line);border-radius:3px;background:var(--field);
+ color:var(--ink);min-width:150px}}
+input[type=date]:focus,select:focus,button:focus-visible{{outline:2px solid var(--accent);
+ outline-offset:1px}}
+.presets{{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px;
+ padding-top:13px;border-top:1px dashed var(--line)}}
+button{{font:inherit;font-size:12.5px;padding:5px 11px;border:1px solid var(--line);
+ border-radius:3px;background:var(--surface);color:var(--ink2);cursor:pointer}}
+button:hover{{background:var(--alt);border-color:var(--accent);color:var(--ink)}}
+.err{{color:var(--warn);font-size:12.5px;margin-top:10px;font-weight:600}}
+
+/* ── サマリ ──────────────────────────────────────── */
+.stats{{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);
+ border:1px solid var(--line);margin:0 0 14px}}
+.stat{{background:var(--surface);padding:11px 16px;flex:1;min-width:118px}}
+.stat .k{{font-size:10.5px;color:var(--muted);margin-bottom:4px}}
+.stat .v{{font-size:19px;font-variant-numeric:tabular-nums;line-height:1.15}}
+.stat .v small{{font-size:12px;color:var(--muted);margin-left:2px}}
+
+.legend{{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:0 0 11px;
  font-size:12px;color:var(--muted)}}
 .legend b{{color:var(--ink2);font-weight:600}}
-.ramp{{display:inline-flex;height:12px;width:150px;border:1px solid var(--line)}}
+.ramp{{display:inline-flex;height:11px;width:130px;border:1px solid var(--line)}}
 .ramp i{{flex:1}}
-.scroll{{overflow:auto;max-height:78vh;border:1px solid var(--line);background:var(--surface)}}
+
+/* ── 表 ─────────────────────────────────────────── */
+.scroll{{overflow:auto;max-height:70vh;border:1px solid var(--line);background:var(--surface)}}
 table{{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums}}
 th,td{{padding:5px 7px;font-size:12px;white-space:nowrap;border-bottom:1px solid var(--line)}}
-thead th{{position:sticky;top:0;z-index:3;background:var(--alt);border-bottom:2px solid var(--line)}}
+thead th{{position:sticky;top:0;z-index:3;background:var(--alt);
+ border-bottom:2px solid var(--line)}}
 th.n{{position:sticky;left:0;z-index:2;background:var(--surface);text-align:left;
- min-width:210px;max-width:210px;overflow:hidden;text-overflow:ellipsis;
+ min-width:205px;max-width:205px;overflow:hidden;text-overflow:ellipsis;
  border-right:2px solid var(--line);font-weight:600}}
 thead th.n{{z-index:4;background:var(--alt)}}
 .tier{{display:block;font-size:10px;color:var(--muted);font-weight:400}}
 th.d{{text-align:center;min-width:52px}}
 th.d .md{{display:block;font-weight:600}}
 th.d .dw{{display:block;font-size:10px;color:var(--muted);font-weight:400}}
-th.d.we{{background:var(--surface)}}
 th.d.ev{{box-shadow:inset 0 -3px 0 var(--accent)}}
-td{{text-align:right;font-variant-numeric:tabular-nums}}
+td{{text-align:right}}
 td.so{{background:repeating-linear-gradient(45deg,var(--alt),var(--alt) 4px,transparent 4px,transparent 8px);
  color:var(--warn);text-align:center;font-weight:700}}
 td.na{{color:var(--line);text-align:center}}
@@ -410,28 +442,253 @@ td.plain{{background:var(--alt);font-weight:600}}
 td.avg{{background:var(--alt);font-weight:700;border-left:2px solid var(--line)}}
 td.m{{color:var(--muted);background:var(--surface)}}
 tr.self th.n,tr.self td{{background:var(--self)}}
-tr.self{{border-left:3px solid var(--selfline)}}
 tr.self th.n{{border-left:3px solid var(--selfline)}}
 tr.summary th.n,tr.summary td{{background:var(--alt);font-weight:600}}
 tbody tr:hover td:not(.so):not(.na){{outline:2px solid var(--accent);outline-offset:-2px}}
+@media (prefers-reduced-motion:reduce){{*{{transition:none!important}}}}
 </style>
+
 <h1>ADRマトリクス — {esc(report.property_name)}</h1>
-<p class="sub">基準日 {report.as_of.isoformat()} ／ 対象 {len(report.dates)}日{radius}</p>
+<p class="sub">基準日 {report.as_of.isoformat()}{
+  f" ／ 調査範囲 半径{report.radius_m / 1000:.1f}km" if report.radius_m else ""}</p>
 <p class="sub">単位は千円。すべて「1室2名1泊2食・税サ込」へ正規化（NAR）した値です。</p>
-{warn}
-<div class="legend">
-  <span><b>安</b> <span class="ramp"><i style="background:hsl(163 38% 96%)"></i>
-    <i style="background:hsl(163 38% 84%)"></i><i style="background:hsl(163 38% 73%)"></i>
-    <i style="background:hsl(163 38% 61%)"></i><i style="background:hsl(163 38% 50%)"></i></span> <b>高</b>
-    （{lo / 1000:,.0f}〜{hi / 1000:,.0f}千円）</span>
-  <span><b>満</b> 売止（在庫なし）</span>
-  <span><b>·</b> データなし</span>
-  <span>行の並び = <b>類似度スコア降順</b>（似ている競合が上）</span>
-  <span>下線付きの日付 = 需要イベント</span>
+{'<p class="warn">フィクスチャ（擬似）データです。実勢価格ではありません。</p>'
+ if report.fixture else ''}
+
+<div class="panel">
+  <h2>調べたい日程</h2>
+  <div class="fields">
+    <div class="field"><label for="from">開始日（宿泊日）</label>
+      <input type="date" id="from"></div>
+    <div class="field"><label for="to">終了日（宿泊日）</label>
+      <input type="date" id="to"></div>
+    <div class="field"><label for="month">月でまとめて選ぶ</label>
+      <select id="month"><option value="">—</option></select></div>
+  </div>
+  <div class="presets" id="presets"></div>
+  <div class="err" id="err" hidden></div>
 </div>
+
+<div class="stats" id="stats"></div>
+<div class="legend" id="legend"></div>
 <div class="scroll"><table>
-<thead><tr><th class="n">施設</th>{head}
-<th class="d">平均</th><th class="d">類似度</th><th class="d">客室</th><th class="d">距離km</th></tr></thead>
-<tbody>{"".join(body_rows)}</tbody>
+  <thead><tr id="head"></tr></thead>
+  <tbody id="body"></tbody>
 </table></div>
+
+<script>
+const D = {data};
+
+const $ = (id) => document.getElementById(id);
+const fromEl = $("from"), toEl = $("to"), monthEl = $("month"), errEl = $("err");
+const ALL = D.dates;
+const MIN = ALL[0], MAX = ALL[ALL.length - 1];
+
+// 収集済みの範囲外は選べないようにする（データが無い期間を指定しても意味がないため）
+for (const el of [fromEl, toEl]) {{ el.min = MIN; el.max = MAX; }}
+fromEl.value = D.initial.from;
+toEl.value = D.initial.to;
+
+// 月セレクタ（データにある月だけ）
+const months = [...new Set(ALL.map(d => d.slice(0, 7)))];
+for (const m of months) {{
+  const o = document.createElement("option");
+  o.value = m;
+  o.textContent = m.replace("-", "年") + "月";
+  monthEl.appendChild(o);
+}}
+
+const addDays = (iso, n) => {{
+  const t = new Date(iso + "T00:00:00");
+  t.setDate(t.getDate() + n);
+  return t.toISOString().slice(0, 10);
+}};
+const clamp = (iso) => iso < MIN ? MIN : (iso > MAX ? MAX : iso);
+
+// クイック選択。基準日（データの起点）からの相対で組む
+const PRESETS = [
+  ["基準日から7日",  () => [MIN, clamp(addDays(MIN, 6))]],
+  ["14日",  () => [MIN, clamp(addDays(MIN, 13))]],
+  ["30日",  () => [MIN, clamp(addDays(MIN, 29))]],
+  ["90日",  () => [MIN, clamp(addDays(MIN, 89))]],
+  ["収集済みの全期間", () => [MIN, MAX]],
+];
+for (const [label, fn] of PRESETS) {{
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = label;
+  b.onclick = () => {{ const [a, z] = fn(); fromEl.value = a; toEl.value = z;
+                      monthEl.value = ""; render(); }};
+  $("presets").appendChild(b);
+}}
+
+monthEl.onchange = () => {{
+  if (!monthEl.value) return;
+  const inMonth = ALL.filter(d => d.startsWith(monthEl.value));
+  fromEl.value = inMonth[0];
+  toEl.value = inMonth[inMonth.length - 1];
+  render();
+}};
+fromEl.onchange = toEl.onchange = () => {{ monthEl.value = ""; render(); }};
+
+const yen = (n) => n.toLocaleString("ja-JP");
+
+function ramp(v, lo, hi) {{
+  const t = hi > lo ? Math.min(1, Math.max(0, (v - lo) / (hi - lo))) : 0.5;
+  return ["hsl(163 38% " + (96 - t * 46).toFixed(0) + "%)",
+          t < 0.55 ? "#12312a" : "#ffffff"];
+}}
+
+function render() {{
+  const a = fromEl.value, z = toEl.value;
+  errEl.hidden = true;
+
+  if (!a || !z) {{ return; }}
+  if (a > z) {{
+    errEl.textContent = "開始日が終了日より後になっています。";
+    errEl.hidden = false;
+    return;
+  }}
+  const dates = ALL.filter(d => d >= a && d <= z);
+  if (!dates.length) {{
+    errEl.textContent = "指定された期間に収集済みのデータがありません。"
+      + "収集済みの範囲は " + MIN + " 〜 " + MAX + " です。";
+    errEl.hidden = false;
+    $("body").innerHTML = "";
+    $("head").innerHTML = "";
+    $("stats").innerHTML = "";
+    return;
+  }}
+
+  // 表示中の競合価格から色の範囲を決める（選んだ期間の中で濃淡が読めるように）
+  let lo = Infinity, hi = -Infinity;
+  for (const r of D.rows) {{
+    if (r.self || r.summary) continue;
+    for (const d of dates) {{
+      const v = r.cells[d];
+      if (typeof v === "number") {{ lo = Math.min(lo, v); hi = Math.max(hi, v); }}
+    }}
+  }}
+  if (!isFinite(lo)) {{ lo = 0; hi = 1; }}
+
+  // ヘッダ
+  const head = $("head");
+  head.innerHTML = "";
+  const th0 = document.createElement("th");
+  th0.className = "n"; th0.textContent = "施設";
+  head.appendChild(th0);
+  for (const d of dates) {{
+    const th = document.createElement("th");
+    th.className = "d" + (D.events[d] ? " ev" : "");
+    if (D.events[d]) th.title = D.events[d];
+    const md = document.createElement("span");
+    md.className = "md"; md.textContent = d.slice(5).replace("-", "/");
+    const dw = document.createElement("span");
+    dw.className = "dw"; dw.textContent = D.dow[d];
+    th.append(md, dw);
+    head.appendChild(th);
+  }}
+  for (const t of ["平均", "類似度", "客室", "距離km"]) {{
+    const th = document.createElement("th");
+    th.className = "d"; th.textContent = t;
+    head.appendChild(th);
+  }}
+
+  // 本体
+  const body = $("body");
+  body.innerHTML = "";
+  const avgOf = (r) => {{
+    const vals = dates.map(d => r.cells[d]).filter(v => typeof v === "number");
+    return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
+  }};
+
+  for (const r of D.rows) {{
+    const tr = document.createElement("tr");
+    tr.className = r.self ? "self" : (r.summary ? "summary" : "");
+    const th = document.createElement("th");
+    th.className = "n";
+    th.appendChild(document.createTextNode(r.name));
+    const tier = document.createElement("span");
+    tier.className = "tier"; tier.textContent = r.tier;
+    th.appendChild(tier);
+    tr.appendChild(th);
+
+    for (const d of dates) {{
+      const td = document.createElement("td");
+      const v = r.cells[d];
+      if (v === "SO") {{
+        td.className = "so"; td.textContent = "満"; td.title = "売止（在庫なし）";
+      }} else if (v === null || v === undefined) {{
+        td.className = "na"; td.textContent = "·"; td.title = "データなし";
+      }} else {{
+        td.textContent = Math.round(v / 1000).toLocaleString("ja-JP");
+        td.title = r.name + " " + d + ": ¥" + yen(v);
+        if (r.self || r.summary) {{ td.className = "plain"; }}
+        else {{
+          const [bg, fg] = ramp(v, lo, hi);
+          td.style.background = bg; td.style.color = fg;
+        }}
+      }}
+      tr.appendChild(td);
+    }}
+
+    const av = avgOf(r);
+    const tdA = document.createElement("td");
+    tdA.className = "avg";
+    tdA.textContent = av ? Math.round(av / 1000).toLocaleString("ja-JP") : "—";
+    tr.appendChild(tdA);
+    const meta = [
+      r.weight === null ? "—" : r.weight.toFixed(2),
+      r.rooms === null ? "—" : String(r.rooms),
+      r.distance === null ? "—" : r.distance.toFixed(1),
+    ];
+    for (const val of meta) {{
+      const td = document.createElement("td");
+      td.className = "m";
+      td.textContent = val;
+      tr.appendChild(td);
+    }}
+    body.appendChild(tr);
+  }}
+
+  // サマリ
+  const self = D.rows.find(r => r.self);
+  const reco = D.rows.filter(r => r.self)[1];
+  const med  = D.rows.find(r => r.summary);
+  const sAvg = self ? avgOf(self) : null;
+  const rAvg = reco ? avgOf(reco) : null;
+  const mAvg = med ? avgOf(med) : null;
+  const pos  = (sAvg && mAvg) ? (sAvg / mAvg) : null;
+  let soldout = 0, missing = 0;
+  for (const r of D.rows) {{
+    if (r.self || r.summary) continue;
+    for (const d of dates) {{
+      const v = r.cells[d];
+      if (v === "SO") soldout++;
+      else if (v === null || v === undefined) missing++;
+    }}
+  }}
+  const stat = (k, v, note) =>
+    '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v +
+    (note ? '<small>' + note + '</small>' : '') + '</div></div>';
+  $("stats").innerHTML =
+    stat("対象日数", dates.length, "日") +
+    stat("自社 現行 平均", sAvg ? Math.round(sAvg / 1000).toLocaleString("ja-JP") : "—", "千円") +
+    stat("エンジン推奨 平均", rAvg ? Math.round(rAvg / 1000).toLocaleString("ja-JP") : "—", "千円") +
+    stat("市場中央値 平均", mAvg ? Math.round(mAvg / 1000).toLocaleString("ja-JP") : "—", "千円") +
+    stat("対 市場中央値", pos ? pos.toFixed(2) : "—", "倍") +
+    stat("競合の売止", soldout, "セル") +
+    stat("データなし", missing, "セル");
+
+  $("legend").innerHTML =
+    '<span><b>安</b> <span class="ramp">' +
+    [96, 84, 73, 61, 50].map(l => '<i style="background:hsl(163 38% ' + l + '%)"></i>').join("") +
+    '</span> <b>高</b>（' + Math.round(lo / 1000) + '〜' + Math.round(hi / 1000) + '千円）</span>' +
+    '<span><b>満</b> 売止</span><span><b>·</b> データなし</span>' +
+    '<span>行順 = <b>類似度スコア降順</b></span>' +
+    '<span>下線付きの日付 = 需要イベント</span>';
+}}
+
+render();
+</script>
 """
