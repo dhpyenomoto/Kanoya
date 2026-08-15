@@ -5,7 +5,7 @@
 
     # 実接続
     export GOOGLE_PLACES_API_KEY='...'
-    python3 scripts/discover_compset.py --source places --radius 2500
+    python3 scripts/discover_compset.py --source places --radius 2500 --as-of today
 
     # 候補を確定して compset.json へ昇格（四半期レビューで人が実行する）
     python3 scripts/discover_compset.py --source fixture --write
@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from kanoya_rm import request as request_mod  # noqa: E402
 from kanoya_rm.discovery import (  # noqa: E402
     assign_tiers, diff_against_existing, score_candidates, to_compset_config,
 )
@@ -39,7 +40,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="コンペセット候補の機械的発見")
     parser.add_argument("--source", choices=["places", "fixture"], default="fixture")
     parser.add_argument("--radius", type=int, default=None, help="探索半径（m）")
-    parser.add_argument("--run-date", default=None, help="YYYY-MM-DD（キャッシュの区切り）")
+    request_mod.add_arguments(parser, include_window=False)
     parser.add_argument("--write", action="store_true",
                         help="config/compset.json へ昇格（四半期レビュー承認後に実行）")
     parser.add_argument("--out", default="config/compset.generated.json")
@@ -52,7 +53,8 @@ def main() -> int:
 
     prop = config["property"]
     radius = args.radius or int(config["discovery"]["radius_m"])
-    run_date = date.fromisoformat(args.run_date) if args.run_date else date.today()
+    survey_request = request_mod.from_args(args, root)
+    run_date = survey_request.as_of
 
     # ---- ソース選択 ----
     if args.source == "fixture":
@@ -96,6 +98,8 @@ def main() -> int:
     print("=" * 88)
     print(f"  コンペティティブセット候補 — {prop['name']}")
     print("=" * 88)
+    print(request_mod.render_input_panel(survey_request))
+    print()
     print(f"データ源   : {source_label}")
     print(f"起点座標   : {origin[0]:.5f}, {origin[1]:.5f}（{origin_note}）")
     print(f"探索半径   : {radius:,} m ／ 発見 {len(places)} 件 → フィルタ後 {len(candidates)} 件")
@@ -157,4 +161,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except request_mod.RequestError as exc:
+        # 入力の矛盾はスタックトレースではなく、直せる指示として見せる
+        print(f"\n入力エラー: {exc}", file=sys.stderr)
+        raise SystemExit(2) from None

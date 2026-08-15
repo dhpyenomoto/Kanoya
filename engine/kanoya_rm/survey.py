@@ -123,12 +123,15 @@ def _classify(pos: DayPosition, target_position: float,
 
 def build(settings: Settings, ctx, *, target_position: float = 1.15,
           raise_pressure: float = 0.40, lower_pressure: float = 0.15,
-          fixture: bool = False) -> SurveyReport:
+          fixture: bool = False,
+          window: tuple[date, date] | None = None) -> SurveyReport:
     days: list[DayPosition] = []
     rooms = int(settings.property["property"]["rooms"])
     season_occ = {"PEAK": .95, "HIGH": .88, "SHOULDER": .75, "LOW": .62, "DEEP_LOW": .50}
 
     for stay in sorted(ctx.recommendations):
+        if window is not None and not (window[0] <= stay <= window[1]):
+            continue
         rec = ctx.recommendations[stay]
         snap: CompSnapshot | None = ctx.comp_snapshots.get(stay)
         pace = ctx.paces.get(stay)
@@ -222,13 +225,17 @@ def write_csv(report: SurveyReport, path: Path) -> None:
             ])
 
 
-def render(report: SurveyReport, *, top: int = 12) -> str:
+def render(report: SurveyReport, *, top: int = 12,
+           request_panel: str | None = None) -> str:
     lines: list[str] = []
     bar = "=" * 78
     lines.append(bar)
     lines.append(f"  {report.property_name} — マーケットポジション調査 / ADR判断材料")
-    lines.append(f"  基準日 {report.run_date.isoformat()} ／ 対象 {len(report.days)}日")
     lines.append(bar)
+    if request_panel:
+        lines.append(request_panel)
+    else:
+        lines.append(f"  基準日 {report.run_date.isoformat()} ／ 対象 {len(report.days)}日")
 
     if report.fixture:
         lines.append("")

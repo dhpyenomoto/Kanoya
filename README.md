@@ -34,11 +34,26 @@
 
 企画書の数式・ガードレール・出力フォーマットは、すべて動作するコードとして `engine/` に実装されています（標準ライブラリのみ、依存パッケージなし）。
 
+### 調査条件の入力
+
+「**いつ時点で**（本日）」「**どの宿泊日を**（対象期間）」調べるかは、
+`engine/config/survey_request.json` の1か所で指定します。CLI引数でも上書きできます。
+
+```bash
+python3 scripts/survey_report.py --from 2026-11-01 --to 2026-11-30
+python3 scripts/survey_report.py --from 2026-11         # 11月まるごと
+python3 scripts/survey_report.py --from +30d --days 14  # 30日後から2週間
+```
+
+`as_of`（基準日）と `target`（対象期間）は独立した別概念です。
+詳細は [収集パイプライン運用手順 §1.5](docs/05_収集パイプライン運用手順.md)。
+
 ### 収集パイプライン（発見 → 収集 → ADR判断）
 
 ```bash
 cd engine
-./scripts/run_pipeline.sh     # APIキー不要のオフライン実行
+./scripts/run_pipeline.sh                               # APIキー不要のオフライン実行
+FROM=2026-11-01 TO=2026-11-30 ./scripts/run_pipeline.sh  # 期間を絞る
 ```
 
 | 工程 | スクリプト | 内容 |

@@ -373,13 +373,10 @@ class EndToEndCollectedTest(unittest.TestCase):
         if not self.rates.exists() or not self.compset.exists():
             self.skipTest("収集済みデータ未生成（discover_compset.py → collect_rates.py）")
 
-    def test_uses_latest_reading_per_stay_date(self) -> None:
-        """階層化収集では毎日は更新されない。当日分だけ見ると大半が欠測になる（実際に踏んだ不具合）."""
+    def test_survey_covers_every_recommended_day(self) -> None:
         ctx = build_context(ROOT, RUN_DATE, 120,
                             compset_file=self.compset, rates_file=self.rates)
-        with_data = [d for d, s in ctx.comp_snapshots.items() if s.sample_size >= 3]
-        self.assertGreater(len(with_data), 60,
-                           "最新観測の引き当てが効いていない（欠測が多すぎる）")
+        self.assertTrue(ctx.recommendations)
         self.assertTrue(all(age >= 0 for age in ctx.data_age.values()))
 
     def test_survey_flags_conflicts_between_market_and_engine(self) -> None:
@@ -396,6 +393,64 @@ class EndToEndCollectedTest(unittest.TestCase):
                             compset_file=self.compset, rates_file=self.rates)
         rendered = survey.render(survey.build(ctx.settings, ctx, fixture=True))
         self.assertIn("フィクスチャ", rendered)
+
+
+class LatestReadingTest(unittest.TestCase):
+    """階層化収集では毎日は更新されない。当日分だけ見ると大半が欠測になる（実際に踏んだ不具合）.
+
+    周囲の収集状態に依存しないよう、テスト自身が既知のCSVを組み立てる。
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.rates = Path(self._tmp.name) / "rates.csv"
+        settings = Settings.load(ROOT / "config")
+        comp_ids = list(settings.competitors)[:6]
+
+        rows = ["snapshot_date,stay_date,comp_id,source,raw_rate,available"]
+        # 5日前に取得した宿泊日群（以降は更新されていない）
+        for offset in range(50, 55):
+            stay = RUN_DATE + timedelta(days=offset)
+            for cid in comp_ids:
+                rows.append(f"2026-08-10,{stay.isoformat()},{cid},test,60000,1")
+        # 当日に取得した宿泊日群
+        for offset in range(55, 60):
+            stay = RUN_DATE + timedelta(days=offset)
+            for cid in comp_ids:
+                rows.append(f"2026-08-15,{stay.isoformat()},{cid},test,70000,1")
+        self.rates.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_older_readings_are_still_used(self) -> None:
+        ctx = build_context(ROOT, RUN_DATE, 120, rates_file=self.rates)
+        with_data = {d for d, s in ctx.comp_snapshots.items() if s.sample_size >= 3}
+        self.assertEqual(len(with_data), 10,
+                         "当日分だけを見ており、過去の観測が引き当てられていない")
+
+    def test_data_age_reflects_when_it_was_collected(self) -> None:
+        ctx = build_context(ROOT, RUN_DATE, 120, rates_file=self.rates)
+        old_day = RUN_DATE + timedelta(days=50)
+        fresh_day = RUN_DATE + timedelta(days=55)
+        self.assertEqual(ctx.data_age[old_day], 5)
+        self.assertEqual(ctx.data_age[fresh_day], 0)
+
+    def test_future_snapshots_are_ignored(self) -> None:
+        """基準日より後に取得したデータを使うと、過去時点の再現が成立しない.
+
+        基準日を 08-12 に置くと、08-10 取得分は有効（過去）だが
+        08-15 取得分は未来のデータなので使ってはいけない。
+        """
+        earlier = RUN_DATE + timedelta(days=-3)      # 2026-08-12
+        ctx = build_context(ROOT, earlier, 120, rates_file=self.rates)
+        with_data = {d for d, s in ctx.comp_snapshots.items() if s.sample_size >= 3}
+
+        collected_before = {RUN_DATE + timedelta(days=o) for o in range(50, 55)}
+        collected_after = {RUN_DATE + timedelta(days=o) for o in range(55, 60)}
+        self.assertEqual(with_data, collected_before)
+        self.assertFalse(with_data & collected_after,
+                         "基準日より後に取得したデータが混入している")
 
 
 class GeoTest(unittest.TestCase):

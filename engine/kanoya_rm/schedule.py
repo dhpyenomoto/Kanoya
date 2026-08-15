@@ -60,18 +60,46 @@ def _step_up(every: int, tiers: list[dict], steps: int) -> int:
     return ladder[max(0, ladder.index(every) - steps)]
 
 
+# 明示指定された期間がこの日数以下なら、階層化せず全日を取りに行く。
+# 「11月の紅葉期を調べたい」に対し、階層化のまま週1回スロットで4日分しか
+# 返さないのは要求に応えていない。広い期間では従来どおり階層化する。
+FULL_COVERAGE_MAX_DAYS = 62
+
+
 def build_plan(sources_config: dict, settings: Settings, run_date: date,
-               horizon_days: int | None = None) -> Plan:
+               horizon_days: int | None = None, *,
+               window: tuple[date, date] | None = None,
+               full: bool | None = None) -> Plan:
+    """収集計画を組む.
+
+    window を渡すと、その宿泊日範囲だけを対象にする。
+    full=True なら階層化せず全日取得（狭い期間の集中調査向け）。
+    full=None のときは期間の長さから自動判定する。
+    """
     collection = sources_config["collection"]
     tiers = collection["tiers"]
     boost = collection.get("priority_boost", {})
     horizon = horizon_days or int(collection["horizon_days"])
 
+    if window is not None:
+        horizon = max(horizon, (window[1] - run_date).days)
+        if full is None:
+            span = (window[1] - window[0]).days + 1
+            full = span <= FULL_COVERAGE_MAX_DAYS
+    full = bool(full)
+
     tasks: list[CollectionTask] = []
     for lead in range(horizon + 1):
         stay = run_date + timedelta(days=lead)
+        if window is not None and not (window[0] <= stay <= window[1]):
+            continue
         tier = _tier_for(lead, tiers)
         if tier is None:
+            tier = tiers[-1] if full else None
+        if tier is None:
+            continue
+        if full:
+            tasks.append(CollectionTask(stay, lead, tier["name"], "期間指定・全日取得"))
             continue
 
         every = int(tier["every_n_days"])

@@ -4,9 +4,12 @@
     python3 scripts/collect_rates.py --plan-only
 
     # フィクスチャ再生（APIキー不要）
-    python3 scripts/collect_rates.py --source fixture --run-date 2026-08-15
+    python3 scripts/collect_rates.py --source fixture --as-of 2026-08-15
 
-    # 実接続
+    # 調査したい期間を指定する（例: 紅葉期だけ）
+    python3 scripts/collect_rates.py --source serpapi --from 2026-11-01 --to 2026-11-30
+
+    # 実接続（期間は config/survey_request.json に従う）
     export SERPAPI_API_KEY='...'
     python3 scripts/collect_rates.py --source serpapi
 
@@ -25,6 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from kanoya_rm import collect, schedule  # noqa: E402
+from kanoya_rm import request as request_mod  # noqa: E402
 from kanoya_rm.config import Settings  # noqa: E402
 from kanoya_rm.sources.dataforseo_hotels import DataForSeoHotelsSource  # noqa: E402
 from kanoya_rm.sources.fixture import FixtureRatesSource  # noqa: E402
@@ -38,8 +42,11 @@ def main() -> int:
     parser.add_argument("--source", choices=["serpapi", "dataforseo", "fixture"],
                         default="fixture")
     parser.add_argument("--compset", default="config/compset.generated.json")
-    parser.add_argument("--run-date", default=None)
-    parser.add_argument("--horizon", type=int, default=None)
+    request_mod.add_arguments(parser)
+    parser.add_argument("--full", dest="full", action="store_true", default=None,
+                        help="期間内の全宿泊日を取得（階層化しない）")
+    parser.add_argument("--tiered", dest="full", action="store_false",
+                        help="狭い期間でも階層化スケジュールを使う")
     parser.add_argument("--out", default="data/comp_rates_collected.csv")
     parser.add_argument("--plan-only", action="store_true",
                         help="計画とコスト見積のみ表示し、収集はしない")
@@ -55,18 +62,32 @@ def main() -> int:
         return 1
 
     settings = Settings.load(root / "config", compset_file=compset_path)
-    run_date = date.fromisoformat(args.run_date) if args.run_date else date.today()
-    plan = schedule.build_plan(config, settings, run_date, args.horizon)
+    survey_request = request_mod.from_args(
+        args, root, max_horizon=int(config["collection"]["horizon_days"]))
+    run_date = survey_request.as_of
+    plan = schedule.build_plan(
+        config, settings, run_date,
+        window=(survey_request.start, survey_request.end), full=args.full)
     estimate = schedule.estimate_monthly(
         config, settings, run_date, competitor_count=len(settings.competitors)
     )
 
     print("=" * 78)
-    print(f"  競合レート収集 — 基準日 {run_date.isoformat()}")
+    print("  競合レート収集")
     print("=" * 78)
+    print(request_mod.render_input_panel(survey_request))
+    print()
     print(f"コンペセット   : {compset_path.name}（{len(settings.competitors)} 施設）")
-    print(f"収集対象       : {plan.request_count} 宿泊日 / 先{plan.horizon_days}日")
-    print("  帯別内訳     : " + " ／ ".join(f"{k} {v}日" for k, v in sorted(plan.by_tier().items())))
+    print(f"今回の収集     : {plan.request_count} 宿泊日"
+          f"（対象期間 {survey_request.days}日中）")
+    print("  内訳         : " + " ／ ".join(f"{k} {v}日" for k, v in sorted(plan.by_tier().items())))
+    if plan.request_count < survey_request.days:
+        print("  ※ 階層化スケジュールのため、遠い日付は毎回は取得しません。"
+              "期間内を一度に全て取得するには --full を付けてください。")
+    print()
+    this_run_cost = plan.request_count * float(config["budget"]["serpapi_cost_per_search_usd"])
+    print(f"  今回の概算費用 : ${this_run_cost:,.2f}"
+          f"（{plan.request_count} リクエスト）")
     print()
     print("── 月次見積（30日シミュレーション） " + "─" * 42)
     print(f"  ①施設別×毎日 : {estimate['requests_per_property']:>7,} req  "
@@ -118,7 +139,7 @@ def main() -> int:
         outcome = collect.run(
             plan, source, settings.competitors,
             area_query=collection["area_query"],
-            adults=int(collection["adults"]), los=int(collection["los"]),
+            adults=survey_request.adults, los=survey_request.los,
             on_progress=progress,
         )
     except SourceError as exc:
@@ -153,4 +174,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except request_mod.RequestError as exc:
+        # 入力の矛盾はスタックトレースではなく、直せる指示として見せる
+        print(f"\n入力エラー: {exc}", file=sys.stderr)
+        raise SystemExit(2) from None

@@ -3,9 +3,12 @@
 収集済みの競合価格・自社OTB・需要カレンダーを突き合わせ、
 「この日のADRをどうすべきか」の判断材料を出す。
 
-    python3 scripts/survey_report.py \
-        --compset config/compset.generated.json \
-        --rates data/comp_rates_collected.csv
+    # 調査条件は config/survey_request.json に従う
+    python3 scripts/survey_report.py
+
+    # その場で期間を上書きする
+    python3 scripts/survey_report.py --as-of today --from 2026-11 
+    python3 scripts/survey_report.py --from +30d --days 14
 
 価格・在庫・予約ペースの3シグナルのうち2つ以上が揃った日にだけ
 強い判断（値上げ／値下げ）を出し、それ以外は維持とする。
@@ -21,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from kanoya_rm import request as request_mod  # noqa: E402
 from kanoya_rm import survey  # noqa: E402
 from kanoya_rm.cli import build_context  # noqa: E402
 from kanoya_rm.config import load_csv, parse_date  # noqa: E402
@@ -33,9 +37,8 @@ def main() -> int:
     parser.add_argument("--compset", default="config/compset.generated.json")
     parser.add_argument("--rates", default="data/comp_rates_collected.csv")
     parser.add_argument("--otb", default="data/otb.csv")
-    parser.add_argument("--days", type=int, default=120)
-    parser.add_argument("--snapshot", default=None)
-    parser.add_argument("--target-position", type=float, default=1.15,
+    request_mod.add_arguments(parser)
+    parser.add_argument("--target-position", type=float, default=None,
                         help="競合NAR中央値に対する目標ポジション（倍）")
     parser.add_argument("--explain", default=None, help="YYYY-MM-DD の価格根拠を表示")
     parser.add_argument("--out", default="../out/market_survey.csv")
@@ -47,27 +50,41 @@ def main() -> int:
               f"  先に scripts/collect_rates.py を実行してください。", file=sys.stderr)
         return 1
 
-    fixture = any(r.get("is_fixture") == "1" for r in load_csv(rates_path))
-    snapshot = parse_date(args.snapshot) if args.snapshot else None
+    rows = load_csv(rates_path)
+    fixture = any(r.get("is_fixture") == "1" for r in rows)
+
+    # 収集済みデータの範囲を既定値の下敷きにする（存在しない期間を既定で調べない）
+    collected = sorted({parse_date(r["snapshot_date"]) for r in rows})
+    survey_request = request_mod.from_args(
+        args, root, today=collected[-1] if collected else None
+    )
 
     ctx = build_context(
-        root, snapshot, args.days,
+        root, survey_request.as_of, survey_request.max_lead + 1,
         compset_file=root / args.compset,
         rates_file=rates_path,
         otb_file=root / args.otb,
     )
 
-    if not ctx.recommendations:
-        print("対象日がありません。--snapshot が収集日と一致しているか確認してください。",
+    in_window = [d for d in ctx.recommendations if survey_request.contains(d)]
+    if not in_window:
+        print(request_mod.render_input_panel(survey_request), file=sys.stderr)
+        print(f"\n対象期間に該当するデータがありません。"
+              f"\n  収集済みの基準日: "
+              f"{collected[0].isoformat()} 〜 {collected[-1].isoformat()}"
+              if collected else "\n  収集済みデータがありません。",
               file=sys.stderr)
+        print("  --as-of を収集済みの基準日に合わせるか、collect_rates.py で"
+              "対象期間を収集してください。", file=sys.stderr)
         return 1
 
     report = survey.build(
         ctx.settings, ctx,
-        target_position=args.target_position,
+        target_position=survey_request.target_position,
         fixture=fixture,
+        window=(survey_request.start, survey_request.end),
     )
-    print(survey.render(report))
+    print(survey.render(report, request_panel=request_mod.render_input_panel(survey_request)))
 
     if args.explain:
         target = date.fromisoformat(args.explain)
@@ -92,4 +109,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except request_mod.RequestError as exc:
+        # 入力の矛盾はスタックトレースではなく、直せる指示として見せる
+        print(f"\n入力エラー: {exc}", file=sys.stderr)
+        raise SystemExit(2) from None
