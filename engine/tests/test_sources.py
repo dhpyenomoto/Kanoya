@@ -369,7 +369,7 @@ class EndToEndCollectedTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.rates = ROOT / "data" / "comp_rates_collected.csv"
-        self.compset = ROOT / "config" / "compset.generated.json"
+        self.compset = ROOT / "config" / "compset.json"
         if not self.rates.exists() or not self.compset.exists():
             self.skipTest("収集済みデータ未生成（discover_compset.py → collect_rates.py）")
 

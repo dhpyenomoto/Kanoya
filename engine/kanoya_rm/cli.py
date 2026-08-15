@@ -38,7 +38,7 @@ def build_context(root: Path, snapshot: date | None, days: int, *,
                   rates_file: str | Path | None = None,
                   otb_file: str | Path | None = None) -> Context:
     settings = Settings.load(root / "config", compset_file=compset_file)
-    comp_rows = load_csv(Path(rates_file) if rates_file else root / "data" / "comp_rates.csv")
+    comp_rows = load_csv(Path(rates_file) if rates_file else root / "data" / "comp_rates_collected.csv")
     otb_rows = load_csv(Path(otb_file) if otb_file else root / "data" / "otb.csv")
 
     if snapshot is None:

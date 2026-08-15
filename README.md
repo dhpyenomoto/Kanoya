@@ -75,7 +75,7 @@ SOURCE=serpapi ./scripts/run_pipeline.sh
 ### プライシング単体
 
 ```bash
-python3 scripts/make_sample_data.py                        # 検証用データ生成
+python3 scripts/make_fixtures.py                           # 検証用データ生成
 python3 scripts/calibrate_base.py                          # 基準価格の校正レポート
 python3 -m kanoya_rm.cli --days 120 --explain 2026-11-21   # 推奨価格＋根拠の分解
 python3 -m unittest discover -s tests                      # 回帰テスト（100件）

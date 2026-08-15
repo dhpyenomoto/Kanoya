@@ -108,7 +108,7 @@ class DistanceScoreTest(unittest.TestCase):
 class MatrixTest(unittest.TestCase):
     def setUp(self) -> None:
         self.rates = ROOT / "data" / "comp_rates_collected.csv"
-        self.compset = ROOT / "config" / "compset.generated.json"
+        self.compset = ROOT / "config" / "compset.json"
         if not self.rates.exists() or not self.compset.exists():
             self.skipTest("収集済みデータ未生成（run_pipeline.sh）")
         self.window = (date(2026, 11, 14), date(2026, 11, 30))

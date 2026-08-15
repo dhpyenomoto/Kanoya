@@ -16,6 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from kanoya_rm import compset, pace  # noqa: E402
+from kanoya_rm.config import Competitor  # noqa: E402
 from kanoya_rm.channels import direct_shift_value, evaluate as eval_channels  # noqa: E402
 from kanoya_rm.cli import build  # noqa: E402
 from kanoya_rm.config import Settings  # noqa: E402
@@ -25,33 +26,46 @@ from kanoya_rm.pricing import recommend  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 
 
-class NormalizeTest(unittest.TestCase):
-    def setUp(self) -> None:
-        self.s = Settings.load(ROOT / "config")
+def make_comp(cid: str, **kw) -> Competitor:
+    """テスト用の競合を組み立てる（config の具体的なIDに依存しない）."""
+    base = dict(name=cid, tier="PRIMARY", weight=1.0, rooms=10, distance_km=1.0,
+                pricing_basis="per_room", meal_included="none",
+                dinner_uplift=0.0, breakfast_uplift=0.0)
+    base.update(kw)
+    return Competitor(id=cid, **base)
 
+
+class NormalizeTest(unittest.TestCase):
     def test_per_person_two_meals_doubles(self) -> None:
-        comp = self.s.competitors["cs01"]  # per_person / 2食付き
+        comp = make_comp("c", pricing_basis="per_person",
+                         meal_included="dinner_breakfast")
         self.assertEqual(normalized_rate(33000, comp), 66000)
 
     def test_room_basis_room_only_adds_both_meals(self) -> None:
-        comp = self.s.competitors["cs03"]  # per_room / 素泊まり
-        # 42,000 + 夕食26,000 + 朝食8,000
+        comp = make_comp("c", meal_included="none",
+                         dinner_uplift=26000, breakfast_uplift=8000)
         self.assertEqual(normalized_rate(42000, comp), 76000)
 
     def test_breakfast_included_adds_dinner_only(self) -> None:
-        comp = self.s.competitors["cs04"]  # per_room / 朝食付き
+        comp = make_comp("c", meal_included="breakfast", dinner_uplift=26000)
         self.assertEqual(normalized_rate(38000, comp), 64000)
 
 
 class CompSetTest(unittest.TestCase):
     def setUp(self) -> None:
         self.s = Settings.load(ROOT / "config")
+        self.s.competitors = {
+            f"cs0{i}": make_comp(f"cs0{i}", meal_included="dinner_breakfast")
+            for i in range(1, 6)
+        }
+        self.s.competitors["cs07"] = make_comp("cs07", tier="SECONDARY",
+                                               meal_included="dinner_breakfast")
 
     def _rows(self, available: str = "1") -> list[dict[str, str]]:
         return [
             {"comp_id": cid, "raw_rate": str(rate), "available": available}
-            for cid, rate in [("cs01", 33000), ("cs02", 30000), ("cs03", 42000),
-                              ("cs04", 38000), ("cs05", 34000)]
+            for cid, rate in [("cs01", 66000), ("cs02", 60000), ("cs03", 76000),
+                              ("cs04", 64000), ("cs05", 67000)]
         ]
 
     def test_weighted_median_within_sample_range(self) -> None:
@@ -66,10 +80,11 @@ class CompSetTest(unittest.TestCase):
         self.assertGreater(snap.pressure, 0.5)
 
     def test_market_event_autodetected_without_calendar_entry(self) -> None:
+        # 5社中3社が売止（60%）かつ 残り2社が平常時比 +35% → 市場イベントとして検知
         rows = [{"comp_id": c, "raw_rate": "0", "available": "0"}
                 for c in ("cs01", "cs02", "cs03")]
-        rows += [{"comp_id": "cs04", "raw_rate": "70000", "available": "1"},
-                 {"comp_id": "cs05", "raw_rate": "62000", "available": "1"}]
+        rows += [{"comp_id": "cs04", "raw_rate": "90000", "available": "1"},
+                 {"comp_id": "cs05", "raw_rate": "84000", "available": "1"}]
         snap = compset.build_snapshot(self.s, date(2026, 6, 3), rows)
         detected, score, label = compset.detect_market_event(self.s, snap, baseline=64000)
         self.assertTrue(detected)
@@ -85,6 +100,10 @@ class CompSetTest(unittest.TestCase):
 class GuardrailTest(unittest.TestCase):
     def setUp(self) -> None:
         self.s = Settings.load(ROOT / "config")
+        self.s.competitors = {
+            c: make_comp(c, meal_included="dinner_breakfast")
+            for c in ("cs01", "cs02", "cs06")
+        }
         self.day = date(2026, 9, 15)
 
     def _rec(self, otb: int, comp_rate: float, current: float):
@@ -164,6 +183,10 @@ class ChannelTest(unittest.TestCase):
 
 
 class EndToEndTest(unittest.TestCase):
+    def setUp(self) -> None:
+        if not (ROOT / "data" / "comp_rates_collected.csv").exists():
+            self.skipTest("収集済みデータ未生成（scripts/run_pipeline.sh）")
+
     def test_determinism(self) -> None:
         """同じ入力からは常に同じ出力 — 担当者が変わっても結果は変わらない."""
         _, first = build(ROOT, None, 60)

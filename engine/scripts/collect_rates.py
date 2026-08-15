@@ -41,7 +41,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="競合レートの階層化収集")
     parser.add_argument("--source", choices=["serpapi", "dataforseo", "fixture"],
                         default="fixture")
-    parser.add_argument("--compset", default="config/compset.generated.json")
+    parser.add_argument("--compset", default="config/compset.json")
     request_mod.add_arguments(parser)
     parser.add_argument("--full", dest="full", action="store_true", default=None,
                         help="期間内の全宿泊日を取得（階層化しない）")
@@ -58,7 +58,11 @@ def main() -> int:
     compset_path = root / args.compset
     if not compset_path.exists():
         print(f"コンペセットがありません: {compset_path}\n"
-              f"  先に scripts/discover_compset.py を実行してください。", file=sys.stderr)
+              f"  発見して確定させてください:\n"
+              f"    python3 scripts/discover_compset.py --source places   # 候補を出す\n"
+              f"    （config/compset_overrides.json で食事条件を確定）\n"
+              f"    python3 scripts/discover_compset.py --source places --write  # 昇格",
+              file=sys.stderr)
         return 1
 
     settings = Settings.load(root / "config", compset_file=compset_path)

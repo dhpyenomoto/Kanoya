@@ -53,7 +53,7 @@ FROM=2026-11-01 TO=2026-11-30 ./scripts/run_pipeline.sh # 期間を絞る
 
 ```bash
 # ① 近隣宿泊施設の発見とコンペセット候補生成（四半期に1回）
-python3 scripts/discover_compset.py --source places --radius 2500
+python3 scripts/discover_compset.py --source places --radius 5000
 
 # ② 施設属性を config/compset_overrides.json で人が確定 → 昇格
 python3 scripts/discover_compset.py --source places --write
@@ -105,7 +105,7 @@ export SERPAPI_API_KEY='...'
 
 ```bash
 # 1. 検証用データ生成（本番では レートショッパー / PMS コネクタの出力に置換）
-python3 scripts/make_sample_data.py
+python3 scripts/make_fixtures.py
 
 # 2. 基準価格の校正レポート（四半期に1回）
 python3 scripts/calibrate_base.py --position 1.15 --revpar 62000 --occ 0.72
@@ -178,7 +178,7 @@ log P = log(P_base) + b_pace·z_pace + b_comp·z_comp
 | ファイル | 内容 |
 |---|---|
 | `config/property.json` | 施設情報、基準価格、ガードレール、係数、リードタイム曲線、チャネル手数料 |
-| `config/compset.json` | コンペセット（ティア・重み・課金方式・食事uplift） |
+| `config/compset.json` | **人が承認した確定コンペセット**。`discover_compset.py --write` で昇格する |
 | `config/calendar.json` | シーズン区分、イベント、祝日、ペースベンチマーク |
 | `config/sources.json` | データ源、探索半径、スコア重み、収集階層、予算上限、レート制限 |
 | `config/compset_overrides.json` | **人が確定した施設属性**（客室数・課金方式・食事条件・uplift）。再発見しても上書きされない |
@@ -187,7 +187,7 @@ log P = log(P_base) + b_pace·z_pace + b_comp·z_comp
 
 | 現在 | 本番 |
 |---|---|
-| `scripts/make_sample_data.py` の擬似データ | レートショッパー／Google Hotels API／PMS の各コネクタ |
+| `scripts/make_fixtures.py` の擬似データ | レートショッパー／Google Hotels API／PMS の各コネクタ |
 | CSV 入出力 | BigQuery（`fact_comp_rate` / `fact_otb` / `mart_daily_recommendation`） |
 | 標準出力 | Slack通知（承認キュー）＋ Looker Studio |
 | なし | サイトコントローラーAPIへの配信、`log_decision` への記録 |

@@ -34,7 +34,7 @@ from kanoya_rm.report import explain  # noqa: E402
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description="マーケットポジション調査とADR判断")
-    parser.add_argument("--compset", default="config/compset.generated.json")
+    parser.add_argument("--compset", default="config/compset.json")
     parser.add_argument("--rates", default="data/comp_rates_collected.csv")
     parser.add_argument("--otb", default="data/otb.csv")
     request_mod.add_arguments(parser)
@@ -50,6 +50,14 @@ def main() -> int:
               f"  先に scripts/collect_rates.py を実行してください。", file=sys.stderr)
         return 1
 
+    otb_path = root / args.otb
+    if not otb_path.exists():
+        print(f"自社OTBデータがありません: {otb_path}\n"
+              f"  本番では PMS / サイトコントローラーから日次で取り込みます。\n"
+              f"  検証用には python3 scripts/make_fixtures.py で生成できます。",
+              file=sys.stderr)
+        return 1
+
     rows = load_csv(rates_path)
     fixture = any(r.get("is_fixture") == "1" for r in rows)
 
@@ -63,7 +71,7 @@ def main() -> int:
         root, survey_request.as_of, survey_request.max_lead + 1,
         compset_file=root / args.compset,
         rates_file=rates_path,
-        otb_file=root / args.otb,
+        otb_file=otb_path,
     )
 
     in_window = [d for d in ctx.recommendations if survey_request.contains(d)]

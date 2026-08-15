@@ -12,3 +12,5 @@ engine/data/fixtures/
 engine/data/comp_rates_collected.csv
 # discover_compset.py で再生成
 engine/config/compset.generated.json
+# make_fixtures.py で再生成
+engine/data/otb.csv

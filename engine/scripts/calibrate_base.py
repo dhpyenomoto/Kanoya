@@ -27,7 +27,7 @@ def main() -> None:
     args = parser.parse_args()
 
     settings = Settings.load(root / "config")
-    rows = load_csv(root / "data" / "comp_rates.csv")
+    rows = load_csv(root / "data" / "comp_rates_collected.csv")
     snapshot = max(parse_date(r["snapshot_date"]) for r in rows)
 
     by_stay = defaultdict(list)

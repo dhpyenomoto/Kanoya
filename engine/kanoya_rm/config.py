@@ -65,7 +65,13 @@ class Settings:
         compset_path = Path(compset_file) if compset_file else root / "compset.json"
         if not compset_path.is_absolute() and compset_file:
             compset_path = Path(compset_file)
-        compset = _load_json(compset_path)
+        if compset_path.exists():
+            compset = _load_json(compset_path)
+        else:
+            # コンペセットはまだ存在しないことがある（初回の発見前、
+            # あるいはカレンダーだけを使う検証データ生成時）。
+            # ここで落とすとブートストラップができなくなるため、空で続行する。
+            compset = {"competitors": [], "tiers": {}, "_missing": str(compset_path)}
         calendar = _load_json(root / "calendar.json")
         competitors = {
             c["id"]: Competitor(

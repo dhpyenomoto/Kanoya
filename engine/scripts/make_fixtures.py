@@ -1,4 +1,4 @@
-"""フィクスチャ生成 — 実APIと同じ形のレスポンスを作る.
+"""検証データ生成 — 実APIと同じ形のレスポンスと、自社OTBを作る.
 
 目的は「APIキーが無くてもパイプライン全体を通せること」であって、
 実勢価格の再現ではない。価格は擬似データであり、survey レポートは
@@ -6,6 +6,16 @@
 
 施設名・所在は公開情報に基づく実在の施設だが、**価格は完全な擬似値**である。
 実データで判断するには APIキーを設定して実接続で収集すること。
+
+出力:
+  data/fixtures/places_nearby.json     Places API (New) 形式
+  data/fixtures/places_geocode.json    同上
+  data/fixtures/google_hotels/*.json   SerpApi google_hotels 形式（宿泊日ごと）
+  data/otb.csv                         自社OTBスナップショット
+
+OTBは本番では PMS / サイトコントローラーから日次で取り込む。
+検証用にはブッキングカーブに沿った擬似値を生成する（宿泊日ごとに需要係数を
+1度だけ引くことで、取得日が宿泊日へ近づくにつれ単調増加する形にしている）。
 """
 
 from __future__ import annotations
@@ -62,7 +72,8 @@ FACILITIES = [
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     settings = Settings.load(root / "config")
-    fixtures = root / "data" / "fixtures"
+    data_dir = root / "data"
+    fixtures = data_dir / "fixtures"
     (fixtures / "google_hotels").mkdir(parents=True, exist_ok=True)
     rng = random.Random(SEED)
 
@@ -147,10 +158,77 @@ def main() -> None:
             "properties": properties,
         })
 
+    # ---- 自社OTB（本番では PMS / サイトコントローラーから取り込む） ----
+    otb_rows = _build_otb(settings, rng, season_level, dow_level)
+    _write_csv(data_dir / "otb.csv", otb_rows)
+
     print(f"places_nearby.json      : {len(FACILITIES)} 施設")
-    print(f"google_hotels/*.json    : {HORIZON} 日分")
-    print(f"出力先                  : {fixtures}")
+    print(f"google_hotels/*.json    : {HORIZON + BACKFILL} 日分")
+    print(f"otb.csv                 : {len(otb_rows)} 行"
+          f"（取得日 {BACKFILL + 1} 日分 × 宿泊日）")
+    print(f"出力先                  : {fixtures.parent}")
     print("\n※ 施設名・所在は公開情報ベースの実在施設。価格は擬似データであり実勢価格ではない。")
+
+
+def _build_otb(settings, rng, season_level, dow_level) -> list[dict]:
+    """OTBスナップショットを生成する.
+
+    宿泊日ごとに需要係数を1度だけ引き、取得日はブッキングカーブの進捗のみで
+    決める。こうすると取得日が宿泊日へ近づくにつれ OTB が単調増加し、
+    実際の予約の積み上がり方と整合する（取得日ごとに乱数を引くと減ることがある）。
+    """
+    from kanoya_rm.pace import expected_ratio  # 遅延importで循環回避
+
+    rooms = int(settings.property["property"]["rooms"])
+    target_occ = {"PEAK": .95, "HIGH": .88, "SHOULDER": .75, "LOW": .62, "DEEP_LOW": .50}
+
+    demand: dict[date, float] = {}
+    for offset in range(-BACKFILL, HORIZON):
+        stay = RUN_DATE + timedelta(days=offset)
+        event, _ = settings.event_score_of(stay)
+        demand[stay] = rng.uniform(0.55, 1.35) * (1 + 0.5 * event)
+
+    rows: list[dict] = []
+    for back in range(BACKFILL, -1, -1):
+        snapshot = RUN_DATE - timedelta(days=back)
+        for offset in range(0, HORIZON):
+            stay = snapshot + timedelta(days=offset)
+            if stay not in demand:
+                continue
+            season, _ = settings.season_of(stay)
+            ratio = expected_ratio(settings, stay, offset)
+            otb = max(0, min(rooms, round(
+                rooms * target_occ[season] * ratio * demand[stay]
+            )))
+
+            # 現行の掲出価格＝手作業の「粗い料金表」（季節3区分 × 平日/週末の6階段）
+            tier = ("PEAK" if season in ("PEAK", "HIGH")
+                    else "LOW" if season in ("LOW", "DEEP_LOW") else "MID")
+            weekend = (settings.dow_of(stay) in ("FRI", "SAT")
+                       or settings.is_holiday_eve(stay))
+            current = {
+                ("PEAK", True): 132000, ("PEAK", False): 118000,
+                ("MID", True): 98000,   ("MID", False): 88000,
+                ("LOW", True): 82000,   ("LOW", False): 72000,
+            }[(tier, weekend)]
+
+            rows.append({
+                "stay_date": stay.isoformat(),
+                "snapshot_date": snapshot.isoformat(),
+                "rooms_otb": otb,
+                "room_revenue_otb": otb * current,
+                "current_public_rate": current,
+            })
+    return rows
+
+
+def _write_csv(path: Path, rows: list[dict]) -> None:
+    import csv
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def _dump(path: Path, payload: dict) -> None:
