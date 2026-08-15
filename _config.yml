@@ -1,4 +1,6 @@
 # GitHub Pages（Jekyll）設定。
+# 注: リポジトリを Private にすると、無料プランでは Pages は使えなくなる。
+#     その場合は GitHub 上で docs/*.md を直接閲覧する運用になる（本設定は無害に残る）。
 # Settings → Pages → Deploy from a branch → main / (root) で公開される。
 title: 奈良春日 鹿のや レベニューマネジメント基盤
 description: レベニューマネージャーの経験・力量に依存しないダイナミックプライシングの設計 — 企画書と参照実装

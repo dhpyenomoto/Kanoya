@@ -241,6 +241,52 @@ def write_csv(report: MatrixReport, path: Path) -> None:
             ] + cells)
 
 
+# ---- Markdown -----------------------------------------------------------
+
+def render_markdown(report: MatrixReport) -> str:
+    """GitHub上でそのまま表示される表を出す.
+
+    HTMLヒートマップは GitHub のファイル閲覧では描画されない（ソースが出るだけ）。
+    非公開リポジトリを社内で共有する運用では、GitHub Pages を使わずに
+    「リポジトリを開いて .md を押せば読める」ほうが実用的なため、
+    色を諦めて可搬性を取った版を用意する。
+    """
+    if not report.dates:
+        return "（対象期間にデータがありません）"
+
+    lines: list[str] = []
+    lines.append(f"# ADRマトリクス — {report.property_name}")
+    lines.append("")
+    lines.append(f"- 基準日: **{report.as_of.isoformat()}** ／ 対象 {len(report.dates)}日")
+    lines.append("- 単位は**千円**。すべて「1室2名1泊2食・税サ込」へ正規化（NAR）した値")
+    lines.append("- `満` = 売止（在庫なし） ／ `·` = データなし")
+    if report.radius_m:
+        lines.append(f"- 調査範囲 半径{report.radius_m / 1000:.1f}km ／ 行順 = 類似度スコア降順")
+    if report.fixture:
+        lines.append("")
+        lines.append("> ⚠️ **フィクスチャ（擬似）データです。実勢価格ではありません。**  ")
+        lines.append("> 実データで判断するには APIキーを設定し `--source serpapi` で再実行してください。")
+    lines.append("")
+
+    header = ["施設"] + [f"{d.strftime('%m/%d')}<br>{report.day_labels[d]}" for d in report.dates]
+    header += ["平均", "類似度"]
+    lines.append("| " + " | ".join(header) + " |")
+    lines.append("|" + "---|" * len(header))
+
+    for row in report.rows:
+        cells = [_cell_text(row.cells.get(d, MISSING)) for d in report.dates]
+        avg = f"{row.average / 1000:,.0f}" if row.average else "—"
+        sim = "—" if (row.is_self or row.is_summary) else f"{row.weight:.2f}"
+        name = row.name
+        if row.is_self or row.is_summary:
+            name = f"**{name}**"
+            cells = [f"**{c}**" for c in cells]
+            avg = f"**{avg}**"
+        lines.append("| " + " | ".join([name] + cells + [avg, sim]) + " |")
+
+    return "\n".join(lines) + "\n"
+
+
 # ---- HTML（ヒートマップ） -------------------------------------------------
 
 def _ramp(value: float, lo: float, hi: float) -> tuple[str, str]:
