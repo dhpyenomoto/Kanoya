@@ -100,9 +100,12 @@ def main() -> int:
     matrix.write_csv(report, csv_path)
     html_path.parent.mkdir(parents=True, exist_ok=True)
     html_path.write_text(matrix.render_html(report), encoding="utf-8")
+    md_path = out_dir / "adr_matrix.md"
+    md_path.write_text(matrix.render_markdown(report), encoding="utf-8")
 
     print(f"\n出力: {csv_path}")
     print(f"      {html_path}  ← ブラウザで開くとヒートマップで見られます")
+    print(f"      {md_path}  ← GitHub上でそのまま表示されます（社内共有向け）")
 
     if args.open:
         webbrowser.open(html_path.as_uri())

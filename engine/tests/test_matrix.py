@@ -179,6 +179,19 @@ class MatrixTest(unittest.TestCase):
         self.assertEqual(empty.dates, [])
         self.assertIn("データがありません", matrix.render_text(empty))
 
+    def test_markdown_renders_a_github_table(self) -> None:
+        """非公開リポジトリを社内共有する運用では、GitHub上でそのまま読めることが要件."""
+        md = matrix.render_markdown(self.report)
+        header_rows = [l for l in md.splitlines() if l.startswith("|")]
+        self.assertGreater(len(header_rows), 5)
+        widths = {l.count("|") for l in header_rows}
+        self.assertEqual(len(widths), 1, "行ごとに列数が違うと表が崩れる")
+        self.assertIn(self.ctx.settings.property["property"]["name"], md)
+
+    def test_markdown_keeps_real_names_by_default(self) -> None:
+        md = matrix.render_markdown(self.report)
+        self.assertNotIn("競合A", md)
+
     def test_anonymize_hides_competitor_names(self) -> None:
         """外部共有・見本公開時に、実在施設へ擬似価格を紐づけない."""
         anon = matrix.build(self.ctx.settings, self.ctx, self.window,
