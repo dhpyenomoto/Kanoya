@@ -1,0 +1,80 @@
+{
+  "area_name": "奈良春日",
+  "window_days": 90,
+  "timezone": "Asia/Tokyo",
+
+  "estimation": {
+    "review_lag_days": 10,
+    "unstable_tail_days": 10,
+    "high_confidence_margin_pt": 8.0,
+    "medium_confidence_margin_pt": 25.0,
+    "occupancy_ceiling": 1.0
+  },
+
+  "review_rate": {
+    "mode": "calibrated",
+    "fallback_rate": 0.10,
+    "pms_actuals_path": "data/pms_actuals.csv"
+  },
+
+  "pricing_rules": {
+    "rating_floor": 4.6,
+    "hold_band_pt": 3.0,
+    "raise_gap_pt": 5.0,
+    "cut_gap_pt": 5.0,
+    "min_confidence_for_action": "中"
+  },
+
+  "properties": [
+    {
+      "id": "own",
+      "name": "奈良春日 鹿のや",
+      "place_id": "ChIJ_____________OWN",
+      "rooms": 5,
+      "is_own": true,
+      "restaurant_review_share": 0.18
+    },
+    {
+      "id": "comp_a",
+      "name": "競合A（奈良公園・小規模ラグジュアリー）",
+      "place_id": "ChIJ_____________CMPA",
+      "rooms": 8,
+      "restaurant_review_share": 0.25
+    },
+    {
+      "id": "comp_b",
+      "name": "競合B（旅館・1泊2食）",
+      "place_id": "ChIJ_____________CMPB",
+      "rooms": 12,
+      "restaurant_review_share": 0.05
+    },
+    {
+      "id": "comp_c",
+      "name": "競合C（町家一棟貸し）",
+      "place_id": "ChIJ_____________CMPC",
+      "rooms": 4,
+      "restaurant_review_share": 0.0
+    },
+    {
+      "id": "comp_d",
+      "name": "競合D（フルサービスホテル）",
+      "place_id": "ChIJ_____________CMPD",
+      "rooms": 40,
+      "restaurant_review_share": 0.30
+    },
+    {
+      "id": "comp_e",
+      "name": "競合E（デザイン系ブティック）",
+      "place_id": "ChIJ_____________CMPE",
+      "rooms": 15,
+      "restaurant_review_share": 0.12
+    }
+  ],
+
+  "events": [
+    { "date": "2026-03-01", "name": "修二会（お水取り）", "lift": 25 },
+    { "date": "2026-04-05", "name": "桜シーズン", "lift": 20 },
+    { "date": "2026-10-25", "name": "正倉院展", "lift": 30 },
+    { "date": "2026-11-20", "name": "紅葉ピーク", "lift": 25 }
+  ]
+}
