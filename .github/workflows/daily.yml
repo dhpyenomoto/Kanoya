@@ -1,0 +1,37 @@
+name: daily snapshot
+
+# レビュー増分は「毎日取り続けること」でしか得られない。落とすと窓が痩せる。
+on:
+  schedule:
+    - cron: "10 20 * * *"   # JST 05:10
+  workflow_dispatch:
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: スナップショットを取得する
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+        run: python -m kanoya collect
+
+      - name: ダッシュボードを生成する
+        run: python -m kanoya report --out dist/index.html
+
+      - name: 台帳を記録する
+        run: |
+          git config user.name  "kanoya-bot"
+          git config user.email "kanoya-bot@users.noreply.github.com"
+          git add data/snapshots.jsonl
+          git diff --staged --quiet || git commit -m "chore: $(date -u +%F) のスナップショット"
+          git push
+
+      - name: 要対応シグナルを確認する
+        run: python -m kanoya check

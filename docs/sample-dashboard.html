@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>鹿のや ｜ レベニュー・インテリジェンス</title>
+<style>
+:root{
+  --ground:#141C17; --panel:#1D2822; --line:#2E3B33;
+  --text:#D6DBD2; --muted:#8A9689; --brass:#C6A252;
+  --moss:#7FA891; --shu:#C04A3C;
+  --mincho:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;
+  --gothic:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--gothic);
+  font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 22px 80px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--brass)}
+h1{font-family:var(--mincho);font-weight:400;font-size:clamp(30px,6vw,50px);
+  margin:.25em 0 .1em;letter-spacing:.06em}
+h1 small{display:block;font-size:14px;letter-spacing:.3em;color:var(--muted);
+  font-family:var(--mono);margin-top:14px}
+.rule{height:1px;background:linear-gradient(90deg,var(--brass),transparent);margin:30px 0 44px}
+
+section{margin:0 0 54px}
+h2{font-family:var(--mincho);font-weight:400;font-size:21px;letter-spacing:.1em;
+  margin:0 0 4px;display:flex;align-items:baseline;gap:14px}
+h2 .ix{font-family:var(--mono);font-size:11px;color:var(--brass);letter-spacing:.2em;
+  margin-right:12px;flex:0 0 auto}
+.sub{color:var(--muted);font-size:13px;margin:0 0 20px}
+
+/* 判断 */
+.verdict{background:var(--panel);border-left:3px solid var(--brass);padding:26px 28px;
+  border-radius:2px}
+.verdict .lvl{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--brass)}
+.verdict h3{font-family:var(--mincho);font-weight:400;font-size:clamp(20px,4vw,29px);
+  margin:.3em 0 .4em;line-height:1.45}
+.verdict p{margin:0;color:var(--muted);max-width:64ch}
+.verdict.alert{border-left-color:var(--shu)} .verdict.alert .lvl{color:var(--shu)}
+
+/* 需要リボン */
+.ribbon{background:var(--panel);border-radius:2px;padding:22px 18px 12px;overflow-x:auto}
+.ribbon svg{display:block;min-width:640px;width:100%;height:190px}
+.legend{display:flex;gap:22px;font-family:var(--mono);font-size:11px;color:var(--muted);
+  padding:12px 4px 0;flex-wrap:wrap}
+.legend i{display:inline-block;width:22px;height:3px;margin-right:7px;vertical-align:middle}
+
+/* 表 */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);
+  text-align:left;font-weight:400;padding:0 10px 10px;border-bottom:1px solid var(--line)}
+th.num,td.num,th.conf,td.conf{text-align:right}
+td{padding:14px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr.own td{background:rgba(198,162,82,.06)}
+td.nm{font-family:var(--mincho);font-size:15px}
+.tag{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--ground);
+  background:var(--brass);padding:2px 7px;margin-left:10px;border-radius:2px;vertical-align:1px}
+td.num{font-family:var(--mono)}
+td.num.pos{color:var(--moss)} td.num.neg{color:var(--shu)}
+td.num.ns{color:var(--muted)}
+td.bar{position:relative;min-width:210px;padding-right:56px}
+td.bar span{display:block;height:8px;background:var(--moss);opacity:.55;border-radius:1px}
+tr.own td.bar span{background:var(--brass);opacity:.9}
+td.bar em{font-family:var(--mono);font-style:normal;font-size:12px;color:var(--text);
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);width:40px;text-align:right}
+td.conf{font-family:var(--mono);font-size:11px}
+.c高{color:var(--moss)} .c中{color:var(--brass)} .c低{color:var(--shu)}
+
+/* 2カラム */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:760px){.cols{grid-template-columns:1fr}}
+.card{background:var(--panel);padding:24px;border-radius:2px}
+.card h3{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--muted);
+  margin:0 0 16px;font-weight:400}
+.big{font-family:var(--mono);font-size:38px;color:var(--brass);line-height:1}
+.big small{font-size:13px;color:var(--muted);margin-left:8px}
+.kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);
+  font-size:13px}
+.kv:last-of-type{border-bottom:0}
+.kv b{font-family:var(--mono);font-weight:400}
+.card p.note{color:var(--muted);font-size:12px;margin:16px 0 0;line-height:1.65}
+
+/* シグナル */
+ul.sigs{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.sig{background:var(--panel);padding:20px 22px;border-radius:2px;border-left:2px solid var(--moss)}
+.sig.alert{border-left-color:var(--shu)} .sig.up,.sig.watch{border-left-color:var(--brass)}
+.sig-h{display:flex;gap:12px;align-items:center;font-family:var(--mono);font-size:10px;
+  letter-spacing:.16em}
+.sig-h .cat{color:var(--muted)} .sig-h .lvl{color:var(--brass)}
+.sig.alert .sig-h .lvl{color:var(--shu)}
+.sig h4{font-family:var(--mincho);font-weight:400;font-size:17px;margin:.5em 0 .35em}
+.sig p{margin:0;color:var(--muted);font-size:13.5px}
+
+/* イベント */
+ul.ev{list-style:none;padding:0;margin:0}
+ul.ev li{display:flex;gap:14px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line);
+  font-size:13px}
+ul.ev time{font-family:var(--mono);font-size:11px;color:var(--brass);min-width:82px}
+ul.ev em{margin-left:auto;font-family:var(--mono);font-style:normal;color:var(--muted);font-size:11px}
+ul.ev li.empty{color:var(--muted);display:block}
+
+footer{margin-top:70px;padding-top:26px;border-top:1px solid var(--line);
+  color:var(--muted);font-size:12px;line-height:1.85}
+footer h3{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--brass);
+  font-weight:400;margin:0 0 12px}
+footer ol{padding-left:1.2em;margin:0}
+footer li{margin-bottom:6px}
+@media(prefers-reduced-motion:no-preference){
+  .verdict,.ribbon,.card,.sig{animation:rise .5s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+}
+</style></head><body><div class="wrap">
+
+<header>
+  <div class="eyebrow">dhp都市開発グループ ／ Revenue Intelligence</div>
+  <h1>奈良春日 鹿のや<small>2026-08-15 時点 ・ 直近90日 ・ Google Places 由来</small></h1>
+  <div class="rule"></div>
+</header>
+
+<section>
+  <h2><span class="ix">01</span>今日の判断</h2>
+  <div class="verdict hold">
+    <div class="lvl">据え置き</div>
+    <h3>市場と同水準。据え置き</h3>
+    <p>自社 75% / 競合中央値 77%。差 -2pt は誤差の範囲（据え置き帯 ±9pt、95%区間 ±18pt）。ルール通りの残室連動のみで運用する。</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="ix">02</span>需要リボン</h2>
+  <p class="sub">エリア全体のクチコミ発生量（7日移動合計）と、そのうち鹿のやが占める分。
+  面積が市場の大きさ、金色の帯が自社の取り分。帯が細るときはシェアを落としている。</p>
+  <div class="ribbon"><svg viewBox="0 0 900 190" preserveAspectRatio="none" role="img" aria-label="エリア需要と自社シェアの推移"><line x1="34" y1="88.0" x2="892" y2="88.0" stroke="#2E3B33" stroke-width="1"/><text x="26" y="92.0" fill="#8A9689" font-size="9" font-family="monospace" text-anchor="end">75</text><line x1="34" y1="12.0" x2="892" y2="12.0" stroke="#2E3B33" stroke-width="1"/><text x="26" y="16.0" fill="#8A9689" font-size="9" font-family="monospace" text-anchor="end">150</text><path d="M34,164 L34.0,82.9 38.8,86.0 43.5,85.0 48.3,89.0 53.1,90.0 57.8,87.0 62.6,85.0 67.4,91.0 72.1,97.1 76.9,101.2 81.7,100.2 86.4,88.0 91.2,89.0 96.0,83.9 100.7,79.9 105.5,71.8 110.3,73.8 115.0,75.8 119.8,78.9 124.6,75.8 129.3,79.9 134.1,81.9 138.9,77.9 143.6,70.8 148.4,65.7 153.2,67.7 157.9,70.8 162.7,61.7 167.5,63.7 172.2,74.8 177.0,73.8 181.8,76.9 186.5,77.9 191.3,77.9 196.1,88.0 200.8,83.9 205.6,73.8 210.4,74.8 215.1,76.9 219.9,66.7 224.7,72.8 229.4,71.8 234.2,70.8 239.0,72.8 243.7,73.8 248.5,71.8 253.3,85.0 258.0,80.9 262.8,81.9 267.6,78.9 272.3,78.9 277.1,75.8 281.9,77.9 286.6,74.8 291.4,80.9 296.2,78.9 300.9,81.9 305.7,79.9 310.5,89.0 315.2,83.9 320.0,76.9 324.8,67.7 329.5,66.7 334.3,66.7 339.1,69.8 343.8,65.7 348.6,67.7 353.4,73.8 358.1,72.8 362.9,68.7 367.7,65.7 372.4,63.7 377.2,60.6 382.0,59.6 386.7,64.7 391.5,67.7 396.3,76.9 401.0,79.9 405.8,83.9 410.6,81.9 415.3,86.0 420.1,80.9 424.9,78.9 429.6,77.9 434.4,77.9 439.2,77.9 443.9,79.9 448.7,76.9 453.5,79.9 458.2,82.9 463.0,82.9 467.8,81.9 472.5,81.9 477.3,83.9 482.1,77.9 486.8,76.9 491.6,70.8 496.4,72.8 501.1,73.8 505.9,76.9 510.7,68.7 515.4,71.8 520.2,69.8 525.0,81.9 529.7,81.9 534.5,79.9 539.3,70.8 544.0,80.9 548.8,83.9 553.6,82.9 558.3,75.8 563.1,80.9 567.9,82.9 572.6,81.9 577.4,77.9 582.2,86.0 586.9,93.1 591.7,93.1 596.5,89.0 601.2,85.0 606.0,93.1 610.8,94.1 615.5,87.0 620.3,77.9 625.1,79.9 629.8,75.8 634.6,88.0 639.4,86.0 644.1,91.0 648.9,90.0 653.7,91.0 658.4,90.0 663.2,87.0 668.0,81.9 672.7,83.9 677.5,77.9 682.3,80.9 687.0,80.9 691.8,80.9 696.6,85.0 701.3,85.0 706.1,76.9 710.9,78.9 715.6,77.9 720.4,80.9 725.2,69.8 729.9,71.8 734.7,71.8 739.5,75.8 744.2,73.8 749.0,72.8 753.8,68.7 758.5,73.8 763.3,71.8 768.1,65.7 772.8,70.8 777.6,70.8 782.4,70.8 787.1,71.8 791.9,78.9 796.7,82.9 801.4,87.0 806.2,86.0 811.0,79.9 815.7,83.9 820.5,83.9 825.3,80.9 830.0,76.9 834.8,79.9 839.6,76.9 844.3,79.9 849.1,73.8 853.9,74.8 858.6,78.9 863.4,73.8 868.2,74.8 872.9,74.8 877.7,74.8 882.5,74.8 887.2,72.8 892.0,70.8 L892.0,164 Z" fill="#7FA891" opacity=".28"/><path d="M34,164 L34.0,82.9 38.8,86.0 43.5,85.0 48.3,89.0 53.1,90.0 57.8,87.0 62.6,85.0 67.4,91.0 72.1,97.1 76.9,101.2 81.7,100.2 86.4,88.0 91.2,89.0 96.0,83.9 100.7,79.9 105.5,71.8 110.3,73.8 115.0,75.8 119.8,78.9 124.6,75.8 129.3,79.9 134.1,81.9 138.9,77.9 143.6,70.8 148.4,65.7 153.2,67.7 157.9,70.8 162.7,61.7 167.5,63.7 172.2,74.8 177.0,73.8 181.8,76.9 186.5,77.9 191.3,77.9 196.1,88.0 200.8,83.9 205.6,73.8 210.4,74.8 215.1,76.9 219.9,66.7 224.7,72.8 229.4,71.8 234.2,70.8 239.0,72.8 243.7,73.8 248.5,71.8 253.3,85.0 258.0,80.9 262.8,81.9 267.6,78.9 272.3,78.9 277.1,75.8 281.9,77.9 286.6,74.8 291.4,80.9 296.2,78.9 300.9,81.9 305.7,79.9 310.5,89.0 315.2,83.9 320.0,76.9 324.8,67.7 329.5,66.7 334.3,66.7 339.1,69.8 343.8,65.7 348.6,67.7 353.4,73.8 358.1,72.8 362.9,68.7 367.7,65.7 372.4,63.7 377.2,60.6 382.0,59.6 386.7,64.7 391.5,67.7 396.3,76.9 401.0,79.9 405.8,83.9 410.6,81.9 415.3,86.0 420.1,80.9 424.9,78.9 429.6,77.9 434.4,77.9 439.2,77.9 443.9,79.9 448.7,76.9 453.5,79.9 458.2,82.9 463.0,82.9 467.8,81.9 472.5,81.9 477.3,83.9 482.1,77.9 486.8,76.9 491.6,70.8 496.4,72.8 501.1,73.8 505.9,76.9 510.7,68.7 515.4,71.8 520.2,69.8 525.0,81.9 529.7,81.9 534.5,79.9 539.3,70.8 544.0,80.9 548.8,83.9 553.6,82.9 558.3,75.8 563.1,80.9 567.9,82.9 572.6,81.9 577.4,77.9 582.2,86.0 586.9,93.1 591.7,93.1 596.5,89.0 601.2,85.0 606.0,93.1 610.8,94.1 615.5,87.0 620.3,77.9 625.1,79.9 629.8,75.8 634.6,88.0 639.4,86.0 644.1,91.0 648.9,90.0 653.7,91.0 658.4,90.0 663.2,87.0 668.0,81.9 672.7,83.9 677.5,77.9 682.3,80.9 687.0,80.9 691.8,80.9 696.6,85.0 701.3,85.0 706.1,76.9 710.9,78.9 715.6,77.9 720.4,80.9 725.2,69.8 729.9,71.8 734.7,71.8 739.5,75.8 744.2,73.8 749.0,72.8 753.8,68.7 758.5,73.8 763.3,71.8 768.1,65.7 772.8,70.8 777.6,70.8 782.4,70.8 787.1,71.8 791.9,78.9 796.7,82.9 801.4,87.0 806.2,86.0 811.0,79.9 815.7,83.9 820.5,83.9 825.3,80.9 830.0,76.9 834.8,79.9 839.6,76.9 844.3,79.9 849.1,73.8 853.9,74.8 858.6,78.9 863.4,73.8 868.2,74.8 872.9,74.8 877.7,74.8 882.5,74.8 887.2,72.8 892.0,70.8 L892.0,164 Z" fill="none" stroke="#7FA891" stroke-width="1.4" opacity=".7"/><path d="M34,164 L34.0,162.0 38.8,162.0 43.5,162.0 48.3,161.0 53.1,161.0 57.8,159.9 62.6,158.9 67.4,158.9 72.1,158.9 76.9,159.9 81.7,159.9 86.4,159.9 91.2,161.0 96.0,161.0 100.7,161.0 105.5,159.9 110.3,159.9 115.0,161.0 119.8,159.9 124.6,161.0 129.3,162.0 134.1,161.0 138.9,162.0 143.6,162.0 148.4,162.0 153.2,163.0 157.9,162.0 162.7,161.0 167.5,159.9 172.2,158.9 177.0,158.9 181.8,157.9 186.5,157.9 191.3,157.9 196.1,157.9 200.8,157.9 205.6,157.9 210.4,157.9 215.1,158.9 219.9,157.9 224.7,158.9 229.4,156.9 234.2,158.9 239.0,157.9 243.7,156.9 248.5,154.9 253.3,155.9 258.0,154.9 262.8,155.9 267.6,155.9 272.3,156.9 277.1,156.9 281.9,157.9 286.6,157.9 291.4,158.9 296.2,158.9 300.9,158.9 305.7,159.9 310.5,161.0 315.2,161.0 320.0,158.9 324.8,158.9 329.5,158.9 334.3,158.9 339.1,158.9 343.8,158.9 348.6,159.9 353.4,162.0 358.1,162.0 362.9,164.0 367.7,164.0 372.4,164.0 377.2,163.0 382.0,163.0 386.7,162.0 391.5,162.0 396.3,162.0 401.0,159.9 405.8,158.9 410.6,159.9 415.3,158.9 420.1,159.9 424.9,158.9 429.6,157.9 434.4,158.9 439.2,158.9 443.9,158.9 448.7,158.9 453.5,158.9 458.2,159.9 463.0,159.9 467.8,161.0 472.5,162.0 477.3,162.0 482.1,163.0 486.8,162.0 491.6,159.9 496.4,161.0 501.1,159.9 505.9,159.9 510.7,158.9 515.4,156.9 520.2,156.9 525.0,158.9 529.7,158.9 534.5,159.9 539.3,158.9 544.0,158.9 548.8,159.9 553.6,161.0 558.3,161.0 563.1,161.0 567.9,159.9 572.6,161.0 577.4,159.9 582.2,161.0 586.9,161.0 591.7,158.9 596.5,158.9 601.2,158.9 606.0,158.9 610.8,159.9 615.5,158.9 620.3,157.9 625.1,159.9 629.8,159.9 634.6,161.0 639.4,158.9 644.1,159.9 648.9,161.0 653.7,161.0 658.4,161.0 663.2,158.9 668.0,158.9 672.7,159.9 677.5,159.9 682.3,159.9 687.0,159.9 691.8,159.9 696.6,161.0 701.3,159.9 706.1,159.9 710.9,159.9 715.6,159.9 720.4,161.0 725.2,158.9 729.9,159.9 734.7,161.0 739.5,162.0 744.2,159.9 749.0,157.9 753.8,156.9 758.5,155.9 763.3,155.9 768.1,153.9 772.8,152.9 777.6,154.9 782.4,155.9 787.1,156.9 791.9,157.9 796.7,156.9 801.4,156.9 806.2,156.9 811.0,155.9 815.7,156.9 820.5,154.9 825.3,154.9 830.0,155.9 834.8,157.9 839.6,157.9 844.3,158.9 849.1,156.9 853.9,157.9 858.6,158.9 863.4,158.9 868.2,158.9 872.9,158.9 877.7,157.9 882.5,159.9 887.2,161.0 892.0,161.0 L892.0,164 Z" fill="#C6A252" opacity=".85"/><line x1="143.6" y1="12" x2="143.6" y2="164" stroke="#C04A3C" stroke-width="1" stroke-dasharray="2 3" opacity=".8"><title>修二会（お水取り）</title></line><line x1="310.5" y1="12" x2="310.5" y2="164" stroke="#C04A3C" stroke-width="1" stroke-dasharray="2 3" opacity=".8"><title>桜シーズン</title></line><text x="34.0" y="182" fill="#8A9689" font-size="9" font-family="monospace" text-anchor="start">02-06</text><text x="177.0" y="182" fill="#8A9689" font-size="9" font-family="monospace" text-anchor="middle">03-08</text><text x="320.0" y="182" fill="#8A9689" font-size="9" font-family="monospace" text-anchor="middle">04-07</text><text x="463.0" y="182" fill="#8A9689" font-size="9" font-family="monospace" text-anchor="middle">05-07</text><text x="606.0" y="182" fill="#8A9689" font-size="9" font-family="monospace" text-anchor="middle">06-06</text><text x="749.0" y="182" fill="#8A9689" font-size="9" font-family="monospace" text-anchor="middle">07-06</text><text x="892.0" y="182" fill="#8A9689" font-size="9" font-family="monospace" text-anchor="end">08-05</text><line x1="34" y1="164" x2="892" y2="164" stroke="#2E3B33"/></svg>
+    <div class="legend">
+      <span><i style="background:#7FA891;opacity:.45"></i>エリア合計</span>
+      <span><i style="background:#C6A252"></i>鹿のや</span>
+      <span><i style="background:#C04A3C"></i>需要イベント</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="ix">03</span>コンプセット推定稼働</h2>
+  <p class="sub">レビュー増分 ÷ 投稿率 ÷ 客室数。絶対値ではなく施設間の相対差とモメンタムを読む。</p>
+  <table>
+    <thead><tr><th>施設</th><th class="num">室数</th><th>推定稼働（直近90日）</th>
+    <th class="num">推定販売室数</th><th class="num">前期比</th><th class="conf">信頼度</th></tr></thead>
+    <tbody>
+        <tr class="">
+          <td class="nm">競合D（フルサービスホテル）</td>
+          <td class="num">40</td>
+          <td class="bar" title="推定誤差 ±8pt（95%）"><span style="width:100.0%"></span><em>80%</em></td>
+          <td class="num">2866</td>
+          <td class="num ns" title="件数の揺らぎで説明できる範囲。動かす理由にしない">-1pt</td>
+          <td class="conf c高">高</td>
+        </tr>
+        <tr class="">
+          <td class="nm">競合B（旅館・1泊2食）</td>
+          <td class="num">12</td>
+          <td class="bar" title="推定誤差 ±15pt（95%）"><span style="width:96.9%"></span><em>77%</em></td>
+          <td class="num">833</td>
+          <td class="num ns" title="件数の揺らぎで説明できる範囲。動かす理由にしない">+7pt</td>
+          <td class="conf c高">高</td>
+        </tr>
+        <tr class="">
+          <td class="nm">競合E（デザイン系ブティック）</td>
+          <td class="num">15</td>
+          <td class="bar" title="推定誤差 ±15pt（95%）"><span style="width:96.6%"></span><em>77%</em></td>
+          <td class="num">1038</td>
+          <td class="num ns" title="件数の揺らぎで説明できる範囲。動かす理由にしない">-8pt</td>
+          <td class="conf c高">高</td>
+        </tr>
+        <tr class="">
+          <td class="nm">競合A（奈良公園・小規模ラグジュアリー）</td>
+          <td class="num">8</td>
+          <td class="bar" title="推定誤差 ±20pt（95%）"><span style="width:96.5%"></span><em>77%</em></td>
+          <td class="num">553</td>
+          <td class="num ns" title="件数の揺らぎで説明できる範囲。動かす理由にしない">-15pt</td>
+          <td class="conf c高">高</td>
+        </tr>
+        <tr class="own">
+          <td class="nm">奈良春日 鹿のや<span class="tag">自社</span></td>
+          <td class="num">5</td>
+          <td class="bar" title="推定誤差 ±18pt（95%）"><span style="width:93.8%"></span><em>75%</em></td>
+          <td class="num">336</td>
+          <td class="num ns" title="件数の揺らぎで説明できる範囲。動かす理由にしない">+8pt</td>
+          <td class="conf c高">高</td>
+        </tr>
+        <tr class="">
+          <td class="nm">競合C（町家一棟貸し）</td>
+          <td class="num">4</td>
+          <td class="bar" title="推定誤差 ±27pt（95%）"><span style="width:88.0%"></span><em>70%</em></td>
+          <td class="num">252</td>
+          <td class="num pos" title="クチコミ件数の差として有意（両側5%）">+38pt</td>
+          <td class="conf c中">中</td>
+        </tr></tbody>
+  </table>
+</section>
+
+<section>
+  <h2><span class="ix">04</span>推定の土台</h2>
+  <p class="sub">この数字が信用できるかどうかは、自社実績とのキャリブレーションで決まる。</p>
+  <div class="cols">
+    <div class="card">
+      <h3>レビュー投稿率</h3>
+      <div class="big">10.3%<small>95%CI 8.5〜12.4%</small></div>
+      <div style="height:18px"></div>
+      <div class="kv"><span>算定方法</span><b>自社実績で実測</b></div>
+      <div class="kv"><span>突合日数</span><b>261日</b></div>
+      <div class="kv"><span>突合販売室数</span><b>923室</b></div>
+      <div class="kv"><span>突合レビュー</span><b>173.0件</b></div>
+      <div class="kv"><span>外来控除後</span><b>95.2件</b></div>
+      <div class="kv"><span>実績との平均誤差</span><b>3.5pt（n=6）</b></div>
+      <div class="kv"><span>使ってよい範囲</span><b>方向性の議論のみ</b></div>
+      <p class="note">自社PMS実績で実測したレビュー投稿率（1販売室あたり）。競合にも同率を適用する。
+      外来控除は config.json の restaurant_review_share による推定。</p>
+    </div>
+    <div class="card">
+      <h3>エリア内シェアと需要暦</h3>
+      <div class="big">5.8%<small>クチコミ総量に占める自社比率</small></div>
+      <div style="height:18px"></div>
+      <div class="kv"><span>エリア合計</span><b>1081件</b></div>
+      <div class="kv"><span>自社</span><b>63件</b></div>
+      <div class="kv"><span>自社評価</span><b>4.53 ／ 下限 4.6</b></div>
+      <div style="height:14px"></div>
+<ul class="ev"><li><time>2026-03-01</time><span>修二会（お水取り）</span><em>+25</em></li><li><time>2026-04-05</time><span>桜シーズン</span><em>+20</em></li><li><time>2026-10-25</time><span>正倉院展</span><em>+30</em></li><li><time>2026-11-20</time><span>紅葉ピーク</span><em>+25</em></li></ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="ix">05</span>シグナル</h2>
+  <p class="sub">今日の判断に付随して確認する項目。ルール逸脱時のみ人が介入する。</p>
+  <ul class="sigs">
+        <li class="sig alert">
+          <div class="sig-h"><span class="cat">品質</span>
+          <span class="lvl">要対応</span></div>
+          <h4>評価が下限 4.6 を下回っている</h4><p>現在 4.53。ここでの値上げは露出低下と稼働喪失を招く。スコアが回復するまでBARの引き上げを凍結する。</p>
+        </li></ul>
+</section>
+
+<footer>
+  <h3>前提と限界</h3>
+  <ol>
+    <li>Google Places API は競合施設の宿泊料金を返さない。本ダッシュボードが推定するのは
+      <strong>需要</strong>であり、<strong>レート</strong>ではない。実レートは正規ライセンスの
+      レートショッパー（メトロエンジン等）で別途取得し、この需要判断と突き合わせる。</li>
+    <li>OTA画面・Googleホテル検索画面のスクレイピングは規約違反であり、本システムには実装していない。</li>
+    <li>レビューは滞在から平均10日遅れて投稿されるものとして滞在日に引き戻している。
+      投稿遅延の分布は施設ごとに異なるため、直近10日の推定値は不安定。</li>
+    <li>オーベルジュ・レストラン併設施設は外来客のレビューが混在する。
+      config.json の restaurant_review_share で控除しているが、これは推定値であり感度分析が必要。</li>
+    <li>全5室という母数では日次の稼働率は 0/20/40/60/80/100% しか取らない。
+      本手法は90日窓の集計でのみ意味を持つ。日次の需要予測には使えない。</li>
+    <li>推定稼働率の絶対値を投資家向け資料やオーナー報告にそのまま転載しないこと。
+      用途は自社の値付け判断に限る。</li>
+  </ol>
+</footer>
+
+</div></body></html>

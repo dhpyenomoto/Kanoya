@@ -1,0 +1,97 @@
+[
+  {
+    "place_id": "ChIJ_SAMPLE_KANOYA_0001",
+    "name": "奈良春日 鹿のや",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_COMP_A_0002",
+    "name": "競合A（奈良公園・小規模ラグジュアリー）",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_COMP_B_0003",
+    "name": "競合B（旅館・1泊2食）",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_COMP_C_0004",
+    "name": "競合C（町家一棟貸し）",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_COMP_D_0005",
+    "name": "競合D（フルサービスホテル）",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_COMP_E_0006",
+    "name": "競合E（デザイン系ブティック）",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0000",
+    "name": "ならまち ゲストハウス鹿声",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0001",
+    "name": "東大寺前 旅館 月ヶ瀬",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0002",
+    "name": "三条通 ホステル奈良",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0003",
+    "name": "高畑 町家宿 柿の木",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0004",
+    "name": "猿沢 ビジネスイン",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0005",
+    "name": "春日野 旅籠",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0006",
+    "name": "きたまち 一棟貸し 藤",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0007",
+    "name": "奈良町 ゲストハウス燈",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0008",
+    "name": "大宮通 ホテル",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0009",
+    "name": "元林院 町家 灯り",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0010",
+    "name": "紀寺 ゲストハウス",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0011",
+    "name": "船橋商店街 宿",
+    "primary_type": "japanese_inn"
+  },
+  {
+    "place_id": "ChIJ_SAMPLE_AREA_0012",
+    "name": "般若寺 参道宿",
+    "primary_type": "japanese_inn"
+  }
+]

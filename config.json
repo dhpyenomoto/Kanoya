@@ -1,0 +1,84 @@
+{
+  "property": {
+    "place_id": "ChIJ_SAMPLE_KANOYA_0001",
+    "name": "奈良春日 鹿のや",
+    "rooms": 5,
+    "restaurant_review_share": 0.45,
+    "rating_floor": 4.6
+  },
+
+  "comp_set": [
+    {
+      "place_id": "ChIJ_SAMPLE_COMP_A_0002",
+      "name": "競合A（奈良公園・小規模ラグジュアリー）",
+      "rooms": 8,
+      "restaurant_review_share": 0.0
+    },
+    {
+      "place_id": "ChIJ_SAMPLE_COMP_B_0003",
+      "name": "競合B（旅館・1泊2食）",
+      "rooms": 12,
+      "restaurant_review_share": 0.15
+    },
+    {
+      "place_id": "ChIJ_SAMPLE_COMP_C_0004",
+      "name": "競合C（町家一棟貸し）",
+      "rooms": 4,
+      "restaurant_review_share": 0.0
+    },
+    {
+      "place_id": "ChIJ_SAMPLE_COMP_D_0005",
+      "name": "競合D（フルサービスホテル）",
+      "rooms": 40,
+      "restaurant_review_share": 0.30
+    },
+    {
+      "place_id": "ChIJ_SAMPLE_COMP_E_0006",
+      "name": "競合E（デザイン系ブティック）",
+      "rooms": 15,
+      "restaurant_review_share": 0.0
+    }
+  ],
+
+  "area": {
+    "label": "奈良公園・ならまち",
+    "latitude": 34.6851,
+    "longitude": 135.8300,
+    "radius_m": 2200,
+    "included_types": ["hotel", "resort_hotel", "japanese_inn", "bed_and_breakfast", "guest_house"]
+  },
+
+  "model": {
+    "window_days": 90,
+    "calibration_days": 261,
+    "review_lag_days": 10,
+    "unstable_tail_days": 10,
+    "ribbon_days": 181,
+    "rolling_days": 7,
+    "confidence_reviews_high": 30,
+    "confidence_reviews_mid": 10,
+    "backtest_periods": 6,
+    "backtest_step_days": 30
+  },
+
+  "rules": {
+    "hold_band_pt": 3.0,
+    "band_sigma": 1.0,
+    "momentum_pt": 5.0,
+    "share_drop_ratio": 0.15,
+    "event_horizon_days": 45
+  },
+
+  "demand_events": [
+    { "date": "2026-03-01", "name": "修二会（お水取り）", "weight": 25 },
+    { "date": "2026-04-05", "name": "桜シーズン", "weight": 20 },
+    { "date": "2026-10-25", "name": "正倉院展", "weight": 30 },
+    { "date": "2026-11-20", "name": "紅葉ピーク", "weight": 25 }
+  ],
+
+  "paths": {
+    "snapshots": "data/snapshots.jsonl",
+    "area_places": "data/area_places.json",
+    "pms": "data/pms_daily.csv"
+  }
+}
