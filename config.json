@@ -1,0 +1,83 @@
+{
+  "area_label": "奈良公園・ならまち",
+  "database": "data/kanoya.sqlite3",
+  "pms_actuals_csv": "data/pms_actuals.csv",
+
+  "own": {
+    "key": "kanoya",
+    "name": "奈良春日 鹿のや",
+    "place_id": "ChIJkanoya00000000000000",
+    "rooms": 5,
+    "restaurant_review_share": 0.45,
+    "note": "オーベルジュ。夕食は外来受けあり。レビューの約45%が宿泊外と推定。"
+  },
+
+  "compset": [
+    {
+      "key": "comp_a",
+      "name": "競合A（奈良公園・小規模ラグジュアリー）",
+      "place_id": "ChIJcompA000000000000000",
+      "rooms": 8,
+      "restaurant_review_share": 0.45
+    },
+    {
+      "key": "comp_b",
+      "name": "競合B（旅館・1泊2食）",
+      "place_id": "ChIJcompB000000000000000",
+      "rooms": 12,
+      "restaurant_review_share": 0.25
+    },
+    {
+      "key": "comp_c",
+      "name": "競合C（町家一棟貸し）",
+      "place_id": "ChIJcompC000000000000000",
+      "rooms": 4,
+      "restaurant_review_share": 0.0
+    },
+    {
+      "key": "comp_d",
+      "name": "競合D（フルサービスホテル）",
+      "place_id": "ChIJcompD000000000000000",
+      "rooms": 40,
+      "restaurant_review_share": 0.54
+    },
+    {
+      "key": "comp_e",
+      "name": "競合E（デザイン系ブティック）",
+      "place_id": "ChIJcompE000000000000000",
+      "rooms": 15,
+      "restaurant_review_share": 0.3
+    }
+  ],
+
+  "estimation": {
+    "window_days": 90,
+    "ribbon_days": 180,
+    "review_lag_days": 10,
+    "calibration_days": 261,
+    "backtest_windows": 6,
+    "confidence": {
+      "high_min_reviews": 30,
+      "medium_min_reviews": 12
+    }
+  },
+
+  "pricing_rules": {
+    "rating_floor": 4.6,
+    "raise_gap_pt": 8.0,
+    "cut_gap_pt": -8.0,
+    "momentum_alert_pct": 15.0,
+    "share_drop_alert_pt": 1.5,
+    "event_lead_days": 30,
+    "change_highlight_pct": 5.0,
+    "backtest_level_max_pt": 3.0,
+    "backtest_trend_max_pt": 6.0
+  },
+
+  "demand_events": [
+    { "date": "2026-03-01", "name": "修二会（お水取り）", "lift_pct": 25 },
+    { "date": "2026-04-05", "name": "桜シーズン", "lift_pct": 20 },
+    { "date": "2026-10-25", "name": "正倉院展", "lift_pct": 30 },
+    { "date": "2026-11-20", "name": "紅葉ピーク", "lift_pct": 25 }
+  ]
+}

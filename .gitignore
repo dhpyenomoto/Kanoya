@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+.venv/
+venv/
+
+# 一次記録と実績データ。本番のものはコミットしない。
+# デモ用は `python -m kanoya seed-demo` でいつでも再生成できる。
+data/*.sqlite3
+data/pms_actuals.csv
+log/
