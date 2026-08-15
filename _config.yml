@@ -1,0 +1,11 @@
+# GitHub Pages（Jekyll）設定。
+# Settings → Pages → Deploy from a branch → main / (root) で公開される。
+title: 奈良春日 鹿のや レベニューマネジメント基盤
+description: レベニューマネージャーの経験・力量に依存しないダイナミックプライシングの設計 — 企画書と参照実装
+theme: jekyll-theme-cayman
+lang: ja
+
+# サイトに含めないもの（コードはGitHub上で読めるため、サイトは文書に絞る）
+exclude:
+  - engine/
+  - .gitignore

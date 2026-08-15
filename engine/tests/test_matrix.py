@@ -179,6 +179,23 @@ class MatrixTest(unittest.TestCase):
         self.assertEqual(empty.dates, [])
         self.assertIn("データがありません", matrix.render_text(empty))
 
+    def test_anonymize_hides_competitor_names(self) -> None:
+        """外部共有・見本公開時に、実在施設へ擬似価格を紐づけない."""
+        anon = matrix.build(self.ctx.settings, self.ctx, self.window,
+                            fixture=True, anonymize=True)
+        real_names = {c.name for c in self.ctx.settings.competitors.values()}
+        labels = [r.name for r in anon.competitor_rows]
+        self.assertFalse(set(labels) & real_names, "実名が残っている")
+        self.assertEqual(labels[:3], ["競合A", "競合B", "競合C"])
+        # 自社名は自分のものなので匿名化しない
+        self.assertEqual(anon.rows[0].name, self.ctx.settings.property["property"]["name"])
+        self.assertNotIn("ふふ奈良", matrix.render_html(anon))
+
+    def test_anon_label_rolls_over_past_z(self) -> None:
+        self.assertEqual(matrix._anon_label(0), "競合A")
+        self.assertEqual(matrix._anon_label(25), "競合Z")
+        self.assertEqual(matrix._anon_label(26), "競合AA")
+
     def test_csv_row_width_matches_header(self) -> None:
         import csv as csv_mod
         import tempfile

@@ -40,6 +40,8 @@ def main() -> int:
     parser.add_argument("--cols", type=int, default=21,
                         help="端末に表示する日数（CSV/HTMLは全期間）")
     parser.add_argument("--open", action="store_true", help="HTMLをブラウザで開く")
+    parser.add_argument("--anonymize", action="store_true",
+                        help="競合名を「競合A/B/…」に匿名化（外部共有・見本公開用）")
     parser.add_argument("--out-dir", default="../out")
     args = parser.parse_args()
 
@@ -78,6 +80,7 @@ def main() -> int:
         window=(survey_request.start, survey_request.end),
         fixture=fixture,
         radius_m=int(sources["discovery"]["radius_m"]),
+        anonymize=args.anonymize,
     )
 
     if not report.dates:

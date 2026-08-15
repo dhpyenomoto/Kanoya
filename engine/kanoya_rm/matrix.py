@@ -77,8 +77,27 @@ class MatrixReport:
         return (min(vals), max(vals)) if vals else (0.0, 1.0)
 
 
+def _anon_label(index: int) -> str:
+    """0→競合A, 1→競合B, … 26件目からは 競合AA へ繰り上がる."""
+    letters = ""
+    n = index
+    while True:
+        letters = chr(ord("A") + n % 26) + letters
+        n = n // 26 - 1
+        if n < 0:
+            break
+    return f"競合{letters}"
+
+
 def build(settings: Settings, ctx, window: tuple[date, date], *,
-          fixture: bool = False, radius_m: int = 0) -> MatrixReport:
+          fixture: bool = False, radius_m: int = 0,
+          anonymize: bool = False) -> MatrixReport:
+    """施設×宿泊日のマトリクスを組み立てる.
+
+    anonymize=True で競合名を「競合A」「競合B」…に置き換える。
+    外部への共有時に自社のコンペティティブセットを晒さないためと、
+    擬似データの見本を公開する際に実在施設へ架空価格を紐づけないための機能。
+    """
     dates = [d for d in sorted(ctx.recommendations) if window[0] <= d <= window[1]]
 
     rows: list[MatrixRow] = []
@@ -111,8 +130,9 @@ def build(settings: Settings, ctx, window: tuple[date, date], *,
     # ③ 競合各社。類似度スコア（weight）の降順＝「似ている順」
     order = sorted(settings.competitors.values(),
                    key=lambda c: (-c.weight, c.distance_km))
-    for comp in order:
-        row = MatrixRow(comp_id=comp.id, name=comp.name, tier=comp.tier,
+    for index, comp in enumerate(order):
+        label = _anon_label(index) if anonymize else comp.name
+        row = MatrixRow(comp_id=comp.id, name=label, tier=comp.tier,
                         weight=comp.weight, rooms=comp.rooms,
                         distance_km=comp.distance_km)
         for day in dates:
