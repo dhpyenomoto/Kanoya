@@ -1,0 +1,1417 @@
+<title>鹿のや レベニュー基盤構想</title>
+
+<style>
+/* ─────────────────────────────────────────────────────────────
+   奈良春日 鹿のや ｜ RM-OS 構想
+   Palette: 日本の伝統色 — 白緑(ground) / 墨(ink) / 千歳緑(structure) / 朱(accent)
+   Type: 明朝(display) × ゴシック(body) × mono(data)
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  --ground:    #EDF0EA;
+  --surface:   #F8FAF6;
+  --surface-2: #E3E8DE;
+  --ink:       #18211C;
+  --ink-2:     #55635C;
+  --ink-3:     #7D8A83;
+  --line:      #D2DACD;
+  --line-2:    #BAC5B5;
+  --forest:    #3B5A47;
+  --accent:    #BE4227;
+  --accent-ink:#BE4227;
+  --shadow:    0 1px 0 rgba(24,33,28,.04);
+
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman",
+           "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP",
+           "MS PMincho", serif;
+  --sans:  "Helvetica Neue", Helvetica, Arial,
+           "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", YuGothic,
+           "Noto Sans JP", "Meiryo", sans-serif;
+  --mono:  ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+           "Liberation Mono", monospace;
+
+  --measure: 40rem;
+  --wide: 60rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:    #121815;
+    --surface:   #1A2320;
+    --surface-2: #232E29;
+    --ink:       #E5EAE3;
+    --ink-2:     #A2AFA7;
+    --ink-3:     #7A8880;
+    --line:      #2B3733;
+    --line-2:    #3B4A44;
+    --forest:    #86AF93;
+    --accent:    #E2694B;
+    --accent-ink:#EC8267;
+    --shadow:    none;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:    #121815;
+  --surface:   #1A2320;
+  --surface-2: #232E29;
+  --ink:       #E5EAE3;
+  --ink-2:     #A2AFA7;
+  --ink-3:     #7A8880;
+  --line:      #2B3733;
+  --line-2:    #3B4A44;
+  --forest:    #86AF93;
+  --accent:    #E2694B;
+  --accent-ink:#EC8267;
+  --shadow:    none;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.85;
+  font-feature-settings: "palt" 1;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 0 1.5rem 6rem;
+}
+
+.wrap {
+  max-width: var(--wide);
+  margin: 0 auto;
+}
+
+/* ── Typography scale ───────────────────────────────────────── */
+
+h1, h2, h3, h4 { font-family: var(--serif); font-weight: 600; text-wrap: balance; margin: 0; }
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: .6875rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+p { margin: 0; }
+.prose { max-width: var(--measure); display: flex; flex-direction: column; gap: 1.1rem; }
+.prose p { line-height: 1.95; }
+
+strong { font-weight: 700; color: var(--ink); }
+em { font-style: normal; color: var(--accent-ink); font-weight: 700; }
+
+a { color: var(--forest); text-underline-offset: .2em; }
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: .8125em;
+  background: var(--surface-2);
+  padding: .1em .35em;
+  color: var(--ink);
+}
+
+/* ── Masthead ───────────────────────────────────────────────── */
+
+header.masthead {
+  padding: 5.5rem 0 3rem;
+  border-bottom: 1px solid var(--line);
+}
+.masthead .kicker {
+  display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: baseline;
+  margin-bottom: 2.25rem;
+}
+.masthead h1 {
+  font-size: clamp(2.1rem, 5.5vw, 3.35rem);
+  line-height: 1.28;
+  letter-spacing: .01em;
+  margin-bottom: 1.5rem;
+}
+.masthead h1 .sub {
+  display: block;
+  font-family: var(--mono);
+  font-size: .8rem;
+  letter-spacing: .16em;
+  color: var(--ink-3);
+  margin-top: 1.1rem;
+  font-weight: 400;
+}
+.thesis {
+  max-width: 36rem;
+  font-size: 1.0625rem;
+  line-height: 2;
+  color: var(--ink-2);
+}
+
+/* ── Figures row (stat display, not a chart) ────────────────── */
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 2rem 1.5rem;
+  margin-top: 3.25rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--line);
+}
+.fig { display: flex; flex-direction: column; gap: .3rem; }
+.fig .val {
+  font-family: var(--serif);
+  font-size: 2.25rem;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+.fig .val .unit { font-size: .95rem; letter-spacing: 0; margin-left: .15em; color: var(--ink-2); }
+.fig.key .val { color: var(--accent-ink); }
+.fig .lbl { font-size: .75rem; color: var(--ink-2); line-height: 1.6; }
+.fig .note { font-family: var(--mono); font-size: .65rem; color: var(--ink-3); letter-spacing: .04em; }
+
+.caveat {
+  margin-top: 1.75rem;
+  font-size: .75rem;
+  color: var(--ink-3);
+  line-height: 1.8;
+  max-width: 44rem;
+}
+
+/* ── Sections ───────────────────────────────────────────────── */
+
+section { padding: 4.5rem 0 0; }
+.sec-head {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  gap: 0 1rem;
+  align-items: start;
+  margin-bottom: 2rem;
+}
+.sec-num {
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  line-height: 1.1;
+  color: var(--forest);
+  font-variant-numeric: tabular-nums;
+  padding-top: .1rem;
+  border-top: 2px solid var(--forest);
+}
+.sec-head h2 {
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+  line-height: 1.5;
+  padding-top: .05rem;
+}
+.sec-head .dek {
+  grid-column: 2;
+  font-size: .8125rem;
+  color: var(--ink-3);
+  font-family: var(--mono);
+  letter-spacing: .06em;
+  margin-top: .4rem;
+}
+
+h3 {
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  margin: 2.75rem 0 .9rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--line);
+}
+h4 {
+  font-family: var(--sans);
+  font-size: .75rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin: 2rem 0 .75rem;
+}
+
+/* ── Tables ─────────────────────────────────────────────────── */
+
+.tbl-wrap { overflow-x: auto; margin: 1.5rem 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .8125rem;
+  line-height: 1.7;
+  min-width: 32rem;
+}
+th, td {
+  text-align: left;
+  padding: .7rem .9rem .7rem 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+th {
+  font-weight: 700;
+  font-size: .6875rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--line-2);
+  white-space: nowrap;
+}
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); padding-right: 0; }
+tbody tr:last-child td { border-bottom: none; }
+td .tag {
+  font-family: var(--mono);
+  font-size: .6875rem;
+  letter-spacing: .05em;
+}
+.yes { color: var(--forest); font-weight: 700; }
+.no  { color: var(--accent-ink); font-weight: 700; }
+
+/* ── Layer stack diagram ────────────────────────────────────── */
+
+.stack { margin: 2rem 0 1rem; border-top: 1px solid var(--line-2); }
+.layer {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(6.5rem, 11rem) 1fr;
+  gap: 0 1rem;
+  align-items: baseline;
+  padding: .95rem 0 .95rem 1rem;
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid var(--line-2);
+  background: var(--surface);
+}
+.layer .id {
+  font-family: var(--mono);
+  font-size: .75rem;
+  letter-spacing: .1em;
+  color: var(--ink-3);
+}
+.layer .nm { font-family: var(--serif); font-size: .9375rem; line-height: 1.5; }
+.layer .ds { font-size: .8125rem; color: var(--ink-2); line-height: 1.7; }
+.layer.core {
+  border-left-color: var(--accent);
+  background: var(--surface-2);
+}
+.layer.core .id { color: var(--accent-ink); }
+.layer.core .nm { font-weight: 700; }
+.layer.core .ds strong { color: var(--accent-ink); }
+
+/* ── Pull quote ─────────────────────────────────────────────── */
+
+.pull {
+  margin: 3rem 0;
+  padding: 0 0 0 1.5rem;
+  border-left: 3px solid var(--accent);
+  max-width: 34rem;
+}
+.pull p {
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 3vw, 1.5rem);
+  line-height: 1.75;
+  letter-spacing: .01em;
+}
+.pull .attr {
+  font-family: var(--mono);
+  font-size: .6875rem;
+  letter-spacing: .12em;
+  color: var(--ink-3);
+  margin-top: 1rem;
+  text-transform: uppercase;
+}
+
+/* ── Callout ────────────────────────────────────────────────── */
+
+.callout {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--forest);
+  padding: 1.4rem 1.5rem;
+  margin: 1.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: .8rem;
+}
+.callout .hd {
+  font-family: var(--mono);
+  font-size: .6875rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--forest);
+  font-weight: 700;
+}
+.callout p { font-size: .875rem; line-height: 1.9; }
+
+/* ── Code block ─────────────────────────────────────────────── */
+
+pre {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 1.2rem 1.35rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  font-family: var(--mono);
+  font-size: .75rem;
+  line-height: 1.85;
+  color: var(--ink-2);
+  tab-size: 2;
+}
+pre b { color: var(--ink); font-weight: 700; }
+pre .c { color: var(--ink-3); }
+pre .k { color: var(--forest); }
+
+/* ── Formula ────────────────────────────────────────────────── */
+
+.formula {
+  font-family: var(--mono);
+  font-size: .8125rem;
+  line-height: 2.1;
+  white-space: pre;
+  background: var(--surface);
+  border-top: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--line-2);
+  padding: 1.35rem 1.4rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+}
+
+/* ── Roadmap ────────────────────────────────────────────────── */
+
+.roadmap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0;
+  margin: 2rem 0 1rem;
+  border-top: 2px solid var(--line-2);
+}
+.phase {
+  padding: 1.35rem 1.15rem 1.5rem 0;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+.phase:last-child { border-right: none; }
+.phase .p-id {
+  font-family: var(--mono);
+  font-size: .6875rem;
+  letter-spacing: .12em;
+  color: var(--ink-3);
+}
+.phase .p-nm { font-family: var(--serif); font-size: 1.0625rem; line-height: 1.4; }
+.phase ul { margin: .3rem 0 0; padding-left: 1.05rem; }
+.phase li { font-size: .78125rem; line-height: 1.7; color: var(--ink-2); margin-bottom: .3rem; }
+.phase .exit {
+  margin-top: auto;
+  padding-top: .9rem;
+  font-size: .71875rem;
+  line-height: 1.65;
+  color: var(--forest);
+  border-top: 1px dashed var(--line-2);
+}
+
+/* ── Two-column grid ────────────────────────────────────────── */
+
+.cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 2rem 2.5rem;
+  margin: 1.75rem 0;
+}
+.col h4 { margin-top: 0; }
+.col p, .col li { font-size: .84375rem; line-height: 1.85; color: var(--ink-2); }
+.col ul { margin: .5rem 0 0; padding-left: 1.1rem; }
+.col li { margin-bottom: .45rem; }
+
+/* ── Footer ─────────────────────────────────────────────────── */
+
+footer {
+  margin-top: 5.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--line);
+  font-size: .75rem;
+  color: var(--ink-3);
+  line-height: 1.9;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+@media (max-width: 40rem) {
+  body { padding: 0 1.15rem 4rem; }
+  header.masthead { padding-top: 3.5rem; }
+  .sec-head { grid-template-columns: 2.5rem 1fr; }
+  .layer { grid-template-columns: 3rem 1fr; }
+  .layer .ds { grid-column: 2; }
+  .phase { border-right: none; border-bottom: 1px solid var(--line); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">
+    <p class="eyebrow">奈良春日 鹿のや ／ 全5室 オーベルジュ</p>
+    <p class="eyebrow">Draft v1.0</p>
+  </div>
+
+  <h1>
+    レベニューマネジャーの力量に、<br>収益を預けない。
+    <span class="sub">RM-OS ── Revenue Management Operating System for a 5-Key Auberge</span>
+  </h1>
+
+  <p class="thesis">
+    競合レートの自動収集から、需要予測、最適価格の算出、OTAへの自動配信、そして検証までを
+    6層で閉じる。目的はAIによる値付けではなく、<strong>属人的な勘を、承認された経営方針と
+    再現可能な計算に置き換えること</strong>にある。
+  </p>
+
+  <div class="figures">
+    <div class="fig">
+      <span class="val">5<span class="unit">室</span></span>
+      <span class="lbl">年間販売可能室数 1,825室夜。1室＝その日のOCC 20pt</span>
+    </div>
+    <div class="fig">
+      <span class="val">2,196</span>
+      <span class="lbl">Bid Price 動的計画法の状態数。<strong>厳密解が解ける規模</strong></span>
+    </div>
+    <div class="fig key">
+      <span class="val">+16.3<span class="unit">%</span></span>
+      <span class="lbl">12ヶ月後 RevPAR 改善目標</span>
+      <span class="note">仮定値 ／ 損益分岐は +2.1%</span>
+    </div>
+    <div class="fig">
+      <span class="val">&lt;15<span class="unit">%</span></span>
+      <span class="lbl">Override率の目標。<strong>これが本システムの成功指標そのもの</strong></span>
+    </div>
+  </div>
+
+  <p class="caveat">
+    ※ 施設の実績ADR・OCC・チャネル構成は未取得のため、本書の金額・比率はすべて構造を示すための
+    仮置きです。計算式と感度は正しく置いており、Phase 0 で実データに差し替えて確定版とします。
+    施設情報は公開情報（全5室・奈良市春日野町・オーベルジュ業態）に基づきます。
+  </p>
+</header>
+
+<!-- ══ 01 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <h2>「属人性」の正体は、4つの別問題である</h2>
+    <p class="dek">Problem Decomposition</p>
+  </div>
+
+  <div class="prose">
+    <p>
+      「レベニューマネジャーの経験に左右される」という一言のなかには、性質のまったく違う
+      4つの問題が混ざっている。まとめて扱うから解けない。分解すれば、3つは機械で消える。
+    </p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th style="width:2rem"></th><th>属人性の正体</th><th>現場での症状</th><th>解法</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="tag">A</td>
+          <td><strong>情報</strong>の属人性</td>
+          <td>競合価格を「見に行った人」しか知らない。見た日と見ない日がある</td>
+          <td>L0 自動収集＋全履歴保存</td>
+        </tr>
+        <tr>
+          <td class="tag">B</td>
+          <td><strong>判断基準</strong>の属人性</td>
+          <td>「この日は高くいけそう」の“そう”が言語化されていない</td>
+          <td>L4 Pricing Policy Document</td>
+        </tr>
+        <tr>
+          <td class="tag">C</td>
+          <td><strong>計算</strong>の属人性</td>
+          <td>残室数と残日数から機会費用を暗算している（人間には不可能）</td>
+          <td>L3 Bid Price 動的計画法</td>
+        </tr>
+        <tr>
+          <td class="tag">D</td>
+          <td><strong>検証</strong>の属人性</td>
+          <td>結果の良し悪しを誰も測らないので、経験が蓄積も否定もされない</td>
+          <td>L6 学習ループ</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+    <p>
+      重要なのは <em>A・C・D はシステムで完全に消せるが、B は消せない</em> という区別である。
+      B ── どういう宿でありたいか、いくら以下では売らないか、誰に売りたいか ── は経営判断であり、
+      機械に委譲してはならない。
+    </p>
+    <p>
+      したがって本提案における属人性排除とは、人を排除することではない。
+      <strong>B を「個人の勘」から「文書化され承認された経営方針」へ移し、人が担当する層を上に押し上げること</strong>である。
+    </p>
+  </div>
+</section>
+
+<!-- ══ 02 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <h2>5室は制約ではなく、優位である</h2>
+    <p class="dek">Structural Diagnosis</p>
+  </div>
+
+  <div class="prose">
+    <p>
+      「小規模だからレベニューマネジメントは不要」は誤りである。むしろ逆で、
+      5室という条件はRMの理論的な旨味を最大化する。
+    </p>
+    <p>
+      200室のホテルのRMは「どう埋めるか」＝稼働の問題である。5室のRMは
+      「<strong>その日の1室を、誰に、いくらで売るか</strong>」＝機会費用の問題になる。
+      1件のキャンセルがOCCを20pt動かす環境では、判断1回あたりの重みが40倍になる。
+    </p>
+  </div>
+
+  <div class="cols">
+    <div class="col">
+      <h4>不利：データのスパース性</h4>
+      <p>
+        5室×365日＝1,825室夜。「5月3日は満室だった」から「5月3日は強い」を学ぶのは
+        n＝1 の推論であり、素朴な機械学習はほぼ確実に過学習する。
+      </p>
+      <ul>
+        <li><strong>階層ベイズ（partial pooling）</strong>で、奈良市場・高価格帯全体の需要曲線を親分布として借りる</li>
+        <li>データが薄い日付は自動的に市場平均へ引き寄せられ、厚い日付は自施設実績を信じる</li>
+        <li>「データが足りないときどうするか」を人が悩まなくて済む</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h4>有利：厳密最適化が解ける</h4>
+      <p>
+        在庫制御の本質は「今の ¥45,000 を受けるか、将来の ¥80,000 を待つか」である。
+        状態空間は <code>残室 r∈{0..5} × 残日数 t∈{0..365}</code>。
+      </p>
+      <ul>
+        <li>状態数はわずか <strong>2,196</strong>。365日分回してもノートPCで数秒</li>
+        <li>大規模ホテルが EMSR 等の近似に頼る領域を、鹿のやは正解で解ける</li>
+        <li><strong>本提案 最大の技術的差別化点</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="hd">オーベルジュ固有の論点</span>
+    <p>
+      館内にレストランとバーを持つ以上、<strong>客室単体の RevPAR 最大化は誤った最適化</strong>である。
+      素泊まり ¥45,000（粗利 ¥40,000）と2食付 ¥62,000（食材原価 ¥9,000 → 粗利 ¥53,000）は、
+      OTA手数料率がプランで異なれば Net で逆転しうる。
+      ダッシュボードの主KPIは ADR ではなく <strong>Net TRevPAR</strong>（手数料・原価控除後の総売上／販売可能室数）に置く。
+    </p>
+  </div>
+</section>
+
+<!-- ══ 03 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <h2>アーキテクチャ ── 6層のRM-OS</h2>
+    <p class="dek">System Architecture</p>
+  </div>
+
+  <div class="prose">
+    <p>
+      下から積む。ただし <strong>投資の重心は L4 にある</strong>。
+      L0〜L3 は L4 を実行可能にするための装置であり、L6 は L4 を更新し続けるための装置である。
+    </p>
+  </div>
+
+  <div class="stack">
+    <div class="layer">
+      <span class="id">L6</span>
+      <span class="nm">検証・学習ループ</span>
+      <span class="ds">予測精度（MAPE）／Override 成績スコアボード／価格実験（Thompson Sampling）→ パラメータ更新 → 月次RM会議へ自動レポート</span>
+    </div>
+    <div class="layer">
+      <span class="id">L5</span>
+      <span class="nm">配信</span>
+      <span class="ds">サイトコントローラーAPI 経由で一休・楽天・じゃらん・Booking.com・Expedia・Relux・直販へ反映。ドライラン → ガードレール再検証 → 配信 → read-after-write 検証 → 自動ロールバック</span>
+    </div>
+    <div class="layer core">
+      <span class="id">L4</span>
+      <span class="nm">ガバナンス</span>
+      <span class="ds"><strong>属人性排除の中核。</strong> Pricing Policy Document をコード化したルールエンジン。フロア／シーリング、日次変動幅、ブランド保護、期限付き Override、全件監査ログ</span>
+    </div>
+    <div class="layer">
+      <span class="id">L3</span>
+      <span class="nm">最適化エンジン</span>
+      <span class="ds">Bid Price 動的計画法で受注可否の下限を厳密算出。期待収益最大化による提示価格探索。MinLOS／CTA／CTD による在庫・連泊制御</span>
+    </div>
+    <div class="layer">
+      <span class="id">L2</span>
+      <span class="nm">需要予測エンジン</span>
+      <span class="ds">階層ベイズによる非定常ポアソン到着過程。出力は日別 λ(価格, 残日数)、予測OCC・ADR、そして<strong>信用区間</strong>（不確実な日は価格を動かさない）</span>
+    </div>
+    <div class="layer">
+      <span class="id">L1</span>
+      <span class="nm">データ基盤</span>
+      <span class="ds">BigQuery ＋ dbt。中核は <code>as_of_date × stay_date</code> の二次元スナップショット設計</span>
+    </div>
+    <div class="layer">
+      <span class="id">L0</span>
+      <span class="nm">データ取得</span>
+      <span class="ds">競合レート（商用取得API）／Google Places（評点・口コミ）／自社PMS・サイトコントローラー／イベント・天候・公的統計</span>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>
+      UI は Streamlit のRMダッシュボードと、Slack／LINE への日次サマリ通知。
+      実行基盤は Cloud Run Jobs ＋ Cloud Scheduler による深夜バッチ。
+    </p>
+  </div>
+</section>
+
+<!-- ══ 04 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <h2>Googleから何が取れて、何が取れないか</h2>
+    <p class="dek">Data Acquisition ／ 事実確認</p>
+  </div>
+
+  <div class="prose">
+    <p>
+      ご指摘のとおり Google からの収集は成立する。ただし <strong>取得物の種類を分けて理解する必要がある</strong>。
+      ここを曖昧にしたまま自前スクレイパーを組むと、利用規約・著作権・不正アクセス禁止法の三方向でリスクを負う。
+    </p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>欲しいデータ</th><th style="width:9rem">Places APIで取れるか</th><th>実際の取得手段</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>競合の<strong>評点・レビュー件数・本文・属性</strong></td>
+          <td><span class="yes">取れる</span>（公式API）</td>
+          <td>Google Places API (New)。ただし規約上<strong>キャッシュは原則30日</strong>（place_id を除く）。設計に反映必須</td>
+        </tr>
+        <tr>
+          <td>競合の<strong>実売価格・空室状況</strong></td>
+          <td><span class="no">取れない</span></td>
+          <td><strong>Google Hotels</strong>（検索／マップのホテル価格モジュール）の公開価格を、SerpApi・DataForSEO 等の商用取得APIで日次取得</td>
+        </tr>
+        <tr>
+          <td>競合の<strong>プラン内容・食事条件・LOS制限</strong></td>
+          <td><span class="no">取れない</span></td>
+          <td>商用レートショッパー（Lighthouse／RateGain／メトロエンジン等）。国内OTAのカバレッジが強い</td>
+        </tr>
+        <tr>
+          <td>市場全体の<strong>需要・稼働</strong></td>
+          <td><span class="no">取れない</span></td>
+          <td>奈良市観光協会 宿泊データ月報／奈良県宿泊統計調査／観光庁 宿泊旅行統計調査</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="hd">法務ポジション</span>
+    <p>
+      <strong>Google Hotels に公式の一般開発者向け価格APIは存在しない。</strong>
+      「Googleから価格を取る」とは、実務上は商用取得APIのライセンス購入を意味する。
+      著作権法第47条の5は情報解析目的の軽微利用に一定の余地を与えるが、
+      <strong>利用規約による契約上の制約は著作権法とは別軸で効力を持つ</strong>。
+      本提案はリスクを自社に取り込まず、<strong>商用API／SaaSのライセンス契約に外部化する</strong>方針を採る。
+      年間数十万円は、法務リスクと運用工数の保険料として妥当である。
+    </p>
+  </div>
+
+  <h3>設計上の最重要ポイント ── 二次元スナップショット</h3>
+
+  <div class="prose">
+    <p>
+      「今日の12月24日の価格」ではなく、
+      <strong>「11月1日時点で見た12月24日の価格」「11月2日時点で見た12月24日の価格」…</strong>
+      をすべて保存する。
+    </p>
+  </div>
+
+  <div class="formula">
+comp_rate_snapshot ( <b>as_of_date</b>, <b>stay_date</b>, property_id, channel,
+                     meal_plan, occupancy, los, price_per_room_night,
+                     is_sold_out, is_closed_out )
+  PARTITION BY stay_date  CLUSTER BY property_id, as_of_date
+  </div>
+
+  <div class="prose">
+    <p>
+      これにより <strong>競合がいつ値上げし、いつ売り切れたか</strong> ── すなわち競合の販売ペースが見える。
+      価格そのものより情報価値が高い。<em>競合が90日前に満室になる日は、鹿のやが強気に出るべき日である。</em>
+      単純な価格比較しかしないRMツールは、この情報を捨てている。
+    </p>
+    <p>
+      収集グリッドは Primary 6 ＋ Secondary 8 施設 × 宿泊日 +0〜+120日 × LOS 1・2泊 × 2名基準。
+      日次 3,400〜6,800クエリ、年間 124〜248万レコード。<strong>毎日、同じ方法で、撮り続けること</strong>が要件である。
+    </p>
+  </div>
+
+  <h3>競合セットは、手続きで決める</h3>
+
+  <div class="prose">
+    <p>「なんとなくあの宿がライバル」は属人性の温床である。</p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:4rem">Step</th><th>手続き</th><th>基準</th></tr></thead>
+      <tbody>
+        <tr><td class="tag">1</td><td>候補抽出（Places API）</td><td>奈良公園・市中心部 半径3km／宿泊カテゴリ／評点4.0以上／レビュー30件以上</td></tr>
+        <tr><td class="tag">2</td><td>3軸スコアリング</td><td>価格帯類似度（日別価格の<strong>相関係数</strong>／0.40）＋ 商品類似度（規模・食事形態・レビュー本文のLLM分類／0.35）＋ 顧客重複度（レビュアー言語構成・季節性／0.25）</td></tr>
+        <tr><td class="tag">3</td><td>階層化</td><td><strong>Primary 4〜6</strong>（奪い合いが実在／価格インデックスの分母）・<strong>Secondary 6〜10</strong>（市場需要の観測用、追随しない）・<strong>Aspirational 2〜3</strong>（ADR天井の参照）</td></tr>
+        <tr><td class="tag">4</td><td>四半期ごとに自動再評価</td><td>相関が閾値を割った施設は自動的に降格候補としてRM会議に上程。<strong>「誰も言い出さないので放置」を構造的に防ぐ</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══ 05 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <h2>予測と最適化 ── 暗算できない判断を機械に渡す</h2>
+    <p class="dek">Forecast &amp; Optimization</p>
+  </div>
+
+  <h3>需要モデル</h3>
+
+  <div class="prose">
+    <p>宿泊需要を非定常ポアソン到着過程として定義する。宿泊日 d、残日数 t、提示価格 p に対する予約到着率：</p>
+  </div>
+
+  <div class="formula">
+<b>λ(d, t, p)  =  λ_base(d)  ×  g(t)  ×  ( p / p_ref(d) ) <sup>−ε</sup></b>
+
+<span class="c">λ_base(d)</span>  宿泊日固有の需要水準 ── 曜日・季節・イベント・市場OCC・競合売切率を説明変数とする階層ベイズ
+<span class="c">g(t)</span>        ブッキングカーブ ── チャネル別に推定（一休・直販は短く、Booking.com・Agoda は長い）
+<span class="c">ε</span>          価格弾力性 ── 事前分布 LogNormal(log 1.8, 0.4)（高価格帯宿の業界レンジ 1.2〜2.5）から出発
+<span class="c">p_ref(d)</span>   参照価格 ── Primary Comp Set の中央値。<b>高い／安いは絶対額でなく市場相対で決まる</b>
+  </div>
+
+  <div class="prose">
+    <p>
+      自社の5室だけでは需要は見えない。しかし Primary Comp Set 6施設・平均40室＝240室分の消化速度は見える。
+      <strong>60日前に競合3施設が売り切れている日は、統計的に強い需要日である。</strong>
+      自社の予約がまだ0件でも、機械はこの日を強気と判断できる。
+      人間のRMが「肌感」と呼んでいるものの正体は、多くの場合これである。
+    </p>
+  </div>
+
+  <h3>Bid Price ── すべての受注判断を1つの数値に還元する</h3>
+
+  <div class="formula">
+<b>V(0, r) = 0</b>                                          <span class="c">宿泊日到来。残室の価値はゼロ</span>
+
+<b>V(t, r) = max<sub>p</sub> { λ(d,t,p)·[ p + V(t−1, r−1) ]  +  (1 − λ(d,t,p))·V(t−1, r) }</b>
+
+<b>bid(t, r) = V(t, r) − V(t, r−1)</b>     <span class="c">← 残り r 室・残り t 日で、1室を今売ることで失う将来価値</span>
+  </div>
+
+  <div class="prose">
+    <p>
+      <strong>bid(t, r) を下回る価格の予約は、受けてはいけない。</strong>
+      団体照会、旅行会社のアロットメント、直前の値引き要請、連泊割引 ── すべてこの1つの数値で機械的に答えが出る。
+    </p>
+    <p>
+      現場でRMが最も間違えるのが、まさにこの判断である。
+      「30日前でまだ2室空いている。¥45,000 のリクエストが来た。受けるか？」に対し、
+      人間は<em>不安だから受ける</em>か<em>もったいないから断る</em>を気分で決めている。
+      DPは「<code>bid(30, 2) = ¥52,300</code> なので断るべき。受ければ期待値ベースで ¥7,300 の損」と即答する。
+    </p>
+  </div>
+
+  <h3>連泊化 ── 奈良で最大のレバー</h3>
+
+  <div class="prose">
+    <p>
+      奈良は「1泊で通過される」土地である。連泊化は <strong>ADRを下げずにOCCを上げ、同時に清掃コストを下げる</strong>
+      唯一のレバーであり、その可否もまた bid の比較で決まる。
+    </p>
+  </div>
+
+  <div class="formula">
+2泊受注の可否:   <b>2泊の合計収益  ≥  bid(t, r) + bid(t′, r′)</b>
+
+制御手段:  <b>MinLOS</b> 高需要日の前後で1泊予約をブロック（例：土曜が強く金曜が弱い → 土曜に MinLOS=2 を置き、金土の2泊を作りに行く）
+          <b>CTA</b> その日の到着を締め、連泊の中日として使う ／ <b>CTD</b> 出発を締める
+  </div>
+</section>
+
+<!-- ══ 06 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <h2>ガバナンス ── 提案の本体はここにある</h2>
+    <p class="dek">Governance Layer ／ L4</p>
+  </div>
+
+  <div class="prose">
+    <p>
+      価格を出す数式はコモディティである。属人性を排除するのは、
+      <strong>誰が・いつ・何を決めてよいかを分離した統治構造</strong>のほうである。
+    </p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:5rem">層</th><th>決めること</th><th style="width:9rem">決める人</th><th style="width:6rem">頻度</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>戦略</strong></td>
+          <td>ポジショニング、年間RevPAR目標、Comp Set、フロア／シーリング価格、チャネル構成方針</td>
+          <td>オーナー／総支配人</td>
+          <td>年1回</td>
+        </tr>
+        <tr>
+          <td><strong>戦術</strong></td>
+          <td>季節係数、イベントカレンダー、パラメータ調整、実験計画の承認</td>
+          <td>支配人＋RM担当</td>
+          <td>月1回</td>
+        </tr>
+        <tr>
+          <td><strong>実行</strong></td>
+          <td>日別・室タイプ別の価格、MinLOS、在庫開閉</td>
+          <td><strong>システム（自動）</strong></td>
+          <td>毎日</td>
+        </tr>
+        <tr>
+          <td><strong>例外</strong></td>
+          <td>Override（手動上書き）── 理由コードと期限が必須</td>
+          <td>RM担当</td>
+          <td>随時</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pull">
+    <p>人はパラメータを触る。<br>価格は触らない。</p>
+    <p class="attr">設計原則 ／ Decision Rights</p>
+  </div>
+
+  <div class="prose">
+    <p>
+      誰かが価格を直接触りたくなったら、それは「ポリシーが現実を捉えていない」というシグナルである。
+      価格を直すのではなく、<strong>ポリシーを直す</strong>。この規律だけで属人性の8割は消える。
+    </p>
+  </div>
+
+  <h3>Pricing Policy Document ── 価格の憲法をコードにする</h3>
+
+  <div class="prose">
+    <p>年1回、オーナーが承認する。承認された文書がそのままシステムの実行規則になる。</p>
+  </div>
+
+<pre><span class="c"># pricing_policy.yaml — 変更にはオーナー承認と版管理が必要</span>
+<span class="k">version</span>: "2026.1"
+<span class="k">approved_by</span>: "総支配人"
+
+<span class="k">positioning</span>:
+  <span class="k">target_rgi</span>: 1.15                    <span class="c"># Comp Set 平均の115%（プライスリーダー）</span>
+  <span class="k">never_be_cheapest</span>: true             <span class="c"># Primary の最安値を下回らない</span>
+
+<span class="k">guardrails</span>:
+  <span class="k">floor</span>: { weekday: 42000, weekend: 52000, peak_season: 68000 }
+  <span class="k">ceiling</span>: 145000
+  <span class="k">max_daily_change_pct</span>: 12            <span class="c"># 1日の変動幅上限（信頼性の毀損防止）</span>
+  <span class="k">max_change_within_7days_of_stay</span>: 8 <span class="c"># 直前の乱高下を禁止</span>
+  <span class="k">min_price_duration_hours</span>: 24
+
+<span class="k">brand_protection</span>:
+  <span class="k">no_flash_sale</span>: true                 <span class="c"># 直前投げ売り禁止</span>
+  <span class="k">discount_must_be_fenced</span>: true       <span class="c"># 値引きは必ず条件付き（連泊/平日/会員）</span>
+
+<span class="k">channel_policy</span>:
+  <span class="k">direct_advantage</span>: true              <span class="c"># 直販は常に最良条件</span>
+  <span class="k">channel_floor_net</span>: { booking_com: 40000, expedia: 40000 }
+
+<span class="k">override</span>:
+  <span class="k">requires_reason_code</span>: true
+  <span class="k">max_duration_days</span>: 14                <span class="c"># 無期限Overrideを禁止</span>
+  <span class="k">auto_expire</span>: true</pre>
+
+  <h3>Override は禁止しない。測る。</h3>
+
+  <div class="prose">
+    <p>禁止すると現場が壊れる。代わりに全件記録し、成績を毎月可視化する。</p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:12rem">統制</th><th>内容</th><th>狙い</th></tr></thead>
+      <tbody>
+        <tr><td>理由コード必須</td><td><code>VIP_GROUP</code> / <code>COMP_ERROR</code> / <code>EVENT_MISS</code> / <code>OWNER_REQUEST</code> …</td><td>「なんとなく」を不可能にする</td></tr>
+        <tr><td>期限必須（最大14日）</td><td>期限切れで自動的にシステム価格へ復帰</td><td><strong>RMツールが死ぬ最大の原因＝無期限Overrideによる形骸化</strong>を防ぐ</td></tr>
+        <tr><td>全件監査ログ</td><td>係数の内訳・ガードレール適用・bid・最終価格・理由・担当者を保存</td><td>12ヶ月後に「なぜあの値付けだったか」が完全に再現できる</td></tr>
+        <tr><td>月次スコアボード</td><td>Override日の実績 vs システム価格を維持した場合の反実仮想推定</td><td><strong>人と機械のどちらが正しかったかを毎月可視化</strong></td></tr>
+        <tr><td>学習ループ</td><td>特定の理由コードが繰り返し的中 → その判断をルール化しモデルへ組み込む</td><td><strong>暗黙知をシステムの明示知へ昇格させる</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="hd">思想</span>
+    <p>
+      優秀なRMの勘は、捨てるものではなく <strong>回収して仕様書にするもの</strong>である。
+      RM-OS は「人を置き換える装置」ではなく、「<strong>人の判断を資産化する装置</strong>」として設計する。
+    </p>
+  </div>
+
+  <h3>説明できない価格は、OTAに出さない</h3>
+
+  <div class="prose">
+    <p>
+      価格は必ず分解可能な乗算モデルで構成し、日次の決定に人間可読の説明を自動付与する。
+      経営会議で「なぜ4月18日が ¥78,000 なのか」に3秒で答えられることが、システムの受け入れ条件である。
+    </p>
+  </div>
+
+  <div class="formula">
+最終価格 = <b>BASE</b>(室タイプ, 曜日, 季節) × <b>f_demand</b> × <b>f_comp</b> × <b>f_pace</b> × <b>f_event</b>
+         → <b>GUARDRAIL</b> でクリップ（下限／上限／日次変動幅）
+         → <b>BID PRICE</b> で下限を再確認（機会費用を下回る価格は出さない）
+         → 予測の<b>信用区間が広い日</b>は前日価格とブレンド（不確実なときは動かさない）
+
+<span class="c">──────────────────────────────────────────────────────────────
+2026-11-03（火・文化の日）  ¥98,000  (前日比 +8.0%)
+  └ 正倉院展会期 × 紅葉ピーク（f_event 1.22）
+    Comp Set 中央値 ¥86,000 に対し RGI 1.14（方針 1.15 に整合）
+    残2室・残21日 → Bid Price ¥91,400 を上回るため受注可
+    競合6施設中3施設が既に満室（market_pressure 高）
+──────────────────────────────────────────────────────────────</span>
+  </div>
+</section>
+
+<!-- ══ 07 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <h2>OTA戦略 ── 「多く出す」ではなく「正しく選ぶ」</h2>
+    <p class="dek">Channel Portfolio</p>
+  </div>
+
+  <div class="prose">
+    <p>
+      5室に10チャネルを繋ぐと、在庫の奪い合いと運用負荷で Net 収益が落ちる。
+      チャネルは粗利率ではなく <strong>増分貢献</strong> で評価する。
+    </p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>チャネル</th><th>役割</th><th class="num">想定手数料</th><th class="num">目標構成比</th></tr></thead>
+      <tbody>
+        <tr><td><strong>自社直販</strong></td><td>最重要。Net最大</td><td class="num">3–4%</td><td class="num"><strong>40%</strong></td></tr>
+        <tr><td>一休.com</td><td>国内高価格帯の主戦場</td><td class="num">8–10%</td><td class="num">20%</td></tr>
+        <tr><td>Booking.com / Agoda / Expedia</td><td>インバウンド（奈良公園立地は必須）</td><td class="num">15–18%</td><td class="num">20%</td></tr>
+        <tr><td>楽天トラベル / じゃらん</td><td>国内リーチ、ポイント需要</td><td class="num">8–12%</td><td class="num">10%</td></tr>
+        <tr><td>Relux / 特選旅館系</td><td>ブランド訴求・新規認知</td><td class="num">10–15%</td><td class="num">8%</td></tr>
+        <tr><td>Trip.com</td><td>中華圏</td><td class="num">15%</td><td class="num">2%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+    <p>
+      Booking.com の手数料15%は高いが、<strong>そのチャネルがなければ埋まらなかった室夜</strong>なら Net 貢献はプラスである。
+      逆に、直販で取れたはずの客がOTAに流れているならカニバリであり、手数料は純損失になる。
+      この論争を終わらせる唯一の方法は、低需要期に <strong>チャネル・ホールドアウト実験</strong>
+      （年1回、特定チャネルを一時停止してOCC変化を測る）を行うことである。
+    </p>
+  </div>
+
+  <h3>直販比率を上げる ── 価格を下げずに</h3>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:15rem">施策</th><th>内容と効果</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Google ホテル 無料予約リンク</strong></td>
+          <td>Googleのホテル検索に自社サイト料金を無料掲載。サイトコントローラー経由で連携可能。<strong>手数料ゼロの直販導線であり、5室規模でも費用対効果が最も高い最優先施策</strong></td>
+        </tr>
+        <tr>
+          <td>ホテル広告（成果報酬型）</td>
+          <td>Commission per Stay 型なら固定費リスクなし。OTAより低い実効手数料で直販を獲得</td>
+        </tr>
+        <tr>
+          <td>直販限定特典</td>
+          <td>価格ではなく<strong>価値</strong>で差をつける（アーリーチェックイン、館内バー1ドリンク、大和茶のウェルカム、部屋指定）。パリティ問題を回避しつつ直販優位を作る</td>
+        </tr>
+        <tr>
+          <td>メタサーチでの価格整合監視</td>
+          <td>自社が最安（または同額＋特典）で表示される状態を常時監視。「OTAで見た方が安い」を撲滅</td>
+        </tr>
+        <tr>
+          <td>CRM／リピーター</td>
+          <td>宿泊後フォロー、記念日データ保持、非公開先行案内。<strong>5室規模なら個別対応が現実的で、大手より強い</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="hd">5室の宿にとっての最終形</span>
+    <p>
+      年1泊するリピーターが200人いれば、1,825室夜のうち11%が固定需要になる。
+      <strong>RM-OS の最終形は、CRMと統合された「顧客別・機会費用ベースの価格提示」である。</strong>
+      なお国内では公正取引委員会の調査を経て広域レートパリティ条項の是正が進んでおり、直販を優位に置く余地がある。
+      各OTA契約書のパリティ条項を棚卸しし、PPD に許容範囲を明記して、システムはその範囲内でのみ配信する。
+    </p>
+  </div>
+</section>
+
+<!-- ══ 08 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">08</div>
+    <h2>KPI ── Override率が、成功指標そのものである</h2>
+    <p class="dek">Measurement</p>
+  </div>
+
+  <div class="cols">
+    <div class="col">
+      <h4>事業KPIツリー</h4>
+      <ul>
+        <li><strong>Net TRevPAR</strong>（最上位）── 手数料・原価控除後の総売上／販売可能室数</li>
+        <li>客室 Net RevPAR ← ADR × OCC</li>
+        <li><strong>RGI = ARI × MPI</strong> ── 市場に対する総合競争力</li>
+        <li>ブッキングペース（vs STLY, vs Forecast）、LOS Mix</li>
+        <li>F&amp;B Capture Rate、Spend per Guest</li>
+        <li>加重平均手数料率、直販比率</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h4>システム健全性KPI</h4>
+      <ul>
+        <li>予測MAPE（30日前OCC予測誤差）── <strong>&lt; 12%</strong></li>
+        <li><strong>Override率 ── &lt; 15%</strong></li>
+        <li>Override勝率（人 vs 機械）</li>
+        <li>データ収集成功率 ── &gt; 98%</li>
+        <li>配信成功率（read-after-write一致）── &gt; 99.5%</li>
+        <li>価格変更頻度が適正レンジ内（過剰変動はブランド毀損）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>
+      <strong>Override率が下がり続けるなら、暗黙知が順調にシステムへ移管されている。</strong>
+      下がらないなら、モデルかポリシーに欠落がある。
+      目指すのは「使わなくなった」ではなく「<em>使う必要がなくなった</em>」状態である。
+    </p>
+    <p>
+      月次RM会議もアジェンダを固定し、資料はシステムが自動生成する。
+      会議で決めるのは <strong>PPDパラメータの変更承認だけ</strong>であり、
+      「今日いくらにする？」は会議の議題ではない。それはシステムの出力である。
+    </p>
+  </div>
+</section>
+
+<!-- ══ 09 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">09</div>
+    <h2>Build vs Buy ── 買うものを買い、作るものに集中する</h2>
+    <p class="dek">Make-or-Buy Decision</p>
+  </div>
+
+  <div class="cols">
+    <div class="col">
+      <h4>買う ── リスクと汎用性の高い部分</h4>
+      <ul>
+        <li>競合レート収集（商用レートショッパー／Google Hotels 取得API）</li>
+        <li>サイトコントローラー（既存があれば継続）</li>
+        <li>クラウド基盤（BigQuery / Cloud Run）</li>
+      </ul>
+      <p>
+        レート収集は完全なコモディティであり、自作する意味がない上に法務リスクだけ増える。
+      </p>
+    </div>
+    <div class="col">
+      <h4>作る ── 差別化と施設特性の部分</h4>
+      <ul>
+        <li>Bid Price DP による機会費用計算（既製品にない）</li>
+        <li>階層ベイズ需要予測（5室のスパース性に対応）</li>
+        <li>TRevPAR最適化（オーベルジュ固有）</li>
+        <li><strong>PPDのルールエンジン（属人性排除の本体）</strong></li>
+        <li>監査ログと Override スコアボード</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>
+      既製RMSは「100室のビジネスホテルを埋める」ために設計されている。
+      5室・高単価・2食付・世界遺産立地という鹿のやの構造には最適化されていない。
+      ただし <strong>Phase 1 で既製RMSを導入して即座に効果を出しつつ、並行して自社エンジンを構築し、
+      Phase 3 で意思決定層を差し替える</strong>ことで、「効果が出るまで1年待つ」を回避できる。
+    </p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:12rem">選択肢</th><th class="num" style="width:8rem">初期</th><th class="num" style="width:8rem">月額</th><th>評価</th></tr></thead>
+      <tbody>
+        <tr><td>A. Buy（既製RMS）</td><td class="num">低</td><td class="num">¥30k–100k</td><td>即日開始できるが、5室オーベルジュ向けのチューニング不可。TRevPAR最適化・厳密機会費用計算なし</td></tr>
+        <tr><td>B. Build（フルスクラッチ）</td><td class="num">¥3.0M–6.0M</td><td class="num">¥50k–150k</td><td>完全適合・多施設横展開の資産化。ただし立ち上げ期間と法務リスクを自社が負う</td></tr>
+        <tr><td><strong>C. ハイブリッド（推奨）</strong></td><td class="num"><strong>¥1.5M–3.5M</strong></td><td class="num"><strong>¥80k–200k</strong></td><td><strong>収集は買い、意思決定は自作。</strong> 統合の設計が必要だが、投資が差別化領域に集中する</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══ 10 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">10</div>
+    <h2>ロードマップ</h2>
+    <p class="dek">Implementation ／ 完了判定は感覚でなく数値で定義する</p>
+  </div>
+
+  <div class="roadmap">
+    <div class="phase">
+      <span class="p-id">PHASE 0 ／ 0–1ヶ月</span>
+      <span class="p-nm">診断・設計</span>
+      <ul>
+        <li>実績データ棚卸し（3年分）</li>
+        <li>Comp Set 確定</li>
+        <li><strong>PPD v1 策定・オーナー承認</strong></li>
+        <li>KPI定義とベースライン測定</li>
+        <li>サイトコントローラーAPI仕様確認</li>
+      </ul>
+      <span class="exit">Exit ── PPDが承認され、ベースラインRevPARが確定</span>
+    </div>
+    <div class="phase">
+      <span class="p-id">PHASE 1 ／ 1–3ヶ月</span>
+      <span class="p-nm">可視化</span>
+      <ul>
+        <li>L0 競合レート日次収集</li>
+        <li>L1 データ基盤（BigQuery + dbt）</li>
+        <li>RMダッシュボード</li>
+        <li>日次Slack／LINEサマリ</li>
+        <li>既製RMSの並行導入（任意）</li>
+      </ul>
+      <span class="exit">Exit ── 毎朝5分で状況が分かる／収集成功率 98%超</span>
+    </div>
+    <div class="phase">
+      <span class="p-id">PHASE 2 ／ 3–6ヶ月</span>
+      <span class="p-nm">推奨</span>
+      <ul>
+        <li>L2 需要予測エンジン</li>
+        <li>L3 Bid Price DP</li>
+        <li>推奨価格の提示（人が承認して配信）</li>
+        <li>Override理由コード運用開始</li>
+      </ul>
+      <span class="exit">Exit ── MAPE &lt; 15%／推奨採用率 &gt; 60%</span>
+    </div>
+    <div class="phase">
+      <span class="p-id">PHASE 3 ／ 6–9ヶ月</span>
+      <span class="p-nm">自動化</span>
+      <ul>
+        <li>L4 ルールエンジン（PPDのコード化）</li>
+        <li>L5 自動配信＋read-after-write検証</li>
+        <li>LOS／在庫制御（MinLOS, CTA）</li>
+        <li>Overrideスコアボード</li>
+      </ul>
+      <span class="exit">Exit ── ガードレール内は無承認で自動配信／Override率 &lt; 20%</span>
+    </div>
+    <div class="phase">
+      <span class="p-id">PHASE 4 ／ 9–15ヶ月</span>
+      <span class="p-nm">高度化</span>
+      <ul>
+        <li>TRevPAR最適化（F&amp;B統合）</li>
+        <li>価格実験（Thompson Sampling）</li>
+        <li>CRM統合（顧客別提示）</li>
+        <li>多施設横展開のテンプレート化</li>
+      </ul>
+      <span class="exit">Exit ── RevPAR +10%以上／Override率 &lt; 15%</span>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>
+      <strong>Phase 1 の完了だけでも効果が出る。</strong>
+      「毎朝、競合の動きとペースが1画面で見える」だけで人間の判断精度は明確に上がる。
+      最適化エンジンを待つ必要はない。
+    </p>
+  </div>
+</section>
+
+<!-- ══ 11 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">11</div>
+    <h2>投資対効果</h2>
+    <p class="dek">Economics ／ すべて仮定値・要差替</p>
+  </div>
+
+  <div class="formula">
+前提:  5室 ／ 年間販売可能室数 1,825室夜 ／ 現状 ADR ¥55,000・OCC 70% → RevPAR ¥38,500
+      年間客室売上 ≈ ¥70,300,000            年間システムコスト ≈ ¥1,500,000
+
+<b>シナリオ              RevPAR改善     年間増収        純増        ROI</b>
+保守（RevPAR +5%）      +¥1,925      +¥3,510,000     +¥2.0M      2.3x
+標準（RevPAR +10%）     +¥3,850      +¥7,030,000     +¥5.5M      4.7x
+目標（RevPAR +16.3%）   +¥6,160      +¥11,240,000    +¥9.7M      7.5x
+
+さらに 直販比率 25% → 40% により、1,278室夜 × ¥60,500 × 手数料差 8pt
+      ≈ <b>+¥6,200,000</b> の Net 貢献（増収ではなくコスト削減）が上乗せされる
+
+<b>損益分岐は RevPAR +2.1%。</b> RM未整備の施設で初年度に +2% が出ないケースは実務上ほとんどない。
+  </div>
+
+  <h3>数値にならない価値</h3>
+
+  <div class="cols">
+    <div class="col">
+      <h4>事業継続性</h4>
+      <p>RM担当が退職しても運営品質が落ちない。5室の宿にとって、キーパーソン依存は経営リスクそのものである。</p>
+    </div>
+    <div class="col">
+      <h4>横展開資産</h4>
+      <p>複数施設を運営するポートフォリオにおいて、<strong>2施設目以降の導入限界費用はほぼゼロ</strong>。1施設のROIが控えめでも、全体では極めて高い。</p>
+    </div>
+    <div class="col">
+      <h4>企業価値</h4>
+      <p>レベニュー実績とデータ基盤が整った施設は、Cap Rate 評価で有利に働く。<strong>投資家から見た事業の再現性が異なる。</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 12 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">12</div>
+    <h2>リスクと統制</h2>
+    <p class="dek">Risk Register</p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:3rem"></th><th style="width:16rem">リスク</th><th>統制</th></tr></thead>
+      <tbody>
+        <tr><td class="tag">R1</td><td>競合レート取得が規約違反となる</td><td>商用API／SaaSに外部化。<strong>自前スクレイピングを行わない社内規程</strong></td></tr>
+        <tr><td class="tag">R2</td><td>Places API のキャッシュ規約違反</td><td>評点等は30日以内に更新する設計。place_id のみ永続保持</td></tr>
+        <tr><td class="tag">R3</td><td>価格の乱高下でブランド毀損</td><td>日次変動幅上限、価格維持時間、直前値引き禁止（PPDで強制）</td></tr>
+        <tr><td class="tag">R4</td><td>自動配信の障害・誤配信（0円事故）</td><td>ドライラン→再検証→配信→read-after-write→自動ロールバック。<strong>欠損時は前日価格を維持し、決して0を入れない</strong></td></tr>
+        <tr><td class="tag">R5</td><td>少データによる過学習</td><td>階層ベイズ＋事前分布＋信用区間。不確実性が大きい日は価格変更を抑制</td></tr>
+        <tr><td class="tag">R6</td><td>Override常態化でシステムが形骸化</td><td>期限つきOverride（最大14日で自動失効）＋月次スコアボード</td></tr>
+        <tr><td class="tag">R7</td><td>OTA契約のパリティ条項違反</td><td>契約棚卸し → PPDへ反映 → システムが範囲内でのみ配信</td></tr>
+        <tr><td class="tag">R8</td><td>現場がシステムを信用しない</td><td>説明文の自動生成、段階的移行、<strong>Phase 1の「見える化だけ」で先に信頼を獲得</strong></td></tr>
+        <tr><td class="tag">R9</td><td>ベンダーロックイン</td><td>データは自社BigQueryに保持。レートショッパーは差し替え可能な抽象化層の背後に置く</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>運用体制 ── 工数はむしろ減る</h3>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:11rem">役割</th><th style="width:8rem">工数</th><th>責務</th></tr></thead>
+      <tbody>
+        <tr><td>RMオーナー</td><td>月4時間</td><td>PPD承認、月次会議主宰、戦略判断（総支配人／オーナー）</td></tr>
+        <tr><td>RM実務</td><td>週2–3時間</td><td>ダッシュボード確認、Override判断、イベント登録（予約／フロント責任者）</td></tr>
+        <tr><td>データ／システム</td><td>月8–16時間</td><td>収集監視、モデル保守、改善（外部パートナー可）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+    <p>
+      注目すべきは工数の小ささである。現在、属人的RMに投じられている時間
+      ── 毎日の競合サイト巡回、価格の手入力、感覚的判断への迷い ── は、確実にこれより大きい。
+      <strong>RM-OS は工数を増やすのではなく、減らしながら精度を上げる。</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ══ 13 ══════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">13</div>
+    <h2>Phase 0 着手事項</h2>
+    <p class="dek">Next Actions</p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:3rem"></th><th>アクション</th><th style="width:14rem">必要なもの</th><th class="num" style="width:5rem">期限</th></tr></thead>
+      <tbody>
+        <tr><td class="tag">1</td><td>実績データの提供（過去3年：日別 稼働・ADR・チャネル別・LOS・F&amp;B売上・キャンセル）</td><td>PMS／サイトコントローラーのエクスポート</td><td class="num">2週</td></tr>
+        <tr><td class="tag">2</td><td>現行サイトコントローラー／PMSのAPI仕様確認</td><td>ベンダーへの照会</td><td class="num">2週</td></tr>
+        <tr><td class="tag">3</td><td>各OTA契約書のパリティ条項の棚卸し</td><td>契約書一式</td><td class="num">3週</td></tr>
+        <tr><td class="tag">4</td><td>Comp Set 選定の機械的実行</td><td>Places API／レート収集PoC</td><td class="num">3週</td></tr>
+        <tr><td class="tag">5</td><td><strong>PPD v1 のドラフト作成とオーナー承認</strong></td><td>経営方針のヒアリング（2時間×2回）</td><td class="num">4週</td></tr>
+        <tr><td class="tag">6</td><td>ベースラインKPIの確定</td><td>上記1のデータ</td><td class="num">4週</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="hd">最優先は 5 である</span>
+    <p>
+      システムより先に方針を決める。<strong>方針なきシステムは、属人性を「エンジニアの属人性」に
+      移し替えるだけに終わる。</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ══ 総括 ═══════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div class="sec-num">14</div>
+    <h2>総括</h2>
+    <p class="dek">Conclusion</p>
+  </div>
+
+  <div class="prose">
+    <p>鹿のやのレベニューマネジメントを担当者の力量から解放するために必要なのは、高度なAIではない。</p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:3rem"></th><th style="width:22rem">必要なもの</th><th>消える属人性</th></tr></thead>
+      <tbody>
+        <tr><td class="tag">1</td><td>毎日、同じ方法で、競合と市場を観測し続ける仕組み<span class="tag"> ／ L0–L1</span></td><td>「見た人しか知らない」が消える</td></tr>
+        <tr><td class="tag">2</td><td>5室という制約を、機会費用の厳密計算という優位に転換する数理<span class="tag"> ／ L2–L3</span></td><td>「暗算できない判断」が機械に渡る</td></tr>
+        <tr><td class="tag">3</td><td><strong>経営方針を文書化し、システムがそれを強制執行する統治構造</strong><span class="tag"> ／ L4</span></td><td><strong>「勘」が「承認された方針」に昇格する</strong></td></tr>
+        <tr><td class="tag">4</td><td>人の介入を測り、当たった勘をルールへ回収し続けるループ<span class="tag"> ／ L6</span></td><td>「経験」が「資産」に変わる</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+    <p>
+      このうち <em>3 が本質であり、1・2・4 はその実装手段にすぎない</em>。
+    </p>
+    <p>
+      システムを作る前に、<strong>「鹿のやは、どういう価格で、誰に、どう売る宿なのか」を1枚の文書に落とすこと。</strong>
+      そこから始めれば、レベニューマネジメントは属人技能ではなく、経営の再現可能な機能になる。
+    </p>
+  </div>
+</section>
+
+<footer>
+  <span>奈良春日 鹿のや ／ Revenue Management Operating System 構想提案書 ── Draft v1.0</span>
+  <span>本書はドラフトです。実績データの提供を受けた時点で、仮定値を実データに差し替え、Phase 0 の診断結果をもって確定版とします。</span>
+  <span>参照：奈良市観光協会 宿泊データ月報／奈良県宿泊統計調査／観光庁 宿泊旅行統計調査。施設情報は公開情報に基づきます。</span>
+</footer>
+
+</div>
