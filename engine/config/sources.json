@@ -11,24 +11,26 @@
   },
 
   "discovery": {
-    "radius_m": 2500,
-    "_radius_note": "奈良公園・春日野・ならまち圏を覆う半径。広げるほど無関係な施設が増え、狭めると価格帯代替を取りこぼす。四半期レビューで調整する。",
+    "radius_m": 5000,
+    "_radius_note": "奈良公園・春日野・ならまち圏に加え、JR奈良駅周辺・高畑・紀寺まで覆う半径。広げても類似度スコアで並べ替えるため無関係な施設は下位に沈むが、Places APIのリクエスト数（＝費用）は半径の二乗で増える。discover_compset.py が実行前にリクエスト数と概算費用を表示する。",
     "min_review_count": 15,
     "_min_review_note": "レビュー数が極端に少ない施設は価格の信頼性が低く、コンペセットのノイズになるため除外する。",
     "exclude_name_patterns": ["カプセル", "ゲストハウス", "ホステル", "ドミトリー", "民泊"],
     "_exclude_note": "価格帯が2桁違う業態を機械的に落とす。境界事例は四半期レビューで人が判断する。",
-    "max_candidates": 40
+    "max_candidates": 60
   },
 
   "scoring": {
-    "_note": "コンペセット類似度スコアの重み。合計1.0。四半期ごとに再評価する。",
+    "_note": "コンペセット類似度スコアの重み。合計1.0。四半期ごとに再評価する。広い半径では距離より『似ているか』が効くよう、価格帯・規模の比重を上げている。",
     "weights": {
-      "distance": 0.30,
-      "price_band": 0.30,
-      "scale": 0.15,
-      "reputation": 0.15,
+      "distance": 0.22,
+      "price_band": 0.32,
+      "scale": 0.20,
+      "reputation": 0.16,
       "review_volume": 0.10
     },
+    "distance_half_km": 1.5,
+    "_distance_half_km_note": "距離スコアの半減距離。1.5kmで0.5、3kmで0.25、5kmで0.10。探索半径に依存しないため、半径を変えても既存施設のスコアは動かない。",
     "reference_price_level": "PRICE_LEVEL_VERY_EXPENSIVE",
     "reference_rooms": 5,
     "reference_rating": 4.6,

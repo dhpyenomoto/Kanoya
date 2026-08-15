@@ -26,7 +26,7 @@
 | 2 | [データ収集設計](docs/02_データ収集設計.md) | 競合レート取得の経路比較・法務・コスト圧縮・Google系サービスの使い分け |
 | 3 | [システムアーキテクチャ](docs/03_システムアーキテクチャ.md) | 構成・データモデル・ジョブ設計・Build/Buy・監視 |
 | 4 | [導入ロードマップとROI](docs/04_導入ロードマップとROI.md) | 4フェーズの計画・投資対効果・運用体制・成功の定義 |
-| 5 | [収集パイプライン運用手順](docs/05_収集パイプライン運用手順.md) | APIキー設定・コスト管理・障害時の挙動・本番化チェックリスト |
+| 5 | [収集パイプライン運用手順](docs/05_収集パイプライン運用手順.md) | 調査条件の入力・APIキー設定・コスト管理・ADRマトリクス・本番化チェックリスト |
 
 ---
 
@@ -58,10 +58,11 @@ FROM=2026-11-01 TO=2026-11-30 ./scripts/run_pipeline.sh  # 期間を絞る
 
 | 工程 | スクリプト | 内容 |
 |---|---|---|
-| ① 発見 | `discover_compset.py` | Places API で半径2.5km内の宿泊施設を全列挙し、5軸スコアでティア分類 |
+| ① 発見 | `discover_compset.py` | Places API で**半径5km**内の宿泊施設を全列挙し、5軸類似度スコアでティア分類 |
 | ② 確定 | `config/compset_overrides.json` | **人手**で客室数・課金方式・食事条件・uplift を確定（APIからは取得不可） |
 | ③ 収集 | `collect_rates.py` | Google Hotels から階層化スケジュールで実勢価格を収集 |
 | ④ 判断 | `survey_report.py` | NAR正規化して市場ポジションを算出、3シグナル合議でADR判断 |
+| ⑤ 可視化 | `adr_matrix.py` | 施設×日付のADRマトリクス（端末／CSV／HTMLヒートマップ） |
 
 実データで動かす場合は環境変数にAPIキーを設定します（コードには書きません）。
 
@@ -77,7 +78,7 @@ SOURCE=serpapi ./scripts/run_pipeline.sh
 python3 scripts/make_sample_data.py                        # 検証用データ生成
 python3 scripts/calibrate_base.py                          # 基準価格の校正レポート
 python3 -m kanoya_rm.cli --days 120 --explain 2026-11-21   # 推奨価格＋根拠の分解
-python3 -m unittest discover -s tests                      # 回帰テスト（56件）
+python3 -m unittest discover -s tests                      # 回帰テスト（100件）
 ```
 
 出力例：

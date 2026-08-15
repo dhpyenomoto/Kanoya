@@ -103,6 +103,13 @@ def main() -> int:
     print(f"データ源   : {source_label}")
     print(f"起点座標   : {origin[0]:.5f}, {origin[1]:.5f}（{origin_note}）")
     print(f"探索半径   : {radius:,} m ／ 発見 {len(places)} 件 → フィルタ後 {len(candidates)} 件")
+
+    # 1リクエスト20件上限をタイル分割で回避するため、リクエスト数は半径の二乗で増える。
+    # 四半期に1回とはいえ、実行前に費用を見せる。
+    tiles = PlacesSource.plan_requests(radius)
+    unit = float(config["budget"].get("places_nearby_cost_per_request_usd", 0.0))
+    print(f"探索リクエスト: {tiles} 回（タイル分割）"
+          + (f" ／ 概算 ${tiles * unit:,.2f}" if unit and args.source == "places" else ""))
     print()
     print(f"  {'ティア':<13}{'施設名':<26}{'距離':>7}{'評点':>6}{'口コミ':>7}{'価格帯':>6}{'スコア':>7}  要確認")
     print("  " + "-" * 86)

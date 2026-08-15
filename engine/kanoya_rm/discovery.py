@@ -45,6 +45,18 @@ class Candidate:
         return self.place.name
 
 
+def _distance_score(distance_km: float, half_km: float) -> float:
+    """距離の近さ。半減距離による指数減衰.
+
+    以前は「1 − 距離 ÷ 探索半径」としていたが、これだと探索半径を広げるだけで
+    全施設のスコアが動き、ティア分類が勝手に変わってしまう。
+    「2km先の競合がどれだけ近いか」は、5km圏を見ようと2.5km圏を見ようと同じであるべき。
+    """
+    if half_km <= 0:
+        return 0.0
+    return 0.5 ** (max(0.0, distance_km) / half_km)
+
+
 def _price_score(level: str, reference: str) -> tuple[float, bool]:
     """価格帯の近さ。priceLevel 未提供なら中立値＋要確認フラグ."""
     if not level or level not in PRICE_LEVEL_ORDINAL:
@@ -83,7 +95,7 @@ def score_candidates(
     disc = config["discovery"]
     scoring = config["scoring"]
     weights = scoring["weights"]
-    radius_km = disc["radius_m"] / 1000.0
+    half_km = float(scoring.get("distance_half_km", 1.5))
     rooms_override = rooms_override or {}
 
     excluded = [p.lower() for p in disc.get("exclude_name_patterns", [])]
@@ -99,7 +111,7 @@ def score_candidates(
         distance = place.distance_km(*origin)
         rooms = rooms_override.get(place.place_id) or rooms_override.get(place.name)
 
-        s_dist = max(0.0, 1.0 - distance / max(radius_km, 1e-9))
+        s_dist = _distance_score(distance, half_km)
         s_price, price_unknown = _price_score(place.price_level, scoring["reference_price_level"])
         s_scale, scale_unknown = _scale_score(rooms, int(scoring["reference_rooms"]))
         s_rep, rating_unknown = _reputation_score(place.rating, float(scoring["reference_rating"]))

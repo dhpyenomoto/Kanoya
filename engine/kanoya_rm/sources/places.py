@@ -114,33 +114,51 @@ class PlacesSource:
         )
         return [_to_record(p, self.name) for p in payload.get("places") or []]
 
-    @staticmethod
-    def _ring_centers(lat: float, lon: float, radius_m: int) -> list[tuple[float, float, float]]:
+    # 1リクエストあたりの探索円の半径。小さいほど「近い順20件で打ち切られる」
+    # 取りこぼしが減るが、リクエスト数（＝費用）は増える。
+    SUB_RADIUS_M = 900.0
+
+    @classmethod
+    def _ring_centers(cls, lat: float, lon: float,
+                      radius_m: int) -> list[tuple[float, float, float]]:
         """中心＋同心リング上の探索点を返す.
 
         1リクエスト20件上限を回避するため、探索円を小円の集合で覆う。
         密集エリアで「近い順に20件で打ち切られ、遠方の重要な競合が落ちる」
         という取りこぼしを防ぐのが目的。
+
+        リング上の点数は半径に応じて増やす。固定点数だと半径を広げたときに
+        小円の間に隙間ができ、そこにある施設を丸ごと取りこぼす。
         """
-        centers: list[tuple[float, float, float]] = [(lat, lon, min(radius_m, 800))]
-        if radius_m <= 800:
+        sub = cls.SUB_RADIUS_M
+        centers: list[tuple[float, float, float]] = [(lat, lon, min(float(radius_m), sub))]
+        if radius_m <= sub:
             return centers
 
         deg_lat = 1.0 / 110_574.0
         deg_lon = 1.0 / (111_320.0 * math.cos(math.radians(lat)) or 1.0)
 
-        for ring_radius, points in ((radius_m * 0.55, 6), (radius_m * 0.9, 8)):
-            if ring_radius <= 400:
-                continue
-            sub_radius = min(900.0, ring_radius * 0.7)
+        # 隣接する小円が重なるよう、間隔を sub*1.5 に抑える
+        spacing = sub * 1.5
+        ring_radius = sub * 1.4
+        while ring_radius < radius_m + sub * 0.5:
+            effective = min(ring_radius, float(radius_m))
+            points = max(6, math.ceil(2 * math.pi * effective / spacing))
             for i in range(points):
                 theta = 2 * math.pi * i / points
                 centers.append((
-                    lat + ring_radius * math.cos(theta) * deg_lat,
-                    lon + ring_radius * math.sin(theta) * deg_lon,
-                    sub_radius,
+                    lat + effective * math.cos(theta) * deg_lat,
+                    lon + effective * math.sin(theta) * deg_lon,
+                    sub,
                 ))
+            ring_radius += spacing
+
         return centers
+
+    @classmethod
+    def plan_requests(cls, radius_m: int) -> int:
+        """探索に必要なリクエスト数（費用の事前提示に使う）."""
+        return len(cls._ring_centers(0.0, 135.0, radius_m))
 
 
 def _to_record(place: dict, source: str) -> PlaceRecord:

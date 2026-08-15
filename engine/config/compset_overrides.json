@@ -71,6 +71,22 @@
     "コンフォートホテル奈良": {
       "rooms": 120, "pricing_basis": "per_room", "meal_included": "breakfast",
       "dinner_uplift": 8000, "breakfast_uplift": 0, "confirmed": false
+    },
+    "月日亭": {
+      "rooms": 6, "pricing_basis": "per_room", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0, "confirmed": false
+    },
+    "ホテル日航奈良": {
+      "rooms": 330, "pricing_basis": "per_room", "meal_included": "breakfast",
+      "dinner_uplift": 10000, "breakfast_uplift": 0, "confirmed": false
+    },
+    "奈良ロイヤルホテル": {
+      "rooms": 130, "pricing_basis": "per_room", "meal_included": "breakfast",
+      "dinner_uplift": 9000, "breakfast_uplift": 0, "confirmed": false
+    },
+    "スーパーホテルLohas JR奈良駅": {
+      "rooms": 200, "pricing_basis": "per_room", "meal_included": "breakfast",
+      "dinner_uplift": 8000, "breakfast_uplift": 0, "confirmed": false
     }
   }
 }
