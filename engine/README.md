@@ -2,7 +2,43 @@
 
 依存パッケージなし（Python 3.11+ 標準ライブラリのみ）。
 
-## 使い方
+## 収集パイプライン（発見 → 収集 → ADR判断）
+
+近隣宿泊施設の列挙、OTA掲出価格の収集、ADR判断までを一気通貫で実行します。
+
+```bash
+./scripts/run_pipeline.sh          # APIキー不要（フィクスチャ再生）
+```
+
+個別に実行する場合:
+
+```bash
+# ① 近隣宿泊施設の発見とコンペセット候補生成（四半期に1回）
+python3 scripts/discover_compset.py --source places --radius 2500
+
+# ② 施設属性を config/compset_overrides.json で人が確定 → 昇格
+python3 scripts/discover_compset.py --source places --write
+
+# ③ 競合レート収集（日次）。まず計画とコストを確認
+python3 scripts/collect_rates.py --plan-only
+python3 scripts/collect_rates.py --source serpapi
+
+# ④ マーケットポジション調査とADR判断（日次）
+python3 scripts/survey_report.py --explain 2026-11-21
+```
+
+APIキーは環境変数から読みます（コードに書きません）。未設定なら `--source fixture`
+で全工程がオフライン実行できます。
+
+```bash
+export GOOGLE_PLACES_API_KEY='...'
+export SERPAPI_API_KEY='...'
+```
+
+運用手順・コスト管理・障害時の挙動は
+[../docs/05_収集パイプライン運用手順.md](../docs/05_収集パイプライン運用手順.md)。
+
+## プライシング単体
 
 ```bash
 # 1. 検証用データ生成（本番では レートショッパー / PMS コネクタの出力に置換）
@@ -18,7 +54,8 @@ python3 -m kanoya_rm.cli --days 120 --explain 2026-11-21
 python3 -m unittest discover -s tests -v
 ```
 
-出力は `out/recommendations.csv`（Excelでそのまま開けるBOM付きUTF-8）。
+出力は `out/recommendations.csv` と `out/market_survey.csv`
+（Excelでそのまま開けるBOM付きUTF-8）。
 
 ## 価格算定式
 
@@ -51,6 +88,15 @@ log P = log(P_base) + b_pace·z_pace + b_comp·z_comp
 
 | ファイル | 役割 |
 |---|---|
+| `sources/http.py` | HTTPクライアント（リトライ・レート制限・生データキャッシュ・キー秘匿） |
+| `sources/places.py` | Google Places API (New)。**施設発見とレビュー速度専用**（価格は取得不可） |
+| `sources/serpapi_hotels.py` | SerpApi google_hotels。競合の実勢価格（主データ源） |
+| `sources/dataforseo_hotels.py` | DataForSEO。代替経路・クロスチェック用 |
+| `sources/fixture.py` | 記録済みレスポンスの再生（実コネクタと同じパーサを通す） |
+| `discovery.py` | コンペセットの5軸スコアリングとティア分類 |
+| `schedule.py` | 階層化収集スケジュール（スロット方式）とコスト見積 |
+| `collect.py` | 収集オーケストレーションと施設名の名寄せ |
+| `survey.py` | マーケットポジション調査・3シグナル合議によるADR判断 |
 | `config.py` | 設定読込、シーズン／イベント／祝日の解決、日カテゴリ算定 |
 | `normalize.py` | 競合価格 → NAR（1室2名1泊2食・税サ込）正規化 |
 | `compset.py` | 重み付き中央値、市場逼迫度、**イベント自動検知** |
@@ -71,6 +117,8 @@ log P = log(P_base) + b_pace·z_pace + b_comp·z_comp
 | `config/property.json` | 施設情報、基準価格、ガードレール、係数、リードタイム曲線、チャネル手数料 |
 | `config/compset.json` | コンペセット（ティア・重み・課金方式・食事uplift） |
 | `config/calendar.json` | シーズン区分、イベント、祝日、ペースベンチマーク |
+| `config/sources.json` | データ源、探索半径、スコア重み、収集階層、予算上限、レート制限 |
+| `config/compset_overrides.json` | **人が確定した施設属性**（客室数・課金方式・食事条件・uplift）。再発見しても上書きされない |
 
 ## 本番化にあたって差し替えるもの
 

@@ -26,6 +26,7 @@
 | 2 | [データ収集設計](docs/02_データ収集設計.md) | 競合レート取得の経路比較・法務・コスト圧縮・Google系サービスの使い分け |
 | 3 | [システムアーキテクチャ](docs/03_システムアーキテクチャ.md) | 構成・データモデル・ジョブ設計・Build/Buy・監視 |
 | 4 | [導入ロードマップとROI](docs/04_導入ロードマップとROI.md) | 4フェーズの計画・投資対効果・運用体制・成功の定義 |
+| 5 | [収集パイプライン運用手順](docs/05_収集パイプライン運用手順.md) | APIキー設定・コスト管理・障害時の挙動・本番化チェックリスト |
 
 ---
 
@@ -33,13 +34,35 @@
 
 企画書の数式・ガードレール・出力フォーマットは、すべて動作するコードとして `engine/` に実装されています（標準ライブラリのみ、依存パッケージなし）。
 
+### 収集パイプライン（発見 → 収集 → ADR判断）
+
 ```bash
 cd engine
+./scripts/run_pipeline.sh     # APIキー不要のオフライン実行
+```
 
+| 工程 | スクリプト | 内容 |
+|---|---|---|
+| ① 発見 | `discover_compset.py` | Places API で半径2.5km内の宿泊施設を全列挙し、5軸スコアでティア分類 |
+| ② 確定 | `config/compset_overrides.json` | **人手**で客室数・課金方式・食事条件・uplift を確定（APIからは取得不可） |
+| ③ 収集 | `collect_rates.py` | Google Hotels から階層化スケジュールで実勢価格を収集 |
+| ④ 判断 | `survey_report.py` | NAR正規化して市場ポジションを算出、3シグナル合議でADR判断 |
+
+実データで動かす場合は環境変数にAPIキーを設定します（コードには書きません）。
+
+```bash
+export GOOGLE_PLACES_API_KEY='...'
+export SERPAPI_API_KEY='...'
+SOURCE=serpapi ./scripts/run_pipeline.sh
+```
+
+### プライシング単体
+
+```bash
 python3 scripts/make_sample_data.py                        # 検証用データ生成
 python3 scripts/calibrate_base.py                          # 基準価格の校正レポート
 python3 -m kanoya_rm.cli --days 120 --explain 2026-11-21   # 推奨価格＋根拠の分解
-python3 -m unittest discover -s tests                      # 回帰テスト（22件）
+python3 -m unittest discover -s tests                      # 回帰テスト（56件）
 ```
 
 出力例：
@@ -56,7 +79,16 @@ python3 -m unittest discover -s tests                      # 回帰テスト（2
   モデル出力                           169,623 円
    ガードレール: 日次変動幅 ±15% で上方制限
   ▶ 推奨価格   152,000 円（現行 132,000 円 / +15.2% / 要承認）
-  競合NAR中央値 127,100 円 に対し 1.20 倍 ／ 紅葉ピーク
+  競合NAR中央値 131,900 円 に対し 1.15 倍 ／ 紅葉ピーク
+
+  競合内訳（NAR = 1室2名2食・税サ込 換算）  サンプル12件
+    ふふ奈良                             213,400 円
+    ANDO HOTEL 奈良若草山                 154,400 円
+    古都の宿 むさし野                        146,300 円
+    江戸三                              142,300 円
+    NIPPONIA HOTEL 奈良ならまち            131,900 円
+    奈良ホテル                            120,800 円
+    ...
 ```
 
 詳細は [engine/README.md](engine/README.md)。

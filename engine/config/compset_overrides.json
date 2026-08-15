@@ -1,0 +1,76 @@
+{
+  "_note": "人が確定した施設属性。discover_compset.py が再実行されても上書きされない『人間の知見の置き場』。Places API / Google Hotels からは取得できない項目（客室数・課金方式・食事形態・食事uplift）をここで確定する。",
+
+  "_critical": "dinner_uplift / breakfast_uplift の誤りは NAR 正規化を体系的に歪め、しかもエンジン内では正常値に見える。四半期に1度、実際のOTA画面と突合して検証すること。",
+
+  "_uplift_method": "競合のレストラン公開価格、近隣同格店の客単価、自社の食事原価と提供価値からの逆算、の3点を突き合わせて置く。",
+
+  "_status": "下記はすべて公開情報からの想定値であり、Phase 0 の現地確認で確定する。",
+
+  "overrides": {
+    "奈良ホテル": {
+      "rooms": 90, "pricing_basis": "per_room", "meal_included": "none",
+      "dinner_uplift": 15000, "breakfast_uplift": 5500, "confirmed": false
+    },
+    "ふふ奈良": {
+      "rooms": 30, "pricing_basis": "per_room", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0, "confirmed": false
+    },
+    "ANDO HOTEL 奈良若草山": {
+      "rooms": 21, "pricing_basis": "per_room", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0, "confirmed": false
+    },
+    "江戸三": {
+      "rooms": 11, "pricing_basis": "per_room", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0, "confirmed": false
+    },
+    "古都の宿 むさし野": {
+      "rooms": 14, "pricing_basis": "per_room", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0, "confirmed": false
+    },
+    "静観荘": {
+      "rooms": 12, "pricing_basis": "per_room", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0, "confirmed": false
+    },
+    "飛鳥荘": {
+      "rooms": 60, "pricing_basis": "per_room", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0, "confirmed": false
+    },
+    "春日ホテル": {
+      "rooms": 60, "pricing_basis": "per_room", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0, "confirmed": false
+    },
+    "奈良万葉若草の宿 三笠": {
+      "rooms": 40, "pricing_basis": "per_room", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0, "confirmed": false
+    },
+    "NIPPONIA HOTEL 奈良ならまち": {
+      "rooms": 12, "pricing_basis": "per_room", "meal_included": "breakfast",
+      "dinner_uplift": 18000, "breakfast_uplift": 0, "confirmed": false
+    },
+    "セトレ ならまち": {
+      "rooms": 20, "pricing_basis": "per_room", "meal_included": "breakfast",
+      "dinner_uplift": 14000, "breakfast_uplift": 0, "confirmed": false
+    },
+    "ホテルニューわかさ": {
+      "rooms": 40, "pricing_basis": "per_room", "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0, "breakfast_uplift": 0, "confirmed": false
+    },
+    "紀寺の家": {
+      "rooms": 8, "pricing_basis": "per_room", "meal_included": "none",
+      "dinner_uplift": 12000, "breakfast_uplift": 4000, "confirmed": false
+    },
+    "奈良倶楽部": {
+      "rooms": 10, "pricing_basis": "per_room", "meal_included": "breakfast",
+      "dinner_uplift": 10000, "breakfast_uplift": 0, "confirmed": false
+    },
+    "東横INN近鉄奈良駅前": {
+      "rooms": 200, "pricing_basis": "per_room", "meal_included": "breakfast",
+      "dinner_uplift": 8000, "breakfast_uplift": 0, "confirmed": false
+    },
+    "コンフォートホテル奈良": {
+      "rooms": 120, "pricing_basis": "per_room", "meal_included": "breakfast",
+      "dinner_uplift": 8000, "breakfast_uplift": 0, "confirmed": false
+    }
+  }
+}

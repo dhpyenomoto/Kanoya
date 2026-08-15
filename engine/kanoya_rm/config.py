@@ -38,6 +38,10 @@ class Competitor:
     meal_included: str
     dinner_uplift: float
     breakfast_uplift: float
+    place_id: str = ""
+    latitude: float = 0.0
+    longitude: float = 0.0
+    needs_review: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -49,10 +53,19 @@ class Settings:
     competitors: dict[str, Competitor] = field(default_factory=dict)
 
     @classmethod
-    def load(cls, config_dir: str | Path) -> "Settings":
+    def load(cls, config_dir: str | Path, *,
+             compset_file: str | Path | None = None) -> "Settings":
+        """設定を読み込む.
+
+        compset_file を指定すると、既定の compset.json ではなく任意の
+        コンペセット定義（discover_compset.py の生成物など）を使用する。
+        """
         root = Path(config_dir)
         prop = _load_json(root / "property.json")
-        compset = _load_json(root / "compset.json")
+        compset_path = Path(compset_file) if compset_file else root / "compset.json"
+        if not compset_path.is_absolute() and compset_file:
+            compset_path = Path(compset_file)
+        compset = _load_json(compset_path)
         calendar = _load_json(root / "calendar.json")
         competitors = {
             c["id"]: Competitor(
@@ -60,12 +73,16 @@ class Settings:
                 name=c["name"],
                 tier=c["tier"],
                 weight=float(c["weight"]),
-                rooms=int(c["rooms"]),
-                distance_km=float(c["distance_km"]),
+                rooms=int(c.get("rooms") or 0),
+                distance_km=float(c.get("distance_km") or 0.0),
                 pricing_basis=c["pricing_basis"],
                 meal_included=c["meal_included"],
                 dinner_uplift=float(c.get("dinner_uplift", 0)),
                 breakfast_uplift=float(c.get("breakfast_uplift", 0)),
+                place_id=c.get("place_id", ""),
+                latitude=float(c.get("latitude") or 0.0),
+                longitude=float(c.get("longitude") or 0.0),
+                needs_review=list(c.get("needs_review") or []),
             )
             for c in compset["competitors"]
         }
