@@ -1,0 +1,1158 @@
+<title>鹿のや レベニューOS</title>
+<style>
+  :root {
+    --paper:        #F5F6F2;
+    --paper-raised: #FFFFFF;
+    --paper-sunk:   #ECEEE8;
+    --ink:          #1A1F1B;
+    --ink-soft:     #4A524B;
+    --ink-mute:     #7C857D;
+    --rule:         #D7DCD3;
+    --rule-strong:  #B9C0B6;
+    --accent:       #6B5CA5;
+    --accent-soft:  #EBE7F5;
+    --accent-ink:   #4C3F7E;
+    --data:         #2F5D8C;
+    --good:         #46764A;
+    --warn:         #9E6E15;
+    --crit:         #A8432F;
+    --shadow:       0 1px 2px rgba(26,31,27,.05), 0 6px 20px rgba(26,31,27,.05);
+
+    --font-display: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", "Source Han Serif JP", "Songti SC", serif;
+    --font-body: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", YuGothic, "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Roboto Mono", "Courier New", monospace;
+
+    --measure: 34rem;
+    --gutter: clamp(1.25rem, 4vw, 3rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:        #131714;
+      --paper-raised: #1B201C;
+      --paper-sunk:   #0E110F;
+      --ink:          #E7EBE5;
+      --ink-soft:     #AFB7B0;
+      --ink-mute:     #7F887F;
+      --rule:         #2B322C;
+      --rule-strong:  #414A42;
+      --accent:       #AC9EE2;
+      --accent-soft:  #241F36;
+      --accent-ink:   #C9BFEE;
+      --data:         #85AEDA;
+      --good:         #7FB884;
+      --warn:         #D6A755;
+      --crit:         #DF8A76;
+      --shadow:       0 1px 2px rgba(0,0,0,.4), 0 8px 26px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:        #131714;
+    --paper-raised: #1B201C;
+    --paper-sunk:   #0E110F;
+    --ink:          #E7EBE5;
+    --ink-soft:     #AFB7B0;
+    --ink-mute:     #7F887F;
+    --rule:         #2B322C;
+    --rule-strong:  #414A42;
+    --accent:       #AC9EE2;
+    --accent-soft:  #241F36;
+    --accent-ink:   #C9BFEE;
+    --data:         #85AEDA;
+    --good:         #7FB884;
+    --warn:         #D6A755;
+    --crit:         #DF8A76;
+    --shadow:       0 1px 2px rgba(0,0,0,.4), 0 8px 26px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.85;
+    font-feature-settings: "palt" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 var(--gutter) 6rem; }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    border-bottom: 2px solid var(--ink);
+    padding: clamp(2.5rem, 6vw, 4.5rem) 0 1.5rem;
+    margin-bottom: 3rem;
+  }
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: .7rem;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 1.5rem;
+  }
+  .masthead h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2.1rem, 5.2vw, 3.6rem);
+    line-height: 1.25;
+    letter-spacing: .01em;
+    margin: 0 0 .6rem;
+    text-wrap: balance;
+  }
+  .masthead .sub {
+    font-family: var(--font-display);
+    font-size: clamp(1rem, 2.2vw, 1.3rem);
+    color: var(--ink-soft);
+    margin: 0 0 2.25rem;
+    max-width: 46rem;
+    line-height: 1.7;
+  }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: .5rem 2.5rem;
+    font-family: var(--font-mono); font-size: .72rem;
+    letter-spacing: .06em; color: var(--ink-mute);
+  }
+  .meta-row b { color: var(--ink-soft); font-weight: 500; }
+
+  /* ---------- section scaffolding ---------- */
+  section { display: grid; grid-template-columns: 5.5rem minmax(0,1fr); gap: 0 2.5rem; padding: 3.25rem 0 0; }
+  section + section { border-top: 1px solid var(--rule); margin-top: 3.25rem; }
+  .rail { position: relative; }
+  .rail .num {
+    position: sticky; top: 1.5rem;
+    font-family: var(--font-mono);
+    font-size: .78rem; letter-spacing: .1em;
+    color: var(--accent); display: block;
+  }
+  .rail .num small { display: block; color: var(--ink-mute); font-size: .66rem; letter-spacing: .14em; margin-top: .35rem; line-height: 1.5; }
+  .body { min-width: 0; }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.45rem, 3.2vw, 2rem);
+    line-height: 1.4; letter-spacing: .01em;
+    margin: 0 0 1.25rem; text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--font-body);
+    font-weight: 700; font-size: 1.02rem; line-height: 1.6;
+    margin: 2.5rem 0 .75rem;
+    padding-bottom: .4rem;
+    border-bottom: 1px solid var(--rule);
+    letter-spacing: .02em;
+  }
+  h4 { font-size: .88rem; font-weight: 700; margin: 1.75rem 0 .5rem; letter-spacing: .04em; color: var(--ink-soft); }
+  p { margin: 0 0 1.1rem; max-width: var(--measure); }
+  .body > ul, .body > ol { max-width: var(--measure); padding-left: 1.25rem; margin: 0 0 1.2rem; }
+  li { margin-bottom: .45rem; }
+  strong { font-weight: 700; }
+  em { font-style: normal; background: linear-gradient(transparent 62%, var(--accent-soft) 62%); padding: 0 .1em; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+  code { font-family: var(--font-mono); font-size: .86em; background: var(--paper-sunk); padding: .1em .35em; border-radius: 3px; }
+
+  .lede { font-family: var(--font-display); font-size: 1.12rem; line-height: 1.8; color: var(--ink-soft); max-width: 38rem; }
+
+  /* ---------- components ---------- */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--paper-raised);
+    padding: 1.1rem 1.35rem;
+    margin: 1.75rem 0;
+    max-width: var(--measure);
+    box-shadow: var(--shadow);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .tag {
+    font-family: var(--font-mono); font-size: .64rem; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: .5rem;
+  }
+  .callout.crit { border-left-color: var(--crit); }
+  .callout.crit .tag { color: var(--crit); }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.warn .tag { color: var(--warn); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin: 2rem 0; }
+  .tile { background: var(--paper-raised); padding: 1.1rem 1.15rem; }
+  .tile .lbl { font-family: var(--font-mono); font-size: .63rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-mute); display: block; margin-bottom: .5rem; }
+  .tile .val { font-family: var(--font-display); font-size: 1.75rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; display: block; }
+  .tile .val.pos { color: var(--good); }
+  .tile .note { font-size: .74rem; color: var(--ink-mute); line-height: 1.55; display: block; margin-top: .45rem; }
+
+  .scroll { overflow-x: auto; margin: 1.5rem 0 1.75rem; border: 1px solid var(--rule); background: var(--paper-raised); }
+  table { border-collapse: collapse; width: 100%; font-size: .82rem; min-width: 540px; }
+  th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--rule); vertical-align: top; line-height: 1.65; }
+  thead th {
+    font-family: var(--font-mono); font-size: .64rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-mute); font-weight: 500; background: var(--paper-sunk);
+    border-bottom: 1px solid var(--rule-strong); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.key { font-weight: 700; white-space: nowrap; }
+  .pill { display: inline-block; font-family: var(--font-mono); font-size: .63rem; letter-spacing: .08em; padding: .12rem .45rem; border-radius: 2px; border: 1px solid currentColor; white-space: nowrap; }
+  .pill.rec { color: var(--good); }
+  .pill.no { color: var(--crit); }
+  .pill.mid { color: var(--warn); }
+
+  figure { margin: 2rem 0; }
+  figcaption { font-family: var(--font-mono); font-size: .66rem; letter-spacing: .1em; color: var(--ink-mute); margin-top: .7rem; text-transform: uppercase; }
+
+  .formula {
+    background: var(--paper-raised); border: 1px solid var(--rule);
+    padding: 1.4rem 1.5rem; margin: 1.75rem 0; overflow-x: auto;
+    font-family: var(--font-mono); font-size: .84rem; line-height: 2.1;
+  }
+  .formula .v { color: var(--accent); }
+  .formula .c { color: var(--ink-mute); }
+  .formula .n { color: var(--data); }
+
+  /* demand calendar */
+  .cal { display: grid; grid-template-columns: repeat(12, minmax(58px,1fr)); gap: 2px; margin: 1.5rem 0 .5rem; min-width: 720px; }
+  .cal .m { background: var(--paper-raised); border: 1px solid var(--rule); padding: .5rem .4rem; }
+  .cal .m b { display: block; font-family: var(--font-mono); font-size: .7rem; letter-spacing: .04em; }
+  .cal .bar { height: 4px; margin: .45rem 0; background: var(--rule); }
+  .cal .bar i { display: block; height: 100%; background: var(--accent); }
+  .cal .m span { display: block; font-size: .66rem; line-height: 1.5; color: var(--ink-soft); }
+
+  /* compset weights */
+  .weights { margin: 1.5rem 0; max-width: 40rem; }
+  .wrow { display: grid; grid-template-columns: minmax(0,13rem) 1fr 3rem; gap: .75rem; align-items: center; padding: .4rem 0; border-bottom: 1px solid var(--rule); font-size: .82rem; }
+  .wrow:last-child { border-bottom: none; }
+  .wbar { height: 8px; background: var(--paper-sunk); }
+  .wbar i { display: block; height: 100%; background: var(--accent); }
+  .wbar i.sec { background: var(--data); }
+  .wrow .pct { font-family: var(--font-mono); font-size: .75rem; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+
+  /* roadmap */
+  .gantt { display: grid; grid-template-columns: 8.5rem repeat(12, 1fr); gap: 2px 0; font-size: .74rem; margin: 1.5rem 0; min-width: 640px; align-items: center; }
+  .gantt .hd { font-family: var(--font-mono); font-size: .6rem; color: var(--ink-mute); text-align: center; padding-bottom: .35rem; letter-spacing: .04em; }
+  .gantt .ph { font-weight: 700; padding-right: .75rem; font-size: .76rem; }
+  .gantt .seg { height: 22px; background: var(--accent); display: flex; align-items: center; justify-content: center; color: var(--paper); font-family: var(--font-mono); font-size: .6rem; letter-spacing: .06em; white-space: nowrap; padding: 0 .4rem; }
+  .gantt .seg.p2 { background: var(--data); }
+  .gantt .seg.p3 { background: var(--good); }
+  .gantt .seg.p4 { background: var(--rule-strong); color: var(--ink); }
+
+  details { border: 1px solid var(--rule); background: var(--paper-raised); padding: .85rem 1.1rem; margin: 1rem 0; max-width: var(--measure); }
+  summary { cursor: pointer; font-weight: 700; font-size: .86rem; letter-spacing: .02em; }
+  details[open] summary { margin-bottom: .85rem; padding-bottom: .6rem; border-bottom: 1px solid var(--rule); }
+  details p:last-child, details ul:last-child { margin-bottom: 0; }
+
+  .footnote { font-size: .76rem; color: var(--ink-mute); line-height: 1.8; max-width: 42rem; }
+  .footnote a { color: var(--ink-soft); }
+
+  svg { display: block; max-width: 100%; height: auto; }
+
+  @media (max-width: 780px) {
+    section { grid-template-columns: 1fr; gap: 0; }
+    .rail { margin-bottom: 1rem; }
+    .rail .num { position: static; }
+    .rail .num small { display: inline; margin-left: .75rem; }
+    .wrow { grid-template-columns: 1fr; gap: .25rem; }
+    .wrow .pct { text-align: left; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker">Revenue Operating System — Proposal v1.0</p>
+  <h1>属人性を排したレベニューマネジメント基盤</h1>
+  <p class="sub">奈良春日 鹿のや／5室オーベルジュのための、競合レート自動収集から推奨ADR配信までの一気通貫システム構想</p>
+  <div class="meta-row">
+    <span><b>対象施設</b> 奈良春日 鹿のや（奈良市春日野町・全5室）</span>
+    <span><b>作成日</b> 2026年8月15日</span>
+    <span><b>区分</b> 企画提案（Draft for Discussion）</span>
+  </div>
+</header>
+
+<!-- =============== 00 =============== -->
+<section>
+  <div class="rail"><span class="num">00<small>要旨</small></span></div>
+  <div class="body">
+    <h2>エグゼクティブ・サマリー</h2>
+    <p class="lede">本提案の結論は一点に尽きます。<strong>レベニューマネジャーという「人」を採用するのではなく、その人が行っている判断を分解し、機械が担う部分・ルールが担う部分・人が担う部分に再配置する</strong>。これを「レベニューOS」と呼びます。</p>
+
+    <p>優秀なレベニューマネジャーの市場価値は年収800万〜1,500万円。5室の施設が単独で抱えるのは経済合理性がありません。しかし単価が高いがゆえに、価格判断の巧拙が収益に与える影響は大規模ホテル以上に大きい。この構造的ジレンマを解くのが本構想です。</p>
+
+    <div class="tiles">
+      <div class="tile"><span class="lbl">Annual Room Nights</span><span class="val">1,825</span><span class="note">5室 × 365日。この極小在庫が設計の全前提</span></div>
+      <div class="tile"><span class="lbl">RevPAR 改善目標</span><span class="val pos">+8〜12%</span><span class="note">ADR +4〜7% / 稼働 +2〜4pt の複合</span></div>
+      <div class="tile"><span class="lbl">年間増収インパクト</span><span class="val pos">+760万円</span><span class="note">基準ADR¥80,000・稼働65%想定時</span></div>
+      <div class="tile"><span class="lbl">投資回収期間</span><span class="val">6〜12ヶ月</span><span class="note">ハイブリッド構成・初期¥2.5〜5.0M想定</span></div>
+    </div>
+
+    <h3>本提案が置く5つの前提認識</h3>
+    <ol>
+      <li><strong>最適化対象はRevPARではなくTRevPAR／GOPPAR。</strong> オーベルジュの真のボトルネックは客室ではなく厨房とレストラン席数です。客室単価だけを最適化すると、原価率の高い日に安く売るという誤りを犯します。</li>
+      <li><strong>5室では「統計的最適化」より「機会費用の管理」が効く。</strong> 大型ホテル向けRMSの連続需要曲線モデルは過剰です。必要なのは<em>ペース監視 × 決定表 × ガードレール</em>という、検証可能で説明可能な構造。</li>
+      <li><strong>価格は下方硬直・上方弾力に設計する。</strong> ラグジュアリー小規模宿の最大リスクは、直前値下げによるブランド毀損と既存予約者への不公平です。需要が弱い日は<em>値段を下げるのではなく、価値を足す</em>ルールに翻訳します。</li>
+      <li><strong>Googleマップは価格の情報源にはならない。</strong> ご指摘のGoogleマップ活用は、需要・評判・混雑のシグナル源としては極めて有効ですが、競合の宿泊単価そのものの取得手段としては技術的にも規約的にも成立しません。詳細は第4章。<strong>価格は正規ライセンスで取得する</strong>のが唯一の持続可能解です。</li>
+      <li><strong>ノウハウは社内資産として保有する。</strong> 意思決定ロジックを外部SaaSに預けきると、2施設目の展開時に同じ費用を再度払うことになります。データ取得は買い、判断ロジックは持つ。</li>
+    </ol>
+
+    <div class="callout">
+      <span class="tag">投資判断のコア</span>
+      <p>年間1,825室夜。ADRが1泊あたり<strong>4,000円</strong>（基準比5%）改善するだけで、稼働65%なら年間<strong>約475万円</strong>の増収です。この増分にはほぼ変動費が伴いません。つまり<strong>ほぼ全額が営業利益</strong>。これが本投資の経済的な核心であり、システム構築費を1年以内に回収できる根拠です。</p>
+    </div>
+  </div>
+</section>
+
+<!-- =============== 01 =============== -->
+<section>
+  <div class="rail"><span class="num">01<small>施設理解</small></span></div>
+  <div class="body">
+    <h2>対象施設の構造分析</h2>
+
+    <p>鹿のやは2024年3月開業、奈良公園内・春日大社の水谷参道口に位置する全5室のオーベルジュです。近鉄奈良駅から車で約5分、東大寺・若草山が徒歩圏。客室はそれぞれ意匠が異なり、料飲はフレンチをベースに和の要素を取り込んだコース。楽天トラベル・じゃらん・一休.comほかに販売面があります。</p>
+
+    <h3>この施設のレベニュー構造がもつ特異性</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>特性</th><th>一般的なホテル</th><th>鹿のや</th><th>レベニュー設計への含意</th></tr></thead>
+        <tbody>
+          <tr><td class="key">在庫規模</td><td>100〜300室</td><td>5室</td><td>1室の売り損じ＝在庫の20%。統計より個別判断の精度が支配的</td></tr>
+          <tr><td class="key">収益構成</td><td>客室70〜85%</td><td>客室55〜65%／料飲35〜45%</td><td>KPIはRevPARでなくTRevPAR。F&amp;B原価と席数の制約を式に入れる</td></tr>
+          <tr><td class="key">商品形態</td><td>素泊まり中心</td><td>2食付が基本</td><td>競合との価格比較には<em>条件正規化</em>が必須。素泊まり価格とは直接比較不能</td></tr>
+          <tr><td class="key">価格帯</td><td>1〜3万円</td><td>6〜12万円想定</td><td>需要の価格弾力性が低く、稼働は取りやすいが単価毀損の傷は深い</td></tr>
+          <tr><td class="key">販売チャネル</td><td>OTA＋直販＋法人</td><td>OTA中心／直販未成熟</td><td>手数料10〜18%の削減余地が、価格最適化と同等の利益インパクト</td></tr>
+          <tr><td class="key">データ蓄積</td><td>5〜10年</td><td>約2年半</td><td>季節性の学習には周期数が不足。<em>コールドスタート設計</em>が必要</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="tag">最重要の制約</span>
+      <p><strong>レストランの席数と仕込み能力が、客室在庫より先に埋まる日がある。</strong> 5室満室でも、宿泊外のレストラン利用を受けている日は厨房が先に限界を迎えます。したがって価格エンジンは「客室の空き」ではなく「<strong>受入可能な組数と客数</strong>」を在庫単位として扱う必要があります。これを最初に定義しないシステムは、繁忙期に必ず破綻します。</p>
+    </div>
+
+    <h4>基準となる経済モデル（本提案の試算前提）</h4>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>項目</th><th class="num">現状想定</th><th class="num">Phase 2 完了時</th><th class="num">Phase 3 完了時</th></tr></thead>
+        <tbody>
+          <tr><td class="key">ADR（室料換算）</td><td class="num">¥80,000</td><td class="num">¥83,200</td><td class="num">¥85,600</td></tr>
+          <tr><td class="key">稼働率</td><td class="num">65.0%</td><td class="num">67.0%</td><td class="num">68.5%</td></tr>
+          <tr><td class="key">RevPAR</td><td class="num">¥52,000</td><td class="num">¥55,744</td><td class="num">¥58,636</td></tr>
+          <tr><td class="key">年間客室売上</td><td class="num">¥94.9M</td><td class="num">¥101.7M</td><td class="num">¥107.0M</td></tr>
+          <tr><td class="key">対現状 増収</td><td class="num">—</td><td class="num">+¥6.8M</td><td class="num">+¥12.1M</td></tr>
+          <tr><td class="key">直販比率</td><td class="num">15%</td><td class="num">25%</td><td class="num">35%</td></tr>
+          <tr><td class="key">手数料削減効果</td><td class="num">—</td><td class="num">+¥1.2M</td><td class="num">+¥2.4M</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">※ ADR・稼働率は公開情報および同カテゴリー相場からの推計であり、実データによる置換を前提とします。Phase 0の診断で実績値に差し替えたうえで再計算します。</p>
+  </div>
+</section>
+
+<!-- =============== 02 =============== -->
+<section>
+  <div class="rail"><span class="num">02<small>問題定義</small></span></div>
+  <div class="body">
+    <h2>「属人化」の正体を分解する</h2>
+
+    <p>属人性を排するには、まず何が属人的なのかを特定しなければなりません。レベニューマネジャーの業務は、次の4つの意思決定に分解できます。</p>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>意思決定</th><th>内容</th><th>属人度</th><th>置換方法</th></tr></thead>
+        <tbody>
+          <tr><td class="key">D1 需要予測</td><td>この日は何室売れるか、いつ埋まるか</td><td><span class="pill no">高</span></td><td><strong>機械に渡す。</strong> ピックアップ曲線＋外部シグナルによる残需要予測モデル</td></tr>
+          <tr><td class="key">D2 価格決定</td><td>いくらで出すか</td><td><span class="pill mid">中</span></td><td><strong>決定表に落とす。</strong> 5係数の乗算式＋ガードレール。完全に再現可能</td></tr>
+          <tr><td class="key">D3 在庫・条件制御</td><td>どのチャネルに、どの条件で、何室出すか</td><td><span class="pill mid">中</span></td><td><strong>ルール化する。</strong> レートフェンス設計＋配信ポリシー</td></tr>
+          <tr><td class="key">D4 例外裁定</td><td>団体、一棟貸し、直前キャンセル、特殊イベント</td><td><span class="pill no">高</span></td><td><strong>人が残す。</strong> ただし権限マトリクスと理由コードで記録・監査可能に</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>ここで重要なのは、<strong>D4を無理に自動化しようとしないこと</strong>です。属人性排除を「全自動化」と読み替えた瞬間、システムは現場に拒絶されます。目指すのは<em>判断の外部化</em>であって、判断の消滅ではありません。</p>
+
+    <h3>属人性が発生する3つの暗黙知と、その置換先</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>暗黙知</th><th>従来の在り処</th><th>置換先（本システム）</th><th>成果物</th></tr></thead>
+        <tbody>
+          <tr><td class="key">需要の読み</td><td>担当者の経験と勘</td><td>予測モデル＋イベント辞書</td><td>12週ローリング予測、需要カレンダー</td></tr>
+          <tr><td class="key">値付けの勘所</td><td>「この日はこのくらい」</td><td>パラメータ化された決定表</td><td>係数定義書、パラメータ履歴</td></tr>
+          <tr><td class="key">例外の裁量</td><td>暗黙の上下限、口頭合意</td><td>権限マトリクス＋理由コード</td><td>RMポリシー文書、意思決定ログ</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="tag">組織設計としての結論</span>
+      <p>レベニューマネジャーの役割は消滅せず、<strong>「パラメータの管理者」と「例外の裁定者」</strong>へ再定義されます。求められるスキルは相場観から<em>ルールの検証能力</em>へ移り、必要工数は週2〜3時間程度まで圧縮されます。支配人または運営責任者が兼務可能な水準です。これが「経験・力量に左右されない」の実質的な意味です。</p>
+    </div>
+  </div>
+</section>
+
+<!-- =============== 03 =============== -->
+<section>
+  <div class="rail"><span class="num">03<small>全体像</small></span></div>
+  <div class="body">
+    <h2>レベニューOS：4層アーキテクチャ</h2>
+
+    <p>システムは4つの層で構成します。各層は疎結合とし、いずれかのベンダーを差し替えても他層が影響を受けない設計とします。これは中長期の交渉力を保つための構造的要件です。</p>
+
+    <figure>
+      <svg viewBox="0 0 900 560" role="img" aria-labelledby="archtitle archdesc" style="width:100%;">
+        <title id="archtitle">レベニューOSの4層アーキテクチャ</title>
+        <desc id="archdesc">データ収集層、データ基盤層、意思決定層、実行層、およびそれらを貫くガバナンス層の構成図</desc>
+        <style>
+          .lname { font: 600 13px var(--font-body); fill: var(--ink); }
+          .lsub  { font: 400 10.5px var(--font-body); fill: var(--ink-soft); }
+          .ltag  { font: 500 9px var(--font-mono); fill: var(--ink-mute); letter-spacing: .1em; }
+          .lnum  { font: 500 10px var(--font-mono); fill: var(--accent); letter-spacing: .1em; }
+          .box   { fill: var(--paper-raised); stroke: var(--rule-strong); stroke-width: 1; }
+          .chip  { fill: var(--paper-sunk); stroke: var(--rule); stroke-width: 1; }
+          .chipt { font: 400 10px var(--font-body); fill: var(--ink-soft); }
+          .flow  { stroke: var(--accent); stroke-width: 1.5; fill: none; }
+          .gov   { fill: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 4; }
+        </style>
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+
+        <!-- Layer 1 -->
+        <rect class="box" x="60" y="20" width="700" height="96" rx="2"/>
+        <text class="lnum" x="76" y="42">L1</text>
+        <text class="lname" x="110" y="43">データ収集層</text>
+        <text class="lsub" x="110" y="60">自社実績・競合レート・需要シグナルを日次で取り込む</text>
+        <rect class="chip" x="110" y="72" width="140" height="28" rx="2"/><text class="chipt" x="122" y="90">PMS／サイトコントローラー</text>
+        <rect class="chip" x="262" y="72" width="126" height="28" rx="2"/><text class="chipt" x="274" y="90">レートショッパー</text>
+        <rect class="chip" x="400" y="72" width="140" height="28" rx="2"/><text class="chipt" x="412" y="90">Google／評判・混雑</text>
+        <rect class="chip" x="552" y="72" width="126" height="28" rx="2"/><text class="chipt" x="564" y="90">イベント・天候・為替</text>
+
+        <path class="flow" d="M410,116 L410,150" marker-end="url(#ah)"/>
+
+        <!-- Layer 2 -->
+        <rect class="box" x="60" y="152" width="700" height="96" rx="2"/>
+        <text class="lnum" x="76" y="174">L2</text>
+        <text class="lname" x="110" y="175">データ基盤層</text>
+        <text class="lsub" x="110" y="192">条件正規化・履歴保持・単一の真実（Single Source of Truth）</text>
+        <rect class="chip" x="110" y="204" width="150" height="28" rx="2"/><text class="chipt" x="122" y="222">レート観測ファクト</text>
+        <rect class="chip" x="272" y="204" width="150" height="28" rx="2"/><text class="chipt" x="284" y="222">予約・ピックアップ</text>
+        <rect class="chip" x="434" y="204" width="140" height="28" rx="2"/><text class="chipt" x="446" y="222">条件正規化エンジン</text>
+        <rect class="chip" x="586" y="204" width="92" height="28" rx="2"/><text class="chipt" x="598" y="222">イベント辞書</text>
+
+        <path class="flow" d="M410,248 L410,282" marker-end="url(#ah)"/>
+
+        <!-- Layer 3 -->
+        <rect class="box" x="60" y="284" width="700" height="112" rx="2"/>
+        <text class="lnum" x="76" y="306">L3</text>
+        <text class="lname" x="110" y="307">意思決定層</text>
+        <text class="lsub" x="110" y="324">需要予測 → 推奨価格算出 → 理由の言語化</text>
+        <rect class="chip" x="110" y="336" width="128" height="44" rx="2"/><text class="chipt" x="122" y="356">残需要予測</text><text class="chipt" x="122" y="371" style="font-size:9px">ペース＋GBDT</text>
+        <rect class="chip" x="250" y="336" width="128" height="44" rx="2"/><text class="chipt" x="262" y="356">価格エンジン</text><text class="chipt" x="262" y="371" style="font-size:9px">5係数×ガードレール</text>
+        <rect class="chip" x="390" y="336" width="128" height="44" rx="2"/><text class="chipt" x="402" y="356">レートフェンス</text><text class="chipt" x="402" y="371" style="font-size:9px">LOS・条件・チャネル</text>
+        <rect class="chip" x="530" y="336" width="148" height="44" rx="2"/><text class="chipt" x="542" y="356">説明生成</text><text class="chipt" x="542" y="371" style="font-size:9px">理由コード＋自然文</text>
+
+        <path class="flow" d="M410,396 L410,430" marker-end="url(#ah)"/>
+        <text class="ltag" x="422" y="418">承認（Human-in-the-loop）</text>
+
+        <!-- Layer 4 -->
+        <rect class="box" x="60" y="432" width="700" height="96" rx="2"/>
+        <text class="lnum" x="76" y="454">L4</text>
+        <text class="lname" x="110" y="455">実行・配信層</text>
+        <text class="lsub" x="110" y="472">サイトコントローラー経由で全販売面へ一括反映、ログとロールバック</text>
+        <rect class="chip" x="110" y="484" width="104" height="28" rx="2"/><text class="chipt" x="122" y="502">一休・Relux</text>
+        <rect class="chip" x="226" y="484" width="112" height="28" rx="2"/><text class="chipt" x="238" y="502">楽天・じゃらん</text>
+        <rect class="chip" x="350" y="484" width="130" height="28" rx="2"/><text class="chipt" x="362" y="502">Booking・Expedia</text>
+        <rect class="chip" x="492" y="484" width="186" height="28" rx="2"/><text class="chipt" x="504" y="502">公式サイト予約エンジン／Google</text>
+
+        <!-- governance -->
+        <rect class="gov" x="784" y="20" width="56" height="508" rx="2"/>
+        <text class="lnum" x="800" y="250" transform="rotate(90 800,250)" style="letter-spacing:.2em">GOVERNANCE</text>
+        <text class="ltag" x="818" y="250" transform="rotate(90 818,250)">RMポリシー・KPI・監査ログ</text>
+
+        <path class="flow" d="M760,68 L784,68" marker-end="url(#ah)"/>
+        <path class="flow" d="M760,340 L784,340" marker-end="url(#ah)"/>
+        <path class="flow" d="M760,480 L784,480" marker-end="url(#ah)"/>
+      </svg>
+      <figcaption>図 3-1　レベニューOS 全体構成。L1〜L4は疎結合、ガバナンス層が全層を貫通する</figcaption>
+    </figure>
+
+    <h3>各層の責務と成功条件</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>層</th><th>責務</th><th>失敗すると何が起きるか</th><th>成功条件</th></tr></thead>
+        <tbody>
+          <tr><td class="key">L1 収集</td><td>毎日決まった時刻に、欠損なく、規約準拠で取得</td><td>データ欠損日が予測を歪め、誰もシステムを信じなくなる</td><td>収集成功率99%以上、欠損の自動検知とアラート</td></tr>
+          <tr><td class="key">L2 基盤</td><td>比較可能な形に正規化し、履歴を保持</td><td>素泊まりと2食付を混ぜて比較し、誤った値下げを誘発</td><td>基準商品定義の合意、正規化信頼度スコアの付与</td></tr>
+          <tr><td class="key">L3 判断</td><td>推奨価格と<strong>その理由</strong>を出す</td><td>ブラックボックス化し、現場が全件上書きして形骸化</td><td>上書き率15%未満、理由の納得度が現場評価で4/5以上</td></tr>
+          <tr><td class="key">L4 実行</td><td>承認から15分以内に全チャネル反映</td><td>反映漏れによるパリティ崩壊、OTAからのペナルティ</td><td>反映成功率100%、差分監視とロールバック機構</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- =============== 04 =============== -->
+<section>
+  <div class="rail"><span class="num">04<small>データ取得</small></span></div>
+  <div class="body">
+    <h2>競合レートをどう自動収集するか</h2>
+
+    <p>ご質問の中核部分です。結論から述べます。<strong>スクレイピングは設計に入れません。</strong> 得られる価値に対して、規約違反・アクセス遮断・法的リスクが見合わないためです。代わりに3つの正規ルートを組み合わせます。</p>
+
+    <h3>取得手段の比較</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>手段</th><th>取得できるもの</th><th>コスト</th><th>法務リスク</th><th>継続性</th><th>採否</th></tr></thead>
+        <tbody>
+          <tr><td class="key">レートショッパーSaaS</td><td>競合の日次レート、部屋タイプ、条件、在庫有無、先360日</td><td>月3〜8万円</td><td><span class="pill rec">低</span></td><td>高</td><td><span class="pill rec">採用</span></td></tr>
+          <tr><td class="key">OTA公式API</td><td>施設情報、空室、公開レート（提供範囲はOTAにより差）</td><td>低〜無償</td><td><span class="pill rec">低</span></td><td>中（仕様変更あり）</td><td><span class="pill rec">補完採用</span></td></tr>
+          <tr><td class="key">Google Places API</td><td>評価、レビュー数・投稿速度、混雑傾向、施設属性<br><strong>※価格は取得不可</strong></td><td>月1〜3万円</td><td><span class="pill rec">低</span></td><td>高</td><td><span class="pill rec">採用（需要シグナル用）</span></td></tr>
+          <tr><td class="key">SERPスクレイピング系</td><td>Google Hotelsの表示価格</td><td>月2〜5万円</td><td><span class="pill no">高</span></td><td>低（遮断・仕様変更）</td><td><span class="pill no">不採用</span></td></tr>
+          <tr><td class="key">自前クローラー</td><td>理論上すべて</td><td>開発＋保守大</td><td><span class="pill no">高</span></td><td>低</td><td><span class="pill no">不採用</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout crit">
+      <span class="tag">Googleマップに関する重要な訂正</span>
+      <p>ご提案いただいた「Googleマップからの宿泊データ収集」については、正確に切り分ける必要があります。</p>
+      <p><strong>取得できるもの（Places API・正規）：</strong>施設名・所在地・カテゴリ・星評価・レビュー件数・レビュー本文と投稿日・写真・混雑時間帯。これらは<em>需要と評判のシグナルとして極めて有用</em>で、実際に本システムの重要な入力です。</p>
+      <p><strong>取得できないもの：</strong>宿泊単価。Googleマップに表示される宿泊料金は、OTAおよびホテルがGoogle Hotel Center／Travel Partner API経由で入稿した広告・予約リンク由来のデータであり、Places APIのレスポンスには含まれません。自社の料金は入稿できても、<strong>他社の料金を引き出すインターフェースは存在しません</strong>。</p>
+      <p>さらに、Google Maps Platformの利用規約はコンテンツのキャッシュ・再利用を原則制限しており（一部項目のみ30日以内の例外）、表示画面のスクレイピングは明確に禁止されています。したがって<strong>Googleは「需要シグナル源」、価格は「レートショッパー」</strong>という役割分担が唯一の持続可能な設計です。</p>
+    </div>
+
+    <h3>取得するデータの全体像</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>区分</th><th>データ項目</th><th>取得元</th><th>頻度</th><th>先読み期間</th></tr></thead>
+        <tbody>
+          <tr><td class="key">自社実績</td><td>予約、OTB、ピックアップ、キャンセル、リードタイム、チャネル別ADR、F&amp;B売上</td><td>PMS／サイトコントローラー</td><td>日次（可能なら1時間毎）</td><td>T+365</td></tr>
+          <tr><td class="key">競合レート</td><td>滞在日×部屋タイプ×食事条件×人数×キャンセル条件×チャネル別価格、売止フラグ</td><td>レートショッパー</td><td>日次2回／繁忙期4回</td><td>T+365</td></tr>
+          <tr><td class="key">競合評判</td><td>星評価、レビュー件数の増加速度、直近レビュー本文</td><td>Google Places API</td><td>週次</td><td>—</td></tr>
+          <tr><td class="key">需要シグナル</td><td>検索ボリューム（「奈良 ホテル」「奈良 宿」等）、為替、天候予報、鉄道・航空の輸送量</td><td>Google Trends、気象API、公開統計</td><td>日次〜月次</td><td>T+14（天候）</td></tr>
+          <tr><td class="key">イベント</td><td>奈良・関西圏の催事、社寺行事、学会・MICE、学校休暇、祝日・連休</td><td>手動登録＋公開カレンダー</td><td>随時／年1回棚卸し</td><td>T+540</td></tr>
+          <tr><td class="key">市場統計</td><td>奈良県・奈良市の延べ宿泊者数、客室稼働率、インバウンド比率</td><td>観光庁宿泊旅行統計、奈良県統計</td><td>月次</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>条件正規化 ── ここが最大の技術的キモ</h3>
+    <p>鹿のやは2食付、競合の多くは素泊まりや朝食付を併売しています。<strong>この条件差を吸収しないまま価格を比較すると、システムは構造的に誤った値下げを推奨し続けます。</strong> 多くの安価なツールが実務で使い物にならない最大の理由がここです。</p>
+
+    <h4>基準商品（Reference Product）の定義</h4>
+    <div class="formula">
+      <span class="c">-- すべての比較はこの1商品に射影する</span><br>
+      REFERENCE_PRODUCT = {<br>
+      &nbsp;&nbsp;occupancy:      <span class="n">2</span> <span class="c">-- 2名1室</span><br>
+      &nbsp;&nbsp;meal_plan:      <span class="v">'DINNER_BREAKFAST'</span> <span class="c">-- 夕朝食付</span><br>
+      &nbsp;&nbsp;cancel_policy:  <span class="v">'FLEXIBLE'</span> <span class="c">-- 返金可</span><br>
+      &nbsp;&nbsp;lead_time:      <span class="n">30</span> <span class="c">-- T-30時点の観測</span><br>
+      &nbsp;&nbsp;price_basis:    <span class="v">'TAX_INCL_TOTAL'</span> <span class="c">-- 税・サービス料込</span><br>
+      }
+    </div>
+
+    <p>競合が基準条件で販売していない場合は、補正ルールで射影します。補正には必ず<strong>信頼度スコア</strong>を付与し、低信頼な観測値は価格判断への寄与度を下げます。</p>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>観測された条件</th><th>補正</th><th>補正額の決め方</th><th>信頼度</th></tr></thead>
+        <tbody>
+          <tr><td>2食付・2名・返金可</td><td>そのまま</td><td>—</td><td class="num">1.00</td></tr>
+          <tr><td>朝食付</td><td>+夕食相当額</td><td>当該施設の実際の夕食追加料金。不明時は同カテゴリー中央値</td><td class="num">0.75</td></tr>
+          <tr><td>素泊まり</td><td>+2食相当額</td><td>同上（推定幅が大きいため寄与度を下げる）</td><td class="num">0.55</td></tr>
+          <tr><td>返金不可</td><td>÷(1−割引率)</td><td>当該施設の返金可プランとの実差率、既定11%</td><td class="num">0.85</td></tr>
+          <tr><td>3名以上</td><td>1名あたり単価へ換算後、2名相当へ再構成</td><td>施設の加算ルール</td><td class="num">0.70</td></tr>
+          <tr><td>売止（在庫なし）</td><td>価格ではなく<em>需要強度シグナル</em>として扱う</td><td>売止率が需要係数の入力になる</td><td class="num">1.00</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="tag">副次的な価値</span>
+      <p>競合の「売止」情報は、価格そのものより強い需要シグナルです。<strong>競合5施設のうち3施設が同日を売り止めた</strong>という事実は、その日の市場需要が想定を超えていることの直接証拠であり、値上げの根拠になります。レートショッパーを導入する本当の理由は、価格の比較ではなく<em>市場全体の残在庫の可視化</em>にあります。</p>
+    </div>
+  </div>
+</section>
+
+<!-- =============== 05 =============== -->
+<section>
+  <div class="rail"><span class="num">05<small>競合設計</small></span></div>
+  <div class="body">
+    <h2>競合セットの設計</h2>
+
+    <p>競合セット（コンプセット）は「近い場所にある宿」ではなく、<strong>「同じ顧客が同時に検討している宿」</strong>で定義します。この定義を誤ると、以降のすべての分析が無意味になります。</p>
+
+    <h3>鹿のや プライマリ・コンプセット案</h3>
+    <div class="weights">
+      <div class="wrow"><span>ふふ 奈良</span><span class="wbar"><i style="width:100%"></i></span><span class="pct">0.30</span></div>
+      <div class="wrow"><span>紫翠 ラグジュアリーコレクション</span><span class="wbar"><i style="width:73%"></i></span><span class="pct">0.22</span></div>
+      <div class="wrow"><span>ANDO HOTEL 奈良若草山</span><span class="wbar"><i style="width:50%"></i></span><span class="pct">0.15</span></div>
+      <div class="wrow"><span>古都の宿 むさし野</span><span class="wbar"><i style="width:50%"></i></span><span class="pct">0.15</span></div>
+      <div class="wrow"><span>奈良ホテル</span><span class="wbar"><i style="width:33%"></i></span><span class="pct">0.10</span></div>
+      <div class="wrow"><span>JWマリオット・ホテル奈良</span><span class="wbar"><i class="sec" style="width:27%"></i></span><span class="pct">0.08</span></div>
+    </div>
+    <p class="footnote">重みは「検討集合の重なり × 価格帯の近接 × 立地の代替性」で決定。四半期ごとに、自社の失注理由・レビュー内の比較言及・OTA上の共表示状況から見直します。</p>
+
+    <h3>3階層でのコンプセット管理</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>階層</th><th>定義</th><th>該当施設</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td class="key">プライマリ</td><td>同一顧客が同時比較する直接競合</td><td>ふふ奈良、紫翠、ANDO、むさし野、奈良ホテル</td><td>日々の価格係数（CRPI）の算出</td></tr>
+          <tr><td class="key">セカンダリ</td><td>送客源が重なる、または代替先になりうる</td><td>JWマリオット奈良、万葉若草の宿三笠、<strong>京都の同価格帯オーベルジュ</strong></td><td>需要の外部流出監視、繁忙期の上限探索</td></tr>
+          <tr><td class="key">アスピレーショナル</td><td>3年後に並びたい価格帯</td><td>ふふ京都、京都・箱根の高価格帯オーベルジュ</td><td>年次の価格ポジショニング目標設定</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="tag">奈良市場の構造的論点</span>
+      <p>奈良の宿泊需要における最大の競合は、実は奈良市内の施設ではなく<strong>京都</strong>です。「奈良を観光するが京都に泊まる」層が厚く、これが奈良の稼働率と単価の天井を押さえてきました。セカンダリに京都の同価格帯を入れる理由はここにあります。逆にいえば、<em>「奈良公園内に泊まる」という代替不可能な体験</em>こそが鹿のやの価格根拠であり、価格設定はこの非代替性を前提に強気に置くべきです。京都の価格に引きずられて下げる必要はありません。</p>
+    </div>
+
+    <h4>競合価格指数（CRPI）の定義</h4>
+    <div class="formula">
+      CRPI<span class="c">(d)</span> = P_own<span class="c">(d)</span> / <span class="v">Σ</span><span class="c">i</span> [ w<span class="c">i</span> × conf<span class="c">i</span> × P_norm<span class="c">(i,d)</span> ] / <span class="v">Σ</span><span class="c">i</span> [ w<span class="c">i</span> × conf<span class="c">i</span> ]<br><br>
+      <span class="c">w    = コンプセット重み（上記）</span><br>
+      <span class="c">conf = 条件正規化の信頼度スコア</span><br>
+      <span class="c">P_norm = 基準商品へ射影済みの競合価格</span><br><br>
+      <span class="c">目標帯：</span> CRPI_target = <span class="n">1.05 〜 1.15</span> <span class="c">（市場中央値に対し5〜15%上位）</span>
+    </div>
+    <p>CRPIの目標値をどこに置くかが、経営としての<strong>価格ポジショニングの意思表示</strong>です。「奈良公園内・5室・2食付」という希少性に対して、市場中央値の5〜15%上を定位置とする。これを一度決めれば、日々の価格判断はこの目標への収束問題に還元されます。属人性が消える理由の半分はここにあります。</p>
+  </div>
+</section>
+
+<!-- =============== 06 =============== -->
+<section>
+  <div class="rail"><span class="num">06<small>算出ロジック</small></span></div>
+  <div class="body">
+    <h2>推奨ADRの算出アルゴリズム</h2>
+
+    <p>推奨価格は、基準価格に5つの係数を乗じ、上下限で切り取る形で算出します。乗算構造を採る理由は、各係数の寄与を独立に検証・調整できるためです。加算式は解釈が難しく、機械学習の単一モデルは説明できません。</p>
+
+    <div class="formula">
+      <span class="v">BAR</span><span class="c">(d, t)</span> = clip(<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;P_base<span class="c">(season(d), dow(d), room_type)</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;× f_pace &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">-- 予約ペースの先行/遅行</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;× f_comp &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">-- 競合価格との相対位置</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;× f_scarcity <span class="c">-- 残室の希少性</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;× f_lead &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">-- 残日数（非対称）</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;× f_event &nbsp;&nbsp;&nbsp;<span class="c">-- イベント需要</span><br>
+      &nbsp;&nbsp;, <span class="v">Floor</span><span class="c">(d)</span>, <span class="v">Ceiling</span><span class="c">(d)</span> )
+    </div>
+
+    <h3>各係数の定義と初期値</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>係数</th><th>定義式</th><th>可動域</th><th>初期パラメータ</th><th>意図</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="key">f_pace</td>
+            <td><code>1 + α·(OTB_act − OTB_ref)/Cap</code></td>
+            <td class="num">0.88 – 1.30</td><td class="num">α = 0.80</td>
+            <td>同曜日・同リードタイムの標準ペースに対する先行度。先行していれば強気に</td>
+          </tr>
+          <tr>
+            <td class="key">f_comp</td>
+            <td><code>(CRPI_target / CRPI_obs)^β</code></td>
+            <td class="num">0.92 – 1.15</td><td class="num">β = 0.35</td>
+            <td>目標ポジションへ緩やかに収束。βを小さく置き、競合への過剰追随を防ぐ</td>
+          </tr>
+          <tr>
+            <td class="key">f_scarcity</td>
+            <td><code>1 + γ·(1 − 残室/Cap)²</code></td>
+            <td class="num">1.00 – 1.25</td><td class="num">γ = 0.22</td>
+            <td>5室中残1室で約+22%。二乗で最後の1室の価値を強く反映</td>
+          </tr>
+          <tr>
+            <td class="key">f_lead</td>
+            <td>区間別テーブル（下記）</td>
+            <td class="num">0.94 – 1.10</td><td>—</td>
+            <td><strong>非対称設計。</strong>直前の値下げ幅を厳しく制限し、値上げ側は開放</td>
+          </tr>
+          <tr>
+            <td class="key">f_event</td>
+            <td><code>1 + Σ impact_k</code></td>
+            <td class="num">1.00 – 1.35</td><td>辞書参照</td>
+            <td>イベント辞書に登録された係数の合算。上限で頭打ち</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>f_lead ── 非対称ガードレールという思想</h4>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>残日数</th><th>需要が強いとき</th><th>需要が弱いとき</th><th>備考</th></tr></thead>
+        <tbody>
+          <tr><td class="key">T-365 〜 T-91</td><td class="num">1.00 – 1.05</td><td class="num">1.00</td><td>早期予約特典は価格ではなく特典で表現</td></tr>
+          <tr><td class="key">T-90 〜 T-31</td><td class="num">1.00 – 1.08</td><td class="num">0.98</td><td>主戦場。この期間の精度が年間収益を決める</td></tr>
+          <tr><td class="key">T-30 〜 T-8</td><td class="num">1.00 – 1.10</td><td class="num">0.96</td><td>下げ幅は最大4%まで</td></tr>
+          <tr><td class="key">T-7 〜 T-0</td><td class="num">1.00 – 1.10</td><td class="num"><strong>値下げ禁止</strong></td><td><em>価値付加（Value-add）に変換</em></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="tag">本提案で最も主張したい設計思想</span>
+      <p><strong>直前期に価格を下げてはいけません。</strong> 理由は3つあります。①既に定価で予約した客との不公平が、レビューと再訪率を毀損する。②「待てば安くなる宿」という学習をリピーターに与える。③6万円の宿が4万円になっても、需要は思うほど増えない（この価格帯の需要は価格弾力性が低く、意思決定は先行して行われる）。</p>
+      <p>代わりに、値下げ相当額を<strong>価値に変換</strong>します。上位客室へのアップグレード、駅送迎、ワインペアリング、レイトチェックアウト、館内クレジット。これらは<em>原価が定価より小さく、ADRを毀損せず、体験価値とレビュー評価を上げる</em>。システムは「−¥8,000」ではなく「アップグレード付与を推奨」と出力します。この変換ルールを持つことが、ラグジュアリー小規模宿のレベニューシステムの品格です。</p>
+    </div>
+
+    <h4>Floor と Ceiling</h4>
+    <div class="formula">
+      <span class="v">Floor</span><span class="c">(d)</span> = max(<br>
+      &nbsp;&nbsp;変動費<span class="c">(食材・アメニティ・清掃・OTA手数料)</span> + 目標貢献利益,<br>
+      &nbsp;&nbsp;<span class="v">ブランドフロア</span> <span class="c">-- 経営が決める「これ以下では売らない」線。絶対不可侵</span>,<br>
+      &nbsp;&nbsp;前年同曜日ADR × <span class="n">0.92</span><br>
+      )<br><br>
+      <span class="v">Ceiling</span><span class="c">(d)</span> = min(<br>
+      &nbsp;&nbsp;過去実績最高ADR × <span class="n">1.25</span>,<br>
+      &nbsp;&nbsp;コンプセット最高値 × <span class="n">1.40</span><br>
+      )
+    </div>
+
+    <h3>安全装置（サーキットブレーカー）</h3>
+    <ul>
+      <li><strong>日次変動幅の制限：</strong>同一滞在日の価格変更は1日あたり±10%以内</li>
+      <li><strong>値下げ回数の上限：</strong>同一滞在日に対する値下げは通算2回まで</li>
+      <li><strong>異常値の自動停止：</strong>前回配信比±30%を超える推奨が出た場合、配信せずアラート</li>
+      <li><strong>完売時の自動処理：</strong>全室売止後はCeiling側へ自動移動、キャンセル発生時の再販価格を確保</li>
+      <li><strong>収集失敗時のフェイルセーフ：</strong>競合データが2日連続で欠損した場合、f_compを1.00に固定（前日価格を維持）</li>
+    </ul>
+
+    <h3>説明可能性 ── 理由コードの必須化</h3>
+    <p>すべての推奨には理由コードと日本語1文を必ず添えます。これがない推奨は現場に採用されず、システムは3ヶ月で放置されます。</p>
+    <div class="formula">
+      <span class="c">2026-11-02（月） 推奨 ¥96,000（前回 ¥88,000 / +9.1%）</span><br>
+      <span class="v">[PACE_AHEAD]</span> 同曜日平均より予約進捗が2室分先行<br>
+      <span class="v">[COMP_SOLDOUT]</span> コンプセット6施設中4施設が売止<br>
+      <span class="v">[EVENT_UPLIFT]</span> 正倉院展 会期中（影響係数 +0.15）<br>
+      <span class="c">→ 「正倉院展の会期中で市場全体が逼迫しています。競合の在庫も薄く、</span><br>
+      <span class="c">　　値上げしても失注リスクは限定的と判断しました。」</span>
+    </div>
+
+    <h3>コールドスタート ── データが2年半しかない前提での設計</h3>
+    <p>開業から日が浅く、機械学習に十分な周期数がありません。これを正直に扱うのが実務の分かれ目です。</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>期間</th><th>予測手法</th><th>f_compの重み</th><th>自動化度</th></tr></thead>
+        <tbody>
+          <tr><td class="key">〜6ヶ月</td><td>ルールベース（ペース＋競合追随）</td><td class="num">高（β=0.50）</td><td>推奨のみ、全件人が承認</td></tr>
+          <tr><td class="key">7〜12ヶ月</td><td>ベイズ更新型ペースモデル</td><td class="num">中（β=0.40）</td><td>±5%以内は自動承認</td></tr>
+          <tr><td class="key">13ヶ月〜</td><td>勾配ブースティング（LightGBM）＋ペース</td><td class="num">低（β=0.35）</td><td>±10%以内は自動承認</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>並行して、<strong>時間分割による価格弾力性テスト</strong>を実施します。同曜日・同季節の枠を隔週で±8%振り、12週分の予約速度差から弾力性を推定。5室では同時A/Bテストが成立しないため、この設計が唯一の実務解です。</p>
+  </div>
+</section>
+
+<!-- =============== 07 =============== -->
+<section>
+  <div class="rail"><span class="num">07<small>需要暦</small></span></div>
+  <div class="body">
+    <h2>奈良固有の需要カレンダー</h2>
+
+    <p>イベント辞書は、汎用RMSが最も苦手とし、かつ<strong>地域施設が最も差をつけられる領域</strong>です。奈良の需要は社寺行事に強く規定され、しかもその多くが固定日付で毎年繰り返されます。これは予測可能性が高いということであり、機械化に最も適した情報です。</p>
+
+    <figure>
+    <div class="scroll">
+      <div class="cal">
+        <div class="m"><b>1月</b><div class="bar"><i style="width:35%"></i></div><span>年始高騰／若草山焼き</span></div>
+        <div class="m"><b>2月</b><div class="bar"><i style="width:20%"></i></div><span>年間最閑／節分万燈籠</span></div>
+        <div class="m"><b>3月</b><div class="bar"><i style="width:70%"></i></div><span>お水取り（1〜14日）</span></div>
+        <div class="m"><b>4月</b><div class="bar"><i style="width:85%"></i></div><span>桜・修学旅行</span></div>
+        <div class="m"><b>5月</b><div class="bar"><i style="width:80%"></i></div><span>GW・新緑</span></div>
+        <div class="m"><b>6月</b><div class="bar"><i style="width:30%"></i></div><span>梅雨・閑散</span></div>
+        <div class="m"><b>7月</b><div class="bar"><i style="width:50%"></i></div><span>夏休み立ち上がり</span></div>
+        <div class="m"><b>8月</b><div class="bar"><i style="width:85%"></i></div><span>燈花会・万燈籠・盆</span></div>
+        <div class="m"><b>9月</b><div class="bar"><i style="width:50%"></i></div><span>残暑・連休</span></div>
+        <div class="m"><b>10月</b><div class="bar"><i style="width:88%"></i></div><span>鹿の角きり・正倉院展</span></div>
+        <div class="m"><b>11月</b><div class="bar"><i style="width:100%"></i></div><span>正倉院展・紅葉／年間最需要</span></div>
+        <div class="m"><b>12月</b><div class="bar"><i style="width:40%"></i></div><span>閑散＋年末スパイク</span></div>
+      </div>
+    </div>
+    <figcaption>図 7-1　奈良市場の年間需要プロファイル（相対値）。年間の収益はほぼ4月・5月・8月・10月・11月で決まる</figcaption>
+    </figure>
+
+    <h3>イベント辞書の初期エントリ</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>イベント</th><th>時期</th><th>影響係数</th><th>影響半径</th><th>備考</th></tr></thead>
+        <tbody>
+          <tr><td class="key">正倉院展</td><td>10月下旬〜11月上旬（2026年は10/24–11/9）</td><td class="num">+0.15</td><td>会期全日＋前後1日</td><td>奈良国立博物館。年間最大の集客装置。会期は毎年公表されるため確定登録可</td></tr>
+          <tr><td class="key">紅葉ピーク</td><td>11月中旬〜下旬</td><td class="num">+0.12</td><td>約2週間</td><td>正倉院展と連続し、11月は事実上フルシーズン</td></tr>
+          <tr><td class="key">お水取り（修二会）</td><td>3月1日〜14日</td><td class="num">+0.10</td><td>会期＋お松明の主要日</td><td>3/12は特に集中</td></tr>
+          <tr><td class="key">桜シーズン</td><td>4月上旬</td><td class="num">+0.10</td><td>開花〜満開後3日</td><td>開花予想APIと連動させ、動的に日付を移動</td></tr>
+          <tr><td class="key">なら燈花会</td><td>8月上旬〜中旬</td><td class="num">+0.08</td><td>会期全日</td><td>奈良公園一帯。鹿のやは会場内立地で優位</td></tr>
+          <tr><td class="key">中元万燈籠</td><td>8月14〜15日</td><td class="num">+0.10</td><td>2日</td><td>春日大社。徒歩圏という決定的優位</td></tr>
+          <tr><td class="key">若草山焼き</td><td>1月下旬</td><td class="num">+0.12</td><td>当日＋前日</td><td>閑散期の数少ないスパイク。取りこぼし厳禁</td></tr>
+          <tr><td class="key">鹿の角きり</td><td>10月中旬</td><td class="num">+0.06</td><td>開催日</td><td>—</td></tr>
+          <tr><td class="key">年末年始</td><td>12/29〜1/3</td><td class="num">+0.25</td><td>6日</td><td>最低宿泊日数2泊の設定を推奨</td></tr>
+          <tr><td class="key">GW</td><td>4月末〜5月上旬</td><td class="num">+0.20</td><td>連休全日</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="tag">立地優位の価格化</span>
+      <p>燈花会・万燈籠・お水取り・若草山焼きは、いずれも<strong>会場が徒歩圏</strong>です。この日の鹿のやは、単なる宿泊施設ではなく「会場に泊まる」という代替不可能な商品になります。にもかかわらず多くの施設は、こうした日にも通常価格＋αで販売しています。<em>非代替性が最も高い日にこそ、最も強気の価格を置く</em>——これをルール化して漏れなく実行することが、システム導入の最も分かりやすい成果です。年間20〜25日程度のこうした日で、年間ADRは1〜2%押し上がります。</p>
+    </div>
+  </div>
+</section>
+
+<!-- =============== 08 =============== -->
+<section>
+  <div class="rail"><span class="num">08<small>販売設計</small></span></div>
+  <div class="body">
+    <h2>チャネル戦略とレートフェンス</h2>
+
+    <p>価格を1本決めるだけでは足りません。<strong>誰に、どの条件で、いくらで売るか</strong>という格子（レートフェンス）を設計して初めて、同じ在庫から異なる支払意思額を回収できます。</p>
+
+    <h3>チャネル別の役割定義</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>チャネル</th><th>役割</th><th>手数料目安</th><th>目標構成比</th><th>価格ポリシー</th></tr></thead>
+        <tbody>
+          <tr><td class="key">公式サイト</td><td>最終的な収益基盤。ブランドと顧客データの保有</td><td class="num">3〜5%</td><td class="num">35%</td><td>実質最有利（特典で差別化、表示価格はパリティ維持）</td></tr>
+          <tr><td class="key">一休.com</td><td>高単価国内層の主戦場</td><td class="num">10%前後</td><td class="num">25%</td><td>基準価格。タイムセールは繁閑を見て限定参加</td></tr>
+          <tr><td class="key">Relux</td><td>ラグジュアリー志向の新規獲得</td><td class="num">10%前後</td><td class="num">10%</td><td>基準価格</td></tr>
+          <tr><td class="key">楽天トラベル</td><td>ポイント経済圏からの集客ボリューム</td><td class="num">8〜12%</td><td class="num">12%</td><td>基準価格。ポイント施策で実質差を作る</td></tr>
+          <tr><td class="key">じゃらん</td><td>同上。閑散期の穴埋め</td><td class="num">8〜10%</td><td class="num">8%</td><td>基準価格</td></tr>
+          <tr><td class="key">Booking / Expedia / Agoda</td><td>インバウンド獲得</td><td class="num">15〜18%</td><td class="num">10%</td><td>手数料を織り込んだ<strong>上乗せ価格</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">※ 手数料率は一般的なレンジであり、実契約の料率で置き換えたうえでチャネル別の純収益（Net ADR）を算出します。Phase 0の必須確認項目です。</p>
+
+    <div class="callout warn">
+      <span class="tag">見落とされがちな論点</span>
+      <p>チャネルの評価は<strong>ADRではなくNet ADR（手数料控除後）</strong>で行うべきです。手数料18%のOTAで¥90,000で売るより、手数料4%の公式サイトで¥80,000で売るほうが、施設の手取りは大きい（¥73,800 対 ¥76,800）。<em>「公式が一番安い」ことと「公式が一番儲かる」ことは両立します。</em> 表示価格のパリティを守りつつ、館内クレジット・アップグレード・送迎といった<strong>非価格の特典</strong>で直販に優位を作る——これが正攻法です。</p>
+    </div>
+
+    <h3>レートフェンスの設計</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>フェンス</th><th>条件</th><th>価格差</th><th>適用ロジック</th></tr></thead>
+        <tbody>
+          <tr><td class="key">キャンセル条件</td><td>返金不可 / 返金可</td><td class="num">−11%</td><td>常時併売。前受金確保と需要の早期確定</td></tr>
+          <tr><td class="key">連泊（LOS）</td><td>2泊以上</td><td class="num">−6%／泊</td><td>閑散期のみ自動発動。繁忙期は逆に最低宿泊数を設定</td></tr>
+          <tr><td class="key">最低宿泊数</td><td>年末年始・GW・正倉院展会期</td><td>—</td><td>2泊以上を条件化。稼働の断片化を防止</td></tr>
+          <tr><td class="key">早期予約</td><td>T-90以前</td><td class="num">±0%</td><td><strong>価格ではなく特典で。</strong> ワンドリンク、レイトアウト等</td></tr>
+          <tr><td class="key">部屋タイプ</td><td>5室それぞれの意匠差</td><td>基準室比 ±0〜25%</td><td>指名率と実売実績から四半期ごとに再設定</td></tr>
+          <tr><td class="key">一棟貸し（バイアウト）</td><td>5室一括</td><td>下式参照</td><td>下記</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>一棟貸し価格の算式化</h4>
+    <p>5室の施設ではバイアウト需要（記念日、企業リトリート、インバウンドの家族・グループ）が高単価機会になります。ここは最も属人的な交渉領域ですが、算式化できます。</p>
+    <div class="formula">
+      <span class="v">Buyout</span><span class="c">(d)</span> = <span class="v">Σ</span><span class="c">rooms</span> BAR<span class="c">(d)</span> × <span class="n">1.15</span> <span class="c">-- 貸切プレミアム</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;+ 専用サービス原価 <span class="c">-- 貸切対応の追加人件費等</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;− 機会損失調整 <span class="c">-- 当日の予測稼働が低い場合のみ減算</span><br><br>
+      <span class="c">機会損失調整 = Σ BAR(d) × (1 − 予測稼働率(d)) × 0.5</span><br>
+      <span class="c">→ 予測稼働40%の平日なら実質的に約17%の割引余地。</span><br>
+      <span class="c">　 予測稼働90%の繁忙日なら割引ゼロ＝プレミアムのみ。</span>
+    </div>
+    <p>この式があれば、問い合わせを受けた担当者が誰であっても、同じ日付には同じ見積りが出ます。<strong>これが「力量に左右されない」ということの具体的な意味です。</strong></p>
+  </div>
+</section>
+
+<!-- =============== 09 =============== -->
+<section>
+  <div class="rail"><span class="num">09<small>実装計画</small></span></div>
+  <div class="body">
+    <h2>導入ロードマップと構成案</h2>
+
+    <h3>Build / Buy / Hybrid の比較</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>案</th><th>構成</th><th>初期費用</th><th>月額</th><th>導入期間</th><th>評価</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="key">A. フルSaaS</td>
+            <td>国内RMS（メトロエンジン等）を一括導入</td>
+            <td class="num">¥0.2〜1.0M</td><td class="num">¥30,000〜</td><td class="num">1〜2ヶ月</td>
+            <td>最速・低リスク。ただし<strong>2食付の条件正規化とF&amp;B連携が汎用ロジックの外</strong>。多店舗展開時に再度同額</td>
+          </tr>
+          <tr>
+            <td class="key">B. フル内製</td>
+            <td>収集から配信まで自社開発</td>
+            <td class="num">¥8〜15M</td><td class="num">¥150,000〜</td><td class="num">9〜12ヶ月</td>
+            <td>柔軟性最大だが、レート収集の維持コストと法務リスクを自社が負う。<span class="pill no">非推奨</span></td>
+          </tr>
+          <tr>
+            <td class="key">C. ハイブリッド</td>
+            <td>レート取得＝SaaS／判断ロジック＝自社／配信＝サイトコントローラー</td>
+            <td class="num">¥2.5〜5.0M</td><td class="num">¥80,000〜200,000</td><td class="num">4〜6ヶ月</td>
+            <td>取得は買い、<strong>判断は持つ</strong>。オーベルジュ固有のロジックを実装でき、2施設目の限界費用がほぼゼロ<span class="pill rec">推奨</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="tag">推奨案の考え方</span>
+      <p>まず<strong>案Aで3〜6ヶ月走らせ、その運用実績を要件定義に変換してから案Cへ移行する</strong>のが最も現実的です。いきなり案Cを設計すると、使われない機能に投資することになります。SaaSの月額3万円は、要件定義のための調査費用として極めて安価です。</p>
+    </div>
+
+    <h3>フェーズ計画</h3>
+    <div class="scroll">
+      <div class="gantt">
+        <div></div>
+        <div class="hd">M1</div><div class="hd">M2</div><div class="hd">M3</div><div class="hd">M4</div><div class="hd">M5</div><div class="hd">M6</div><div class="hd">M7</div><div class="hd">M8</div><div class="hd">M9</div><div class="hd">M10</div><div class="hd">M11</div><div class="hd">M12</div>
+
+        <div class="ph">P0 診断</div>
+        <div class="seg" style="grid-column: 2 / 3;">診断</div>
+
+        <div class="ph">P1 可視化</div>
+        <div class="seg p2" style="grid-column: 3 / 5;">データ基盤・ダッシュボード</div>
+
+        <div class="ph">P2 推奨</div>
+        <div class="seg p3" style="grid-column: 5 / 8;">価格エンジン・承認フロー</div>
+
+        <div class="ph">P3 自動化</div>
+        <div class="seg p4" style="grid-column: 8 / 13;">閾値内自動配信・F&amp;B連携・直販強化</div>
+      </div>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>フェーズ</th><th>期間</th><th>主要成果物</th><th>この時点で誰が何を判断しているか</th><th>投資</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="key">P0 診断</td><td>1ヶ月</td>
+            <td>過去実績の棚卸し、コンプセット確定、RMポリシー草案、チャネル別Net ADR実額、基準商品定義の合意</td>
+            <td>従来通り人が判断。ただし判断基準が文書化される</td><td class="num">¥0.5〜1.0M</td>
+          </tr>
+          <tr>
+            <td class="key">P1 可視化</td><td>2ヶ月</td>
+            <td>データ基盤構築、レート収集稼働、12ヶ月先のペース／CRPI／競合売止のダッシュボード</td>
+            <td>人が判断するが、<strong>根拠がすべてデータ</strong>。属人性の半分がここで消える</td><td class="num">¥1.0〜2.0M</td>
+          </tr>
+          <tr>
+            <td class="key">P2 推奨</td><td>3ヶ月</td>
+            <td>価格エンジン、理由コード生成、承認ワークフロー、サイトコントローラー連携</td>
+            <td>機械が推奨し、人が承認。<strong>上書きには理由コードが必須</strong></td><td class="num">¥1.0〜2.0M</td>
+          </tr>
+          <tr>
+            <td class="key">P3 自動化</td><td>5ヶ月</td>
+            <td>閾値内の全自動配信、F&amp;B在庫連携、バイアウト自動見積り、直販導線強化</td>
+            <td>人は例外のみ。週2〜3時間の運用工数</td><td class="num">¥0.5〜1.0M</td>
+          </tr>
+          <tr>
+            <td class="key">P4 横展開</td><td>13ヶ月〜</td>
+            <td>マルチプロパティ対応、2施設目への適用</td>
+            <td>同左。限界費用はデータ接続のみ</td><td class="num">追加最小</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>技術スタック（案C）</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>領域</th><th>採用技術</th><th>選定理由</th></tr></thead>
+        <tbody>
+          <tr><td class="key">データ収集</td><td>レートショッパーSaaS API、Google Places API、PMS/サイトコントローラーAPI</td><td>規約準拠かつ保守負担が外部化される</td></tr>
+          <tr><td class="key">オーケストレーション</td><td>Cloud Run Jobs + Cloud Scheduler</td><td>日次バッチ規模。サーバーレスで運用工数ゼロ</td></tr>
+          <tr><td class="key">データウェアハウス</td><td>BigQuery + dbt</td><td>この規模なら月数千円。dbtでロジックがコードとして資産化</td></tr>
+          <tr><td class="key">予測・価格算出</td><td>Python（LightGBM / statsmodels）</td><td>説明可能性を保てる範囲の手法に限定</td></tr>
+          <tr><td class="key">可視化・承認UI</td><td>Looker Studio（P1）→ 軽量Webアプリ（P2以降）</td><td>P1は既製で十分。承認フローが必要になった時点で自作</td></tr>
+          <tr><td class="key">配信</td><td>サイトコントローラーAPI（手間いらず／TL-リンカーン／ねっぱん等）</td><td>既存資産を活用。OTA個別連携は行わない</td></tr>
+          <tr><td class="key">監査・通知</td><td>全変更をイベントログとして保存、Slack/LINE通知</td><td>ロールバックと事後検証の基盤</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <details>
+      <summary>データモデル概略（主要ファクトテーブル）</summary>
+      <div class="formula" style="margin-top:0">
+        <span class="v">fact_rate_observation</span> <span class="c">-- 競合・自社のレート観測</span><br>
+        &nbsp;&nbsp;observed_at, stay_date, property_id, room_type_id,<br>
+        &nbsp;&nbsp;meal_plan, occupancy, cancel_policy, channel,<br>
+        &nbsp;&nbsp;price_tax_incl, is_sold_out, los_restriction,<br>
+        &nbsp;&nbsp;price_normalized, normalization_confidence, source<br>
+        &nbsp;&nbsp;<span class="c">PK: (observed_at, stay_date, property_id, room_type_id,</span><br>
+        &nbsp;&nbsp;<span class="c">　　 meal_plan, occupancy, cancel_policy, channel)</span><br><br>
+        <span class="v">fact_own_otb</span> <span class="c">-- 自社の日次スナップショット（ペース計算の基盤）</span><br>
+        &nbsp;&nbsp;snapshot_date, stay_date, channel, rooms_sold,<br>
+        &nbsp;&nbsp;room_revenue, fnb_revenue, cancellations, rooms_available<br><br>
+        <span class="v">fact_price_decision</span> <span class="c">-- 監査ログ。属人性排除の物的証拠</span><br>
+        &nbsp;&nbsp;decided_at, stay_date, room_type_id, price_recommended,<br>
+        &nbsp;&nbsp;price_published, reason_codes[], was_overridden,<br>
+        &nbsp;&nbsp;override_reason, override_by, factor_values{}<br><br>
+        <span class="v">dim_event</span> <span class="c">-- イベント辞書</span><br>
+        &nbsp;&nbsp;event_id, name, date_from, date_to, impact_coefficient,<br>
+        &nbsp;&nbsp;is_date_dynamic, radius_km, verified_by, verified_at
+      </div>
+      <p><code>fact_price_decision</code> に <code>factor_values</code>（各係数の実値）を保存することが決定的に重要です。3ヶ月後に「なぜこの価格だったのか」を完全再現でき、パラメータ調整の効果検証もこのテーブルだけで完結します。</p>
+    </details>
+  </div>
+</section>
+
+<!-- =============== 10 =============== -->
+<section>
+  <div class="rail"><span class="num">10<small>運用統制</small></span></div>
+  <div class="body">
+    <h2>ガバナンス ── 属人性排除の本丸</h2>
+
+    <p>システムは半分にすぎません。<strong>残り半分は運用規程です。</strong> ここを整備しない導入は、必ず「誰かが毎日全部上書きする」状態に退化します。</p>
+
+    <h3>RMポリシー（意思決定の憲法）</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>条項</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td class="key">第1条 目的関数</td><td>最大化対象はTRevPAR。同一の予測稼働なら、料飲売上を含む総客単価が高い商品を優先する</td></tr>
+          <tr><td class="key">第2条 ブランドフロア</td><td>いかなる状況でも下回らない価格を経営が年1回決定。システムはこれを構造的に破れない</td></tr>
+          <tr><td class="key">第3条 直前値下げの禁止</td><td>T-7以内の価格引き下げを禁止。需要不足には価値付加で対応する</td></tr>
+          <tr><td class="key">第4条 パリティ</td><td>全OTAで表示価格を同一に保つ。直販の優位は非価格特典で構成する</td></tr>
+          <tr><td class="key">第5条 上書き</td><td>推奨価格の上書きには理由コードの入力を必須とする。月次で上書き内容をレビューし、妥当なものはルールへ昇格させる</td></tr>
+          <tr><td class="key">第6条 パラメータ変更</td><td>係数・重み・目標CRPIの変更は月次レビューでのみ実施。日々の思いつきでの変更を禁止する</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>第5条が制度設計の要諦です。</strong> 上書きを禁止するのではなく、<em>記録して学習源にする</em>。現場が繰り返し同じ理由で上書きするなら、それはシステムが捉えていない現実があるということ。その上書きパターンをルール化すれば、システムは自動的に賢くなります。属人的な暗黙知を、組織の形式知へ吸い上げる回路がここです。</p>
+
+    <h3>権限マトリクス</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>行為</th><th>現場スタッフ</th><th>支配人</th><th>経営</th></tr></thead>
+        <tbody>
+          <tr><td class="key">推奨価格の承認</td><td><span class="pill rec">可</span></td><td><span class="pill rec">可</span></td><td><span class="pill rec">可</span></td></tr>
+          <tr><td class="key">±5%以内の上書き</td><td><span class="pill mid">理由コード必須</span></td><td><span class="pill rec">可</span></td><td><span class="pill rec">可</span></td></tr>
+          <tr><td class="key">±5〜15%の上書き</td><td><span class="pill no">不可</span></td><td><span class="pill mid">理由コード必須</span></td><td><span class="pill rec">可</span></td></tr>
+          <tr><td class="key">±15%超／Floor抵触</td><td><span class="pill no">不可</span></td><td><span class="pill no">不可</span></td><td><span class="pill mid">承認要</span></td></tr>
+          <tr><td class="key">係数パラメータの変更</td><td><span class="pill no">不可</span></td><td><span class="pill mid">月次レビューで提案</span></td><td><span class="pill mid">承認</span></td></tr>
+          <tr><td class="key">ブランドフロアの変更</td><td><span class="pill no">不可</span></td><td><span class="pill no">不可</span></td><td><span class="pill rec">年次決定</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>週次レベニューミーティング（30分・議題固定）</h3>
+    <ol>
+      <li><strong>直近7日の実績</strong>（5分）── ピックアップ、キャンセル、Net ADR、レビュー</li>
+      <li><strong>12週先のペース異常</strong>（10分）── 標準ペースから±20%乖離している日のみを扱う</li>
+      <li><strong>CRPI乖離トップ5</strong>（5分）── 目標帯から外れた日と、その原因</li>
+      <li><strong>上書き申請の裁定</strong>（5分）</li>
+      <li><strong>イベント登録の追加・修正</strong>（5分）</li>
+    </ol>
+    <p>この議題を固定することが重要です。<em>何を見るかが毎回同じであれば、誰が座っても同じ会議が成立します。</em></p>
+
+    <h3>KPI体系</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>階層</th><th>指標</th><th>定義</th><th>目標</th><th>頻度</th></tr></thead>
+        <tbody>
+          <tr><td class="key">収益</td><td>RevPAR / TRevPAR / GOPPAR</td><td>販売可能室数あたりの客室／総／営業総利益</td><td>前年比 +8〜12%</td><td>月次</td></tr>
+          <tr><td class="key">市場</td><td>RGI（MPI・ARI）</td><td>自社RevPAR ÷ コンプセットRevPAR</td><td>RGI &gt; 1.10</td><td>月次</td></tr>
+          <tr><td class="key">価格</td><td>CRPI</td><td>正規化済み競合価格に対する自社の位置</td><td>1.05〜1.15</td><td>日次</td></tr>
+          <tr><td class="key">チャネル</td><td>直販比率 / 加重平均手数料率</td><td>—</td><td>直販35%／手数料 &lt; 9%</td><td>月次</td></tr>
+          <tr><td class="key">システム健全性</td><td><strong>上書き率</strong></td><td>推奨のうち人が変更した割合</td><td><strong>&lt; 15%</strong></td><td>週次</td></tr>
+          <tr><td class="key">システム健全性</td><td>データ収集成功率</td><td>予定観測数に対する取得成功率</td><td>&gt; 99%</td><td>日次</td></tr>
+          <tr><td class="key">品質</td><td>レビュー平均点</td><td>主要OTA・Googleの加重平均</td><td>低下させないこと</td><td>月次</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="tag">最重要KPI</span>
+      <p><strong>「上書き率」が本システムの成否を測る唯一最良の指標です。</strong> 上書き率が高いままなら、システムは現場に信頼されておらず、属人性は温存されています。逆に上書き率が15%を切り、かつ収益KPIが改善しているなら、<em>判断の外部化は成功しています</em>。レビュー会議では、収益指標よりも先にこの数字を確認してください。</p>
+    </div>
+  </div>
+</section>
+
+<!-- =============== 11 =============== -->
+<section>
+  <div class="rail"><span class="num">11<small>投資対効果</small></span></div>
+  <div class="body">
+    <h2>投資対効果とリスク</h2>
+
+    <h3>感応度分析（年間増収額）</h3>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>ADR改善 ＼ 稼働改善</th><th class="num">±0pt</th><th class="num">+1pt</th><th class="num">+2pt</th><th class="num">+3pt</th><th class="num">+4pt</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="key">+0%</td><td class="num">¥0.0M</td><td class="num">¥1.5M</td><td class="num">¥2.9M</td><td class="num">¥4.4M</td><td class="num">¥5.8M</td></tr>
+          <tr><td class="key">+2%</td><td class="num">¥1.9M</td><td class="num">¥3.4M</td><td class="num">¥4.9M</td><td class="num">¥6.4M</td><td class="num">¥7.9M</td></tr>
+          <tr><td class="key">+4%</td><td class="num">¥3.8M</td><td class="num">¥5.3M</td><td class="num">¥6.9M</td><td class="num">¥8.4M</td><td class="num">¥9.9M</td></tr>
+          <tr><td class="key">+6%</td><td class="num">¥5.7M</td><td class="num">¥7.3M</td><td class="num">¥8.8M</td><td class="num">¥10.4M</td><td class="num">¥12.0M</td></tr>
+          <tr><td class="key">+8%</td><td class="num">¥7.6M</td><td class="num">¥9.2M</td><td class="num">¥10.8M</td><td class="num">¥12.4M</td><td class="num">¥14.0M</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">基準：5室×365日、現状ADR ¥80,000、稼働65%（年間客室売上 ¥94.9M）。網掛けなしの表につき、想定レンジは「ADR +4〜6%／稼働 +2〜3pt」＝<strong>年間 +¥6.9M〜+¥10.4M</strong>。手数料削減効果（+¥1.2〜2.4M）は別途。</p>
+
+    <div class="tiles">
+      <div class="tile"><span class="lbl">初期投資（案C）</span><span class="val">¥3.0〜5.0M</span><span class="note">P0〜P2の累計</span></div>
+      <div class="tile"><span class="lbl">年間運用費</span><span class="val">¥1.2〜2.4M</span><span class="note">SaaS＋クラウド＋保守</span></div>
+      <div class="tile"><span class="lbl">想定年間効果</span><span class="val pos">¥8〜13M</span><span class="note">増収＋手数料削減</span></div>
+      <div class="tile"><span class="lbl">初年度 純効果</span><span class="val pos">¥3〜7M</span><span class="note">投資回収後の残余</span></div>
+    </div>
+
+    <h3>リスクと対策</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>リスク</th><th>影響</th><th>対策</th></tr></thead>
+        <tbody>
+          <tr><td class="key">価格の誤配信</td><td><span class="pill no">重大</span></td><td>サーキットブレーカー（±30%で自動停止）、承認フロー、ロールバック機構、配信後の差分監視</td></tr>
+          <tr><td class="key">パリティ違反</td><td><span class="pill no">重大</span></td><td>配信後15分以内に全チャネルの表示価格を再取得し照合。不一致はアラート</td></tr>
+          <tr><td class="key">現場が使わない</td><td><span class="pill no">重大</span></td><td>理由コードの必須化、上書き率のKPI化、P1で「便利な可視化」から入る導入順序</td></tr>
+          <tr><td class="key">データ収集の停止</td><td><span class="pill mid">中</span></td><td>f_comp=1.00へのフェイルセーフ、2系統の取得元、欠損の即時アラート</td></tr>
+          <tr><td class="key">OTA規約・API仕様変更</td><td><span class="pill mid">中</span></td><td>収集層を疎結合に。ベンダーロックインを避け、L2以降は取得元非依存</td></tr>
+          <tr><td class="key">モデルの過学習</td><td><span class="pill mid">中</span></td><td>説明可能な手法に限定、係数の可動域を制限、Floor/Ceilingで構造的に抑制</td></tr>
+          <tr><td class="key">ブランド毀損</td><td><span class="pill no">重大</span></td><td>ブランドフロアの絶対不可侵化、直前値下げ禁止条項、レビュー平均点のKPI監視</td></tr>
+          <tr><td class="key">担当者の離脱</td><td><span class="pill rec">低</span></td><td><strong>本提案の目的そのもの。</strong> ロジック・パラメータ・意思決定ログがすべて資産として残る</td></tr>
+          <tr><td class="key">宿泊税の導入</td><td><span class="pill rec">低</span></td><td>奈良市が導入を継続検討中。総額表示への影響を価格式に外部パラメータとして持たせておく</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>次の90日 ── 具体的アクション</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>期限</th><th>アクション</th><th>成果物</th><th>担当</th></tr></thead>
+        <tbody>
+          <tr><td class="key">30日以内</td><td>開業以降の全予約データ抽出（滞在日・予約日・チャネル・単価・人数・キャンセル）／チャネル別の実手数料率の確認／コンプセット6施設の確定</td><td>データ棚卸し報告、コンプセット定義書</td><td>運営＋外部</td></tr>
+          <tr><td class="key">30日以内</td><td>基準商品の定義と、食事条件の補正額の合意</td><td>正規化ルール表</td><td>支配人＋経営</td></tr>
+          <tr><td class="key">45日以内</td><td>ブランドフロアと目標CRPIの経営決定</td><td>RMポリシー v1.0</td><td>経営</td></tr>
+          <tr><td class="key">60日以内</td><td>レートショッパー2社の試用比較（奈良市場のカバー率、2食付施設の取得精度を実データで検証）</td><td>ベンダー選定報告</td><td>外部</td></tr>
+          <tr><td class="key">60日以内</td><td>イベント辞書の初年度分を登録（社寺行事・催事・学校休暇）</td><td>イベントカレンダー</td><td>運営</td></tr>
+          <tr><td class="key">90日以内</td><td>データ基盤構築とダッシュボード稼働、週次ミーティング開始</td><td>Phase 1 稼働</td><td>外部＋運営</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="tag">最初の一歩</span>
+      <p>90日アクションのうち、<strong>最も重要かつ最も安価なのは「過去データの棚卸し」と「RMポリシーの起草」</strong>です。システム投資はゼロ円で始められます。何を最大化し、どこまで下げず、誰が何を決めてよいのか——これを文書にした瞬間、属人性の排除はもう始まっています。システムはその文書を、毎日休まず実行する装置にすぎません。</p>
+    </div>
+  </div>
+</section>
+
+<!-- =============== appendix =============== -->
+<section>
+  <div class="rail"><span class="num">A<small>補遺</small></span></div>
+  <div class="body">
+    <h2>前提と出典について</h2>
+    <p class="footnote">
+      本提案における鹿のやのADR・稼働率・収益構成は、公開情報および同カテゴリー施設の相場からの<strong>推計値</strong>であり、実データによる置換を前提としています（Phase 0で確定）。施設概要は公開検索結果および各OTA掲載情報に基づきます。競合各施設の価格帯は公開情報からの参考値です。<br><br>
+      チャネル手数料率は業界の一般的レンジであり、実契約条件による確認が必要です。ベンダー費用（メトロエンジン等）は公表情報に基づく参考値で、2026年8月時点。奈良市の宿泊税は現時点で未導入・継続検討中です。楽天ウェブサービスの旧形式トラベルAPIは2026年2月に提供を終了しており、新API系列への移行が必要です。第78回正倉院展は2026年10月24日〜11月9日開催。<br><br>
+      本書は議論の出発点となる企画提案であり、実装前に実データによる検証、契約条件の確認、および各サービス利用規約の法務レビューを行うことを推奨します。
+    </p>
+  </div>
+</section>
+
+</div>
