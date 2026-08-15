@@ -1,0 +1,82 @@
+{
+  "_note": "データ収集の設定。APIキーはここに書かず、環境変数から読む（GOOGLE_PLACES_API_KEY / SERPAPI_API_KEY / DATAFORSEO_LOGIN・DATAFORSEO_PASSWORD）。",
+
+  "property": {
+    "name": "奈良春日 鹿のや",
+    "address": "〒630-8212 奈良県奈良市春日野町158-8",
+    "geocode_query": "奈良春日 鹿のや 奈良県奈良市春日野町158-8",
+    "latitude": 34.6815,
+    "longitude": 135.8462,
+    "_coord_note": "公開されている住所（春日大社本殿バス停 徒歩3分）からの概算値。discover_compset.py は Places API のジオコーディング結果を優先し、本値はフォールバックとしてのみ使う。実運用前に必ず実測値で確定すること。"
+  },
+
+  "discovery": {
+    "radius_m": 5000,
+    "_radius_note": "奈良公園・春日野・ならまち圏に加え、JR奈良駅周辺・高畑・紀寺まで覆う半径。広げても類似度スコアで並べ替えるため無関係な施設は下位に沈むが、Places APIのリクエスト数（＝費用）は半径の二乗で増える。discover_compset.py が実行前にリクエスト数と概算費用を表示する。",
+    "min_review_count": 15,
+    "_min_review_note": "レビュー数が極端に少ない施設は価格の信頼性が低く、コンペセットのノイズになるため除外する。",
+    "exclude_name_patterns": ["カプセル", "ゲストハウス", "ホステル", "ドミトリー", "民泊"],
+    "_exclude_note": "価格帯が2桁違う業態を機械的に落とす。境界事例は四半期レビューで人が判断する。",
+    "max_candidates": 60
+  },
+
+  "scoring": {
+    "_note": "コンペセット類似度スコアの重み。合計1.0。四半期ごとに再評価する。広い半径では距離より『似ているか』が効くよう、価格帯・規模の比重を上げている。",
+    "weights": {
+      "distance": 0.22,
+      "price_band": 0.32,
+      "scale": 0.20,
+      "reputation": 0.16,
+      "review_volume": 0.10
+    },
+    "distance_half_km": 1.5,
+    "_distance_half_km_note": "距離スコアの半減距離。1.5kmで0.5、3kmで0.25、5kmで0.10。探索半径に依存しないため、半径を変えても既存施設のスコアは動かない。",
+    "reference_price_level": "PRICE_LEVEL_VERY_EXPENSIVE",
+    "reference_rooms": 5,
+    "reference_rating": 4.6,
+    "tier_thresholds": {
+      "PRIMARY": 0.70,
+      "SECONDARY": 0.50,
+      "ASPIRATIONAL": 0.0
+    },
+    "aspirational_price_levels": ["PRICE_LEVEL_VERY_EXPENSIVE"],
+    "_aspirational_note": "スコアが低くても価格帯が明確に上位の施設は ASPIRATIONAL として残す（ADR天井の参照点になるため）。"
+  },
+
+  "collection": {
+    "area_query": "奈良公園 春日大社 周辺 ホテル 旅館",
+    "_area_query_note": "エリア一括検索のクエリ。1リクエストで複数施設が返るためリクエスト単価が最も安い。",
+    "adults": 2,
+    "los": 1,
+    "currency": "JPY",
+    "horizon_days": 120,
+    "tiers": [
+      { "name": "near",   "min_lead": 0,  "max_lead": 14,  "every_n_days": 1,
+        "note": "価格変動が最も激しい帯。毎日取得する。" },
+      { "name": "mid",    "min_lead": 15, "max_lead": 45,  "every_n_days": 3,
+        "note": "変動は中程度。週2回相当。" },
+      { "name": "far",    "min_lead": 46, "max_lead": 120, "every_n_days": 7,
+        "note": "ほぼ静的。週1回。" }
+    ],
+    "priority_boost": {
+      "_note": "週末・イベント日は頻度を『1段階上の階層』へ引き上げる（far→mid→near）。価格変動が集中するため。ただし遠い日付は繁忙日でも日々は動かないので、リードタイム上限を設ける。",
+      "step_up": 1,
+      "weekend_max_lead": 60,
+      "event_min_score": 0.5,
+      "event_max_lead": 45
+    }
+  },
+
+  "budget": {
+    "serpapi_cost_per_search_usd": 0.015,
+    "_cost_note": "$150/15,000検索 のプラン単価。契約プランに合わせて更新すること。",
+    "places_nearby_cost_per_request_usd": 0.035,
+    "monthly_search_cap": 15000,
+    "_cap_note": "この上限を超える収集計画は collect_rates.py が実行前に警告して停止する。"
+  },
+
+  "rate_limits": {
+    "serpapi_per_second": 2.0,
+    "places_per_second": 5.0
+  }
+}

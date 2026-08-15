@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+out/
+
+# 生成物（決定論的に再生成できるためコミットしない）
+# 実API の生レスポンス（課金データ）
+engine/data/raw/
+# make_fixtures.py で再生成
+engine/data/fixtures/
+# collect_rates.py で再生成
+engine/data/comp_rates_collected.csv
+# discover_compset.py で再生成
+engine/config/compset.generated.json
+# make_fixtures.py で再生成
+engine/data/otb.csv

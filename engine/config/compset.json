@@ -1,0 +1,482 @@
+{
+  "_generated": true,
+  "_provenance": {
+    "source": "フィクスチャ再生（擬似データ）",
+    "generated_on": "2026-08-15",
+    "radius_m": 5000,
+    "places_found": 23,
+    "origin_note": "フィクスチャ再生（擬似データ） のジオコーディング結果"
+  },
+  "_warning": "自動生成された候補です。そのまま本番投入しないでください。meal_included / dinner_uplift / breakfast_uplift / rooms を人が確定し、compset.json へ昇格させてから使用します。",
+  "_normalization": "各社の掲出価格を『1室2名1泊2食・税サ込』に補正するためのパラメータ。meal_included=none の施設には dinner_uplift/breakfast_uplift を加算し、pricing_basis=per_person の施設は ×2 する。",
+  "origin": {
+    "latitude": 34.6815,
+    "longitude": 135.8462
+  },
+  "tiers": {
+    "PRIMARY": {
+      "description": "直接競合",
+      "tier_weight": 1.0
+    },
+    "SECONDARY": {
+      "description": "価格帯代替",
+      "tier_weight": 0.5
+    },
+    "ASPIRATIONAL": {
+      "description": "目標ポジション（ADR天井の参照点）",
+      "tier_weight": 0.3
+    }
+  },
+  "competitors": [
+    {
+      "id": "auto01",
+      "name": "月日亭",
+      "place_id": "fixture_place_014",
+      "tier": "PRIMARY",
+      "weight": 1.0,
+      "rooms": 6,
+      "distance_km": 0.99,
+      "latitude": 34.6872,
+      "longitude": 135.8545,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.5,
+      "review_count": 140,
+      "price_level": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "score_breakdown": {
+        "distance": 0.633,
+        "price_band": 1.0,
+        "scale": 0.947,
+        "reputation": 0.933,
+        "review_volume": 0.793
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto02",
+      "name": "ふふ奈良",
+      "place_id": "fixture_place_000",
+      "tier": "PRIMARY",
+      "weight": 0.944,
+      "rooms": 30,
+      "distance_km": 0.67,
+      "latitude": 34.679,
+      "longitude": 135.8395,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.6,
+      "review_count": 420,
+      "price_level": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "score_breakdown": {
+        "distance": 0.733,
+        "price_band": 1.0,
+        "scale": 0.481,
+        "reputation": 1.0,
+        "review_volume": 0.909
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto03",
+      "name": "江戸三",
+      "place_id": "fixture_place_003",
+      "tier": "PRIMARY",
+      "weight": 0.924,
+      "rooms": 11,
+      "distance_km": 0.42,
+      "latitude": 34.68,
+      "longitude": 135.842,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.5,
+      "review_count": 180,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "score_breakdown": {
+        "distance": 0.824,
+        "price_band": 0.75,
+        "scale": 0.772,
+        "reputation": 0.933,
+        "review_volume": 0.861
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto04",
+      "name": "NIPPONIA HOTEL 奈良ならまち",
+      "place_id": "fixture_place_004",
+      "tier": "PRIMARY",
+      "weight": 0.916,
+      "rooms": 12,
+      "distance_km": 1.6,
+      "latitude": 34.679,
+      "longitude": 135.829,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "breakfast",
+      "dinner_uplift": 18000.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.4,
+      "review_count": 210,
+      "price_level": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "score_breakdown": {
+        "distance": 0.478,
+        "price_band": 1.0,
+        "scale": 0.747,
+        "reputation": 0.867,
+        "review_volume": 0.903
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto05",
+      "name": "古都の宿 むさし野",
+      "place_id": "fixture_place_001",
+      "tier": "PRIMARY",
+      "weight": 0.877,
+      "rooms": 14,
+      "distance_km": 0.92,
+      "latitude": 34.689,
+      "longitude": 135.842,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.5,
+      "review_count": 260,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "score_breakdown": {
+        "distance": 0.654,
+        "price_band": 0.75,
+        "scale": 0.702,
+        "reputation": 0.933,
+        "review_volume": 0.961
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto06",
+      "name": "紀寺の家",
+      "place_id": "fixture_place_009",
+      "tier": "PRIMARY",
+      "weight": 0.849,
+      "rooms": 8,
+      "distance_km": 1.78,
+      "latitude": 34.674,
+      "longitude": 135.829,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "none",
+      "dinner_uplift": 12000.0,
+      "breakfast_uplift": 4000.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.6,
+      "review_count": 120,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "score_breakdown": {
+        "distance": 0.439,
+        "price_band": 0.75,
+        "scale": 0.864,
+        "reputation": 1.0,
+        "review_volume": 0.751
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto07",
+      "name": "静観荘",
+      "place_id": "fixture_place_006",
+      "tier": "PRIMARY",
+      "weight": 0.843,
+      "rooms": 12,
+      "distance_km": 0.96,
+      "latitude": 34.6795,
+      "longitude": 135.836,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.3,
+      "review_count": 150,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "score_breakdown": {
+        "distance": 0.642,
+        "price_band": 0.75,
+        "scale": 0.747,
+        "reputation": 0.8,
+        "review_volume": 0.812
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto08",
+      "name": "ANDO HOTEL 奈良若草山",
+      "place_id": "fixture_place_002",
+      "tier": "PRIMARY",
+      "weight": 0.832,
+      "rooms": 21,
+      "distance_km": 0.77,
+      "latitude": 34.6883,
+      "longitude": 135.848,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.4,
+      "review_count": 610,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "score_breakdown": {
+        "distance": 0.699,
+        "price_band": 0.75,
+        "scale": 0.585,
+        "reputation": 0.867,
+        "review_volume": 0.807
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto09",
+      "name": "セトレ ならまち",
+      "place_id": "fixture_place_008",
+      "tier": "SECONDARY",
+      "weight": 0.778,
+      "rooms": 20,
+      "distance_km": 1.74,
+      "latitude": 34.677,
+      "longitude": 135.828,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "breakfast",
+      "dinner_uplift": 14000.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.3,
+      "review_count": 340,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "score_breakdown": {
+        "distance": 0.448,
+        "price_band": 0.75,
+        "scale": 0.599,
+        "reputation": 0.8,
+        "review_volume": 0.966
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto10",
+      "name": "奈良ホテル",
+      "place_id": "fixture_place_005",
+      "tier": "SECONDARY",
+      "weight": 0.744,
+      "rooms": 90,
+      "distance_km": 1.35,
+      "latitude": 34.679,
+      "longitude": 135.8318,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "none",
+      "dinner_uplift": 15000.0,
+      "breakfast_uplift": 5500.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.4,
+      "review_count": 2400,
+      "price_level": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "score_breakdown": {
+        "distance": 0.537,
+        "price_band": 1.0,
+        "scale": 0.163,
+        "reputation": 0.867,
+        "review_volume": 0.436
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto11",
+      "name": "奈良倶楽部",
+      "place_id": "fixture_place_013",
+      "tier": "SECONDARY",
+      "weight": 0.712,
+      "rooms": 10,
+      "distance_km": 1.76,
+      "latitude": 34.693,
+      "longitude": 135.833,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "breakfast",
+      "dinner_uplift": 10000.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.4,
+      "review_count": 95,
+      "price_level": "PRICE_LEVEL_MODERATE",
+      "score_breakdown": {
+        "distance": 0.444,
+        "price_band": 0.5,
+        "scale": 0.799,
+        "reputation": 0.867,
+        "review_volume": 0.688
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto12",
+      "name": "春日ホテル",
+      "place_id": "fixture_place_007",
+      "tier": "SECONDARY",
+      "weight": 0.688,
+      "rooms": 60,
+      "distance_km": 1.6,
+      "latitude": 34.684,
+      "longitude": 135.829,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.2,
+      "review_count": 520,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "score_breakdown": {
+        "distance": 0.478,
+        "price_band": 0.75,
+        "scale": 0.281,
+        "reputation": 0.733,
+        "review_volume": 0.851
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto13",
+      "name": "飛鳥荘",
+      "place_id": "fixture_place_011",
+      "tier": "SECONDARY",
+      "weight": 0.599,
+      "rooms": 60,
+      "distance_km": 1.04,
+      "latitude": 34.68,
+      "longitude": 135.835,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.0,
+      "review_count": 690,
+      "price_level": "PRICE_LEVEL_MODERATE",
+      "score_breakdown": {
+        "distance": 0.619,
+        "price_band": 0.5,
+        "scale": 0.281,
+        "reputation": 0.6,
+        "review_volume": 0.774
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto14",
+      "name": "奈良万葉若草の宿 三笠",
+      "place_id": "fixture_place_010",
+      "tier": "SECONDARY",
+      "weight": 0.596,
+      "rooms": 40,
+      "distance_km": 1.65,
+      "latitude": 34.696,
+      "longitude": 135.85,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.1,
+      "review_count": 780,
+      "price_level": "PRICE_LEVEL_MODERATE",
+      "score_breakdown": {
+        "distance": 0.467,
+        "price_band": 0.5,
+        "scale": 0.398,
+        "reputation": 0.667,
+        "review_volume": 0.741
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    },
+    {
+      "id": "auto15",
+      "name": "ホテルニューわかさ",
+      "place_id": "fixture_place_012",
+      "tier": "SECONDARY",
+      "weight": 0.591,
+      "rooms": 40,
+      "distance_km": 1.49,
+      "latitude": 34.683,
+      "longitude": 135.83,
+      "pricing_basis": "per_room",
+      "_pricing_basis_note": "Google Hotels は室単価で返るため既定は per_room。人数課金の宿は要確認。",
+      "meal_included": "dinner_breakfast",
+      "dinner_uplift": 0.0,
+      "breakfast_uplift": 0.0,
+      "_meal_note": "★人手確定項目。誤ると NAR 正規化が体系的に狂い、エンジン内では正常値に見える。",
+      "rating": 4.0,
+      "review_count": 830,
+      "price_level": "PRICE_LEVEL_MODERATE",
+      "score_breakdown": {
+        "distance": 0.502,
+        "price_band": 0.5,
+        "scale": 0.398,
+        "reputation": 0.6,
+        "review_volume": 0.724
+      },
+      "needs_review": [
+        "overrides_present_but_unconfirmed"
+      ]
+    }
+  ]
+}

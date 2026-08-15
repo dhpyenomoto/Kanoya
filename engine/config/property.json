@@ -1,0 +1,90 @@
+{
+  "property": {
+    "id": "kanoya",
+    "name": "奈良春日 鹿のや",
+    "rooms": 5,
+    "area": "奈良市春日野町",
+    "product_type": "auberge_2meals",
+    "standard_occupancy": 2,
+    "note": "全5室オーベルジュ。1泊2食・1室2名を標準商品単位とする。"
+  },
+
+  "_comment_pricing_basis": "すべての価格は『1室2名1泊2食・税サ込』のルームナイト総額（円）。人数課金・素泊まりは normalize.py で本基準に正規化する。",
+
+  "base": {
+    "anchor_room_rate": 81000,
+    "_anchor_note": "scripts/calibrate_base.py による四半期校正値（市場整合ポジション1.15倍）。手入力ではなく校正レポートの出力を転記すること。",
+    "season_factor": {
+      "PEAK":     1.38,
+      "HIGH":     1.18,
+      "SHOULDER": 1.00,
+      "LOW":      0.86,
+      "DEEP_LOW": 0.76
+    },
+    "dow_factor": {
+      "MON": 0.88, "TUE": 0.86, "WED": 0.87, "THU": 0.92,
+      "FRI": 1.08, "SAT": 1.22, "SUN": 0.95
+    },
+    "holiday_eve_bonus": 0.18,
+    "_holiday_eve_note": "祝日・連休の前日は SAT 相当に引き上げる乗数（+18%）。"
+  },
+
+  "guardrails": {
+    "floor_room_rate": 58000,
+    "_floor_note": "貢献利益フロア。1室2名2食の変動費（食材・リネン・OTA手数料・変動人件費）+ 最低貢献利益から算出。原価が変われば必ず再計算する。",
+    "ceiling_room_rate": 240000,
+    "max_change_per_day_pct": 0.15,
+    "rounding_unit": 1000,
+    "auto_apply_band_pct": 0.12,
+    "_auto_apply_note": "現行公開価格に対して ±12% 以内の推奨は自動でサイトコントローラーへ配信。超過分は承認待ちキューへ。",
+    "hard_stop_band_pct": 0.35,
+    "_hard_stop_note": "±35% を超える推奨はシステムが自動棄却し、データ異常として警告を上げる（収集エラーによる暴走の防止）。"
+  },
+
+  "coefficients": {
+    "_form": "log P = log(P_base) + b_pace*z_pace + b_comp*z_comp + b_event*z_event + b_lead*z_lead + b_remain*z_remain",
+    "b_pace": 0.42,
+    "b_comp": 0.32,
+    "b_event": 0.30,
+    "b_lead": 0.20,
+    "b_remain": 0.34,
+    "term_clip": 0.28,
+    "_clip_note": "各項の対数寄与を ±0.28（およそ ±32%）に制限し、単一シグナルの暴走を防ぐ。"
+  },
+
+  "lead_time_curve": {
+    "_note": "リードタイム別の基礎補正（対数）。早期は在庫確保のため微減、直前は在庫状況に委ねる（ここでは0）。値下げではなく特典付与で埋める方針のため直前はマイナスにしない。",
+    "buckets": [
+      { "min_days": 121, "max_days": 400, "adj": -0.06 },
+      { "min_days": 61,  "max_days": 120, "adj": -0.03 },
+      { "min_days": 29,  "max_days": 60,  "adj":  0.00 },
+      { "min_days": 15,  "max_days": 28,  "adj":  0.02 },
+      { "min_days": 8,   "max_days": 14,  "adj":  0.03 },
+      { "min_days": 0,   "max_days": 7,   "adj":  0.00 }
+    ]
+  },
+
+  "restrictions": {
+    "mlos_trigger_event_score": 0.6,
+    "mlos_trigger_comp_pressure": 0.7,
+    "mlos_nights": 2,
+    "gap_fill_discount_pct": 0.0,
+    "_gap_fill_note": "1泊の空隙（gap night）は値引きではなく、貸切風呂・アップグレード等の非価格特典で埋める。ブランド毀損を避けるための設計判断。"
+  },
+
+  "channels": {
+    "direct":      { "label": "自社直販",        "commission": 0.035, "point_cost": 0.00, "note": "決済手数料のみ" },
+    "ikyu":        { "label": "一休.com",        "commission": 0.11,  "point_cost": 0.03, "note": "ポイント原資は実質値引きとして計上" },
+    "rakuten":     { "label": "楽天トラベル",     "commission": 0.10,  "point_cost": 0.02 },
+    "jalan":       { "label": "じゃらんnet",      "commission": 0.10,  "point_cost": 0.02 },
+    "booking":     { "label": "Booking.com",     "commission": 0.15,  "point_cost": 0.03, "note": "Genius等の会員割を実質コストに算入" },
+    "expedia":     { "label": "Expedia",         "commission": 0.17,  "point_cost": 0.02 },
+    "_note": "手数料率は仮置き。実契約値に置換すること。Net ADR = 掲出ADR × (1 - commission - point_cost)。"
+  },
+
+  "auto_event_detection": {
+    "comp_soldout_ratio_threshold": 0.55,
+    "comp_rate_spike_threshold": 0.25,
+    "_note": "コンペセットの売止率が閾値超 かつ 平常比レートが+25%超 の場合、カレンダー未登録でも『市場イベント』として自動検知する。イベント表の人手メンテへの依存を断つための機構。"
+  }
+}
