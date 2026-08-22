@@ -42,6 +42,10 @@ def main() -> int:
     parser.add_argument("--open", action="store_true", help="HTMLをブラウザで開く")
     parser.add_argument("--anonymize", action="store_true",
                         help="競合名を「競合A/B/…」に匿名化（外部共有・見本公開用）")
+    parser.add_argument("--survey-endpoint", default=None,
+                        help="「調査」ボタンの送信先。省略時は sources.json の "
+                             "survey_api.endpoint。動作確認には "
+                             "http://127.0.0.1:8000/api/survey")
     parser.add_argument("--out-dir", default="../out")
     args = parser.parse_args()
 
@@ -68,6 +72,11 @@ def main() -> int:
 
     sources = json.loads((root / "config" / "sources.json").read_text(encoding="utf-8"))
 
+    # CLI > 設定ファイル。設定を書き換えずに手元のサーバーへ向けられるようにする
+    survey_endpoint = (args.survey_endpoint
+                       if args.survey_endpoint is not None
+                       else str(sources.get("survey_api", {}).get("endpoint", "")))
+
     ctx = build_context(
         root, survey_request.as_of, survey_request.max_lead + 1,
         compset_file=root / args.compset,
@@ -81,6 +90,7 @@ def main() -> int:
         fixture=fixture,
         radius_m=int(sources["discovery"]["radius_m"]),
         anonymize=args.anonymize,
+        survey_endpoint=survey_endpoint,
     )
 
     if not report.dates:
@@ -106,6 +116,7 @@ def main() -> int:
         fixture=fixture,
         radius_m=int(sources["discovery"]["radius_m"]),
         anonymize=args.anonymize,
+        survey_endpoint=survey_endpoint,
     )
     html_path.write_text(
         matrix.render_html(full, initial=(survey_request.start, survey_request.end)),

@@ -137,6 +137,7 @@ class MatrixReport:
     fixture: bool
     radius_m: int = 0
     pricing: SelfPricing | None = None
+    survey_endpoint: str = ""
 
     @property
     def competitor_rows(self) -> list[MatrixRow]:
@@ -173,7 +174,7 @@ def build_full(settings: Settings, ctx, **kwargs) -> MatrixReport:
 
 def build(settings: Settings, ctx, window: tuple[date, date], *,
           fixture: bool = False, radius_m: int = 0,
-          anonymize: bool = False) -> MatrixReport:
+          anonymize: bool = False, survey_endpoint: str = "") -> MatrixReport:
     """施設×宿泊日のマトリクスを組み立てる.
 
     anonymize=True で競合名を「競合A」「競合B」…に置き換える。
@@ -241,6 +242,7 @@ def build(settings: Settings, ctx, window: tuple[date, date], *,
         fixture=fixture,
         radius_m=radius_m,
         pricing=self_pricing_of(settings),
+        survey_endpoint=survey_endpoint,
     )
 
 
@@ -410,6 +412,9 @@ def _payload(report: MatrixReport, initial: tuple[date, date] | None) -> dict:
             "breakfast": round(p.breakfast), "occupancy": p.occupancy,
             "floor": round(p.floor), "ceiling": round(p.ceiling),
         } if p else None,
+        # 空なら「調査」ボタンは無効のまま出る。何を設定すれば動くかを
+        # 画面上に書いておくほうが、ボタンごと隠すより運用しやすい
+        "surveyEndpoint": report.survey_endpoint,
         "dates": dates,
         "dow": {d.isoformat(): report.day_labels[d] for d in report.dates},
         "events": {d.isoformat(): report.event_labels.get(d, "")
@@ -417,6 +422,7 @@ def _payload(report: MatrixReport, initial: tuple[date, date] | None) -> dict:
         "initial": {"from": lo, "to": hi},
         "rows": [
             {
+                "id": r.comp_id,
                 "name": r.name,
                 "kind": kinds.get(r.comp_id, "comp"),
                 "tier": r.tier,
@@ -504,6 +510,26 @@ input:focus,select:focus,button:focus-visible{{outline:2px solid var(--accent);
 .calc b{{font-size:16px;color:var(--accent)}}
 .calc .bad{{color:var(--warn);font-weight:700}}
 .note{{color:var(--muted);font-size:12px;margin-top:6px;line-height:1.7}}
+
+/* ── オンデマンド調査 ─────────────────────────────── */
+button.go{{background:var(--warn);border-color:var(--warn);color:#fff;
+ font-size:15px;font-weight:700;padding:8px 26px;min-height:40px}}
+button.go:hover{{background:var(--warn);opacity:.88;color:#fff}}
+button:disabled{{opacity:.45;cursor:not-allowed}}
+button:disabled:hover{{background:var(--surface);border-color:var(--line);
+ color:var(--ink2)}}
+.status{{margin-top:12px;font-size:13px;line-height:1.8}}
+.status.busy{{color:var(--accent);font-weight:700}}
+.status.bad{{color:var(--warn);font-weight:700}}
+.spin{{display:inline-block;width:11px;height:11px;margin-right:7px;
+ border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;
+ animation:sp .8s linear infinite;vertical-align:-1px}}
+@keyframes sp{{to{{transform:rotate(360deg)}}}}
+@media (prefers-reduced-motion:reduce){{.spin{{animation:none}}}}
+td.fresh{{box-shadow:inset 0 0 0 2px var(--accent)}}
+input[type=password]{{font:inherit;font-size:14px;padding:6px 9px;
+ border:1px solid var(--line);border-radius:3px;background:var(--field);
+ color:var(--ink);min-width:150px}}
 .presets{{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px;
  padding-top:13px;border-top:1px dashed var(--line)}}
 button{{font:inherit;font-size:12.5px;padding:5px 11px;border:1px solid var(--line);
@@ -612,6 +638,23 @@ tbody tr:hover td:not(.so):not(.na){{outline:2px solid var(--accent);outline-off
     上下するため、表の「現行」行とは一致しません。入力は端末に保存され、次に開いたときも残ります。</p>
 </div>
 
+<div class="panel">
+  <h2>競合の最新価格を取りに行く</h2>
+  <div class="fields">
+    <div class="field"><label>&nbsp;</label>
+      <div><button type="button" id="survey" class="go">この期間を調査</button></div></div>
+    <div class="field"><label for="token">アクセストークン</label>
+      <input type="password" id="token" autocomplete="off"
+             placeholder="管理者から受け取った文字列"></div>
+  </div>
+  <div class="status" id="surveyStatus"></div>
+  <p class="note">上で選んだ期間について、Google Hotels の実勢価格を取得して表を更新します。
+    <b>1宿泊日あたり約2.3円（SerpApi 1リクエスト）が課金されます。</b>
+    取得したセルは緑の枠で囲まれます。<br>
+    更新されるのは<b>競合価格・売止・市場中央値</b>です。エンジン推奨は予約状況（OTB）を
+    使うため夜間バッチのままです。トークンはこの端末にのみ保存され、送信先は調査サーバーだけです。</p>
+</div>
+
 <div class="stats" id="stats"></div>
 <div class="legend" id="legend"></div>
 <div class="scroll"><table>
@@ -625,10 +668,17 @@ const D = {data};
 const $ = (id) => document.getElementById(id);
 const fromEl = $("from"), toEl = $("to"), monthEl = $("month"), errEl = $("err");
 const ALL = D.dates;
-const MIN = ALL[0], MAX = ALL[ALL.length - 1];
+let MIN = ALL[0], MAX = ALL[ALL.length - 1];
 
-// 収集済みの範囲外は選べないようにする（データが無い期間を指定しても意味がないため）
-for (const el of [fromEl, toEl]) {{ el.min = MIN; el.max = MAX; }}
+// 収集済みの範囲外は選べないようにする（データが無い期間を指定しても意味がないため）。
+// ただし調査サーバーがあるなら、その場で取りに行けるので先の日付も選ばせる。
+function setDateBounds() {{
+  const hi = D.surveyEndpoint
+    ? new Date(Date.now() + 400 * 86400000).toISOString().slice(0, 10)
+    : MAX;
+  for (const el of [fromEl, toEl]) {{ el.min = MIN; el.max = hi; }}
+}}
+setDateBounds();
 fromEl.value = D.initial.from;
 toEl.value = D.initial.to;
 
@@ -820,6 +870,118 @@ function displayRows() {{
   return out;
 }}
 
+/* ── オンデマンド調査 ──────────────────────────────
+   APIキーはこのページには無い。調査サーバー（api/survey.py）が持つ。
+   ここはその窓口を叩き、返ってきた値を表に流し込むだけ。          */
+const ENDPOINT = D.surveyEndpoint || "";
+const TOKEN_KEY = "kanoya.surveyToken.v1";
+const surveyBtn = $("survey"), tokenEl = $("token"), statusEl = $("surveyStatus");
+// この調査で取得できたセル。既存データと見分けられるよう印を付ける
+const FRESH = new Set();
+
+const setStatus = (text, kind) => {{
+  statusEl.className = "status" + (kind ? " " + kind : "");
+  statusEl.innerHTML = text;
+}};
+
+try {{
+  const saved = localStorage.getItem(TOKEN_KEY);
+  if (saved) tokenEl.value = saved;
+}} catch (e) {{}}
+
+if (!ENDPOINT) {{
+  surveyBtn.disabled = true;
+  tokenEl.disabled = true;
+  setStatus("調査サーバーが未設定です。" +
+    "<code>engine/config/sources.json</code> の " +
+    "<code>survey_api.endpoint</code> にURLを設定して再生成すると有効になります。");
+}}
+
+async function runSurvey() {{
+  const a = fromEl.value, z = toEl.value;
+  if (!a || !z || a > z) {{
+    setStatus("先に調べたい日程を正しく選んでください。", "bad");
+    return;
+  }}
+  const days = ALL.filter(d => d >= a && d <= z).length ||
+               (Math.round((new Date(z) - new Date(a)) / 86400000) + 1);
+
+  surveyBtn.disabled = true;
+  setStatus('<span class="spin"></span>' + a + " 〜 " + z +
+            " を調査中… （" + days + "日分・最大1分ほどかかります）", "busy");
+
+  try {{
+    const res = await fetch(ENDPOINT, {{
+      method: "POST",
+      headers: {{"Content-Type": "application/json",
+                 "X-Survey-Token": tokenEl.value || ""}},
+      body: JSON.stringify({{from: a, to: z}}),
+    }});
+    const data = await res.json().catch(() => ({{}}));
+    if (!res.ok) {{
+      setStatus("調査できませんでした： " +
+                (data.error || ("サーバーが " + res.status + " を返しました")), "bad");
+      return;
+    }}
+    applySurvey(data);
+  }} catch (err) {{
+    // ネットワーク断・CORS拒否・URL誤りはここに落ちる。原因を書き分ける
+    setStatus("調査サーバーに接続できませんでした。URLの誤り、サーバー停止、" +
+              "またはCORS設定（RM_SURVEY_ALLOWED_ORIGINS）をご確認ください。", "bad");
+  }} finally {{
+    surveyBtn.disabled = false;
+  }}
+}}
+
+function applySurvey(data) {{
+  try {{
+    if (tokenEl.value) localStorage.setItem(TOKEN_KEY, tokenEl.value);
+  }} catch (e) {{}}
+
+  const byId = new Map(D.rows.map(r => [r.id, r]));
+  let updated = 0, added = 0;
+  for (const [compId, cells] of Object.entries(data.cells || {{}})) {{
+    const row = byId.get(compId);
+    if (!row) continue;                    // 表に無い施設は無視する
+    for (const [iso, value] of Object.entries(cells)) {{
+      if (!(iso in row.cells)) added++;
+      row.cells[iso] = value;
+      FRESH.add(compId + "|" + iso);
+      updated++;
+    }}
+  }}
+  const median = byId.get("__median__");
+  if (median) {{
+    for (const [iso, value] of Object.entries(data.median || {{}}))
+      median.cells[iso] = value > 0 ? value : null;
+  }}
+  // 収集済みの日付リストに無い日を取ってきた場合は、表示できるよう足す
+  for (const iso of data.dates || []) if (!ALL.includes(iso)) {{
+    ALL.push(iso);
+    if (!D.dow[iso]) D.dow[iso] = new Date(iso + "T00:00:00")
+      .toLocaleDateString("ja-JP", {{weekday: "short"}});
+  }}
+  ALL.sort();
+  MIN = ALL[0]; MAX = ALL[ALL.length - 1];
+  setDateBounds();
+
+  render();
+
+  const stamp = new Date().toLocaleString("ja-JP", {{hour: "2-digit", minute: "2-digit"}});
+  const warn = data.fixture
+    ? '<br><span class="bad">⚠ フィクスチャ（擬似データ）です。実勢価格ではありません。</span>'
+    : "";
+  const miss = (data.unmatched || []).length
+    ? "<br>コンペセット外の施設 " + data.unmatched.length + "件は取り込んでいません。"
+    : "";
+  setStatus(stamp + " 更新しました。" + updated + "セル（" +
+            (data.requests || 0) + "リクエスト・約" +
+            Math.round((data.costUsd || 0) * 150) + "円）／ 出典 " +
+            (data.source || "—") + warn + miss);
+}}
+
+surveyBtn.onclick = runSurvey;
+
 function ramp(v, lo, hi) {{
   const t = hi > lo ? Math.min(1, Math.max(0, (v - lo) / (hi - lo))) : 0.5;
   return ["hsl(163 38% " + (96 - t * 46).toFixed(0) + "%)",
@@ -917,6 +1079,11 @@ function render() {{
           td.style.background = bg; td.style.color = fg;
         }}
       }}
+      // 今回の調査で取り直したセルは、既存データと見分けられるようにする
+      if (FRESH.has(r.id + "|" + d)) {{
+        td.classList.add("fresh");
+        td.title = (td.title || "") + "（今回の調査で取得）";
+      }}
       tr.appendChild(td);
     }}
 
@@ -985,7 +1152,9 @@ function render() {{
     '<span><b>満</b> 売止</span><span><b>·</b> データなし</span>' +
     '<span>行順 = <b>類似度スコア降順</b></span>' +
     '<span>下線付きの日付 = 需要イベント</span>' +
-    '<span>「推奨 宿泊単価／人」の行だけ <b>1名・食事別</b>の金額です</span>';
+    '<span>「推奨 宿泊単価／人」の行だけ <b>1名・食事別</b>の金額です</span>' +
+    (FRESH.size ? '<span><b style="outline:2px solid var(--accent);padding:0 4px">枠</b>'
+                  + ' 今回の調査で取得</span>' : "");
 }}
 
 render();

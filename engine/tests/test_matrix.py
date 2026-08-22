@@ -319,6 +319,37 @@ class MatrixTest(unittest.TestCase):
         self.assertAlmostEqual(p.total, anchor, delta=1.0)
         self.assertGreaterEqual(p.room, 0.0)
 
+    def test_survey_button_is_disabled_until_an_endpoint_is_configured(self) -> None:
+        """未設定でもボタンは出す。何を設定すれば動くかを画面に書くため."""
+        out = matrix.render_html(self.report)          # endpoint 未設定
+        self.assertIn('id="survey"', out)
+        self.assertIn("この期間を調査", out)
+        self.assertIn('"surveyEndpoint": ""', out)
+        self.assertIn("surveyBtn.disabled = true", out)
+        self.assertIn("survey_api.endpoint", out)
+
+    def test_survey_endpoint_is_embedded_when_configured(self) -> None:
+        report = matrix.build(self.ctx.settings, self.ctx, self.window,
+                              fixture=True,
+                              survey_endpoint="https://example.test/api/survey")
+        out = matrix.render_html(report)
+        self.assertIn('"surveyEndpoint": "https://example.test/api/survey"', out)
+
+    def test_api_key_is_never_embedded_in_the_page(self) -> None:
+        """キーはサーバー側にしか置かない。ページに出たら全閲覧者が読める."""
+        out = matrix.render_html(self.report)
+        for secret in ("SERPAPI_API_KEY", "GOOGLE_PLACES_API_KEY",
+                       "RM_SURVEY_TOKEN", "api_key"):
+            self.assertNotIn(secret, out, f"{secret} がページに埋め込まれている")
+
+    def test_rows_carry_comp_id_for_merging_survey_results(self) -> None:
+        """調査結果は comp_id で流し込む。表示名で突き合わせると改名で壊れる."""
+        out = matrix.render_html(self.report)
+        self.assertIn('"id": "__self__"', out)
+        self.assertIn('"id": "__median__"', out)
+        for comp_id in list(self.ctx.settings.competitors)[:3]:
+            self.assertIn(f'"id": "{comp_id}"', out)
+
     def test_csv_row_width_matches_header(self) -> None:
         import csv as csv_mod
         import tempfile

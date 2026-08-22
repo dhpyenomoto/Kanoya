@@ -58,7 +58,7 @@ footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
  nav .items{display:flex;flex-wrap:wrap;gap:4px}
  nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
 </style></head>
-<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item on" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>プライシングエンジン 参照実装</h1>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="06-survey-server.html">6. 調査サーバー構築</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item on" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>プライシングエンジン 参照実装</h1>
 <p>依存パッケージなし（Python 3.11+ 標準ライブラリのみ）。</p>
 <h2>調査条件の入力</h2>
 <p>「<strong>いつ時点で</strong>（本日）」「<strong>どの宿泊日を</strong>（対象期間）」調べるかは、
@@ -177,6 +177,58 @@ HTMLを書き換えたりする必要はありません。</p>
 <strong>合計 × <code>standard_occupancy</code> が <code>base.anchor_room_rate</code> と一致するように保ってください</strong>
 （ずれると自社行と推奨価格が別基準になります。テストで担保）。
 画面での入力は端末に保存され、次に開いたときも残ります。</p>
+<h3>「この期間を調査」ボタン（オンデマンド収集）</h3>
+<p>画面から Google Hotels の実勢価格を取りに行き、その場で表を更新します。
+取得したセルは緑の枠で囲まれます。</p>
+<pre><code class="language-bash"># 手元で経路確認（APIキー不要）
+RM_SURVEY_SOURCE=fixture RM_SURVEY_TOKEN=test-token-123 \
+RM_SURVEY_ALLOWED_ORIGINS=http://localhost:8899 \
+  python3 ../api/survey.py --serve 8000
+
+python3 scripts/adr_matrix.py --survey-endpoint http://127.0.0.1:8000/api/survey
+</code></pre>
+<p>APIキーは<strong>ページには入りません</strong>。<code>api/survey.py</code>（調査サーバー）が持ちます。
+ページに埋めると開いた全員が読めるうえ、Google／OTA はブラウザからの直接取得を
+遮断するため、そもそも成立しません。</p>
+<p><strong>押すたびに課金されます</strong>（1宿泊日＝1リクエスト＝約2.3円）。
+そのため認証と上限は動作の前提条件として組み込んであります。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>段</th>
+<th>環境変数</th>
+<th>既定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>トークン照合</td>
+<td><code>RM_SURVEY_TOKEN</code></td>
+<td><strong>未設定なら503で全拒否</strong>（フェイルクローズ）</td>
+</tr>
+<tr>
+<td>期間の上限</td>
+<td><code>RM_SURVEY_MAX_DAYS</code></td>
+<td>31日</td>
+</tr>
+<tr>
+<td>日次の上限</td>
+<td><code>RM_SURVEY_DAILY_MAX</code></td>
+<td>200リクエスト</td>
+</tr>
+<tr>
+<td>CORS</td>
+<td><code>RM_SURVEY_ALLOWED_ORIGINS</code></td>
+<td>未設定なら同一オリジンのみ</td>
+</tr>
+</tbody>
+</table></div>
+<p>更新されるのは<strong>競合価格・売止・市場中央値</strong>です。エンジン推奨は予約進捗（OTB）を
+使うため、夜間バッチが算出したままになります。</p>
+<p><code>sources.json</code> の <code>survey_api.endpoint</code> が空のときは、ボタンは<strong>無効の状態で表示され</strong>、
+何を設定すれば有効になるかが画面に出ます（黙って消えるより運用しやすいため）。</p>
+<p>設置手順は <a href="06-survey-server.html">../docs/06_調査サーバー構築手順.md</a>。</p>
+<hr />
 <p>行は<strong>類似度スコア降順</strong>、自社を最上段に固定し直下に市場中央値を置くので、
 縦に読むだけで自社の市場内位置が分かります。売止（満）とデータなし（·）は別記号です。</p>
 <pre><code>                       11/14 11/15 11/16 ...      平均    類似度
