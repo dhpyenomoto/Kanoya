@@ -261,6 +261,64 @@ class MatrixTest(unittest.TestCase):
         self.assertEqual(matrix._anon_label(25), "競合Z")
         self.assertEqual(matrix._anon_label(26), "競合AA")
 
+    def test_html_lets_the_operator_set_their_own_rate_components(self) -> None:
+        """OTAに打ち込むのは1名単価なので、その内訳を画面で変えられること."""
+        out = matrix.render_html(self.report)
+        for field in ('id="pRoom"', 'id="pDinner"', 'id="pBfast"'):
+            self.assertIn(field, out, f"{field} の入力欄が無い")
+        self.assertIn("宿泊単価／人", out)
+        self.assertIn("夕食単価／人", out)
+        self.assertIn("朝食単価／人", out)
+        # 日付と同じく、押せば必ず反映されるボタンを持たせる
+        self.assertIn('id="applyPrice"', out)
+        self.assertIn("この価格で計算", out)
+
+    def test_html_carries_the_configured_components_as_defaults(self) -> None:
+        """初期値は設定ファイル由来。画面に架空の数字を焼き込まない."""
+        p = matrix.self_pricing_of(self.ctx.settings)
+        out = matrix.render_html(self.report)
+        self.assertIn(f'"room": {round(p.room)}', out)
+        self.assertIn(f'"dinner": {round(p.dinner)}', out)
+        self.assertIn(f'"breakfast": {round(p.breakfast)}', out)
+
+    def test_rows_are_tagged_by_role_for_the_browser(self) -> None:
+        """派生行の差し込み位置を表示名で判定させると、改名で静かに壊れる."""
+        out = matrix.render_html(self.report)
+        for kind in ("self_current", "self_reco", "median", "comp"):
+            self.assertIn(f'"kind": "{kind}"', out)
+
+    def test_component_total_matches_the_calibrated_anchor(self) -> None:
+        """内訳の合計が基準価格とずれると、自社行と推奨が別基準になる."""
+        p = matrix.self_pricing_of(self.ctx.settings)
+        anchor = float(self.ctx.settings.property["base"]["anchor_room_rate"])
+        self.assertAlmostEqual(p.total, anchor, delta=1.0)
+
+    def test_room_rate_is_backed_out_of_the_recommended_total(self) -> None:
+        """食事は原価に固定される。動かせるのは宿泊単価だけ."""
+        p = matrix.SelfPricing(room=20900, dinner=13000, breakfast=6600,
+                               occupancy=2, floor=58000, ceiling=240000)
+        self.assertEqual(p.total, 81000)
+        self.assertAlmostEqual(p.room_rate_for(81000), 20900)
+        # 総額+10% は宿泊単価では +19% を要する（食事が総額の48%を占めるため）
+        swing = p.room_rate_for(81000 * 1.10) / p.room - 1
+        self.assertAlmostEqual(swing, 0.194, places=2)
+
+    def test_room_rate_is_none_when_meals_eat_the_whole_rate(self) -> None:
+        """食事代が総額を超える設定は値付けとして成立していない."""
+        p = matrix.SelfPricing(room=1000, dinner=30000, breakfast=8000,
+                               occupancy=2, floor=0, ceiling=0)
+        self.assertIsNone(p.room_rate_for(40000))
+
+    def test_components_fall_back_when_the_config_omits_them(self) -> None:
+        """rate_components を持たない施設設定でも動くこと（エンジンは施設非依存）."""
+        import copy
+        settings = copy.deepcopy(self.ctx.settings)
+        settings.property.pop("rate_components", None)
+        p = matrix.self_pricing_of(settings)
+        anchor = float(settings.property["base"]["anchor_room_rate"])
+        self.assertAlmostEqual(p.total, anchor, delta=1.0)
+        self.assertGreaterEqual(p.room, 0.0)
+
     def test_csv_row_width_matches_header(self) -> None:
         import csv as csv_mod
         import tempfile

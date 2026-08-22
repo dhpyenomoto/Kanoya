@@ -63,6 +63,70 @@ class MatrixRow:
 
 
 @dataclass
+class SelfPricing:
+    """自社価格の1名あたり内訳（税サ込）.
+
+    マトリクスの単位は「1室2名1泊2食・税サ込」の総額（NAR）だが、
+    値付けの現場で実際に入力するのはOTAプランの1名単価である。
+    夕食・朝食は原価にほぼ固定されるため、レベニューマネジメントで
+    動かせるのは宿泊単価だけ。この分解を持っておくと、
+    「推奨総額 → 実際に打ち込む宿泊単価」の変換が機械的にできる。
+    """
+
+    room: float
+    dinner: float
+    breakfast: float
+    occupancy: int
+    floor: float
+    ceiling: float
+
+    @property
+    def meals(self) -> float:
+        return self.dinner + self.breakfast
+
+    @property
+    def per_person(self) -> float:
+        return self.room + self.meals
+
+    @property
+    def total(self) -> float:
+        return self.per_person * self.occupancy
+
+    def room_rate_for(self, total: float) -> float | None:
+        """1室総額から、食事を除いた1名あたり宿泊単価を逆算する.
+
+        食事代が総額を超える場合は None。値付けとして成立していない。
+        """
+        per = total / self.occupancy - self.meals
+        return per if per > 0 else None
+
+
+def self_pricing_of(settings: Settings) -> SelfPricing:
+    """設定ファイルから自社価格の内訳を読む.
+
+    rate_components が無い設定でも動くよう、基準価格から
+    「食事を除いた残り」として宿泊単価を復元する。
+    """
+    prop = settings.property
+    occupancy = int(prop["property"].get("standard_occupancy", 2)) or 2
+    comps = prop.get("rate_components") or {}
+    guards = prop.get("guardrails", {})
+    anchor = float(prop.get("base", {}).get("anchor_room_rate", 0.0))
+
+    dinner = float(comps.get("dinner_per_person", 0.0))
+    breakfast = float(comps.get("breakfast_per_person", 0.0))
+    room = comps.get("room_per_person")
+    if room is None:
+        room = max(0.0, anchor / occupancy - dinner - breakfast)
+    return SelfPricing(
+        room=float(room), dinner=dinner, breakfast=breakfast,
+        occupancy=occupancy,
+        floor=float(guards.get("floor_room_rate", 0.0)),
+        ceiling=float(guards.get("ceiling_room_rate", 0.0)),
+    )
+
+
+@dataclass
 class MatrixReport:
     property_name: str
     as_of: date
@@ -72,6 +136,7 @@ class MatrixReport:
     event_labels: dict[date, str]
     fixture: bool
     radius_m: int = 0
+    pricing: SelfPricing | None = None
 
     @property
     def competitor_rows(self) -> list[MatrixRow]:
@@ -175,6 +240,7 @@ def build(settings: Settings, ctx, window: tuple[date, date], *,
         event_labels={d: settings.event_score_of(d)[1] for d in dates},
         fixture=fixture,
         radius_m=radius_m,
+        pricing=self_pricing_of(settings),
     )
 
 
@@ -277,6 +343,15 @@ def render_markdown(report: MatrixReport) -> str:
     lines.append(f"- 基準日: **{report.as_of.isoformat()}** ／ 対象 {len(report.dates)}日")
     lines.append("- 単位は**千円**。すべて「1室2名1泊2食・税サ込」へ正規化（NAR）した値")
     lines.append("- `満` = 売止（在庫なし） ／ `·` = データなし")
+    if report.pricing:
+        p = report.pricing
+        lines.append(
+            f"- 自社の価格設定（1名・税サ込）: 宿泊 {p.room:,.0f} ＋ 夕食 {p.dinner:,.0f}"
+            f" ＋ 朝食 {p.breakfast:,.0f} ＝ **{p.per_person:,.0f}** "
+            f"→ 1室{p.occupancy}名 **{p.total:,.0f}**"
+        )
+        lines.append("  （HTML版ではこの内訳を画面上で変更でき、"
+                     "推奨総額から「食事を除いた宿泊単価」を逆算します）")
     if report.radius_m:
         lines.append(f"- 調査範囲 半径{report.radius_m / 1000:.1f}km ／ 行順 = 類似度スコア降順")
     if report.fixture:
@@ -316,6 +391,12 @@ def _payload(report: MatrixReport, initial: tuple[date, date] | None) -> dict:
             return None
         return round(float(value))
 
+    # ブラウザ側で自社ブロックに派生行を差し込むため、行の役割を明示する。
+    # 表示名で判定させると、名前を変えた瞬間に静かに壊れる。
+    kinds = {"__self__": "self_current", "__self_reco__": "self_reco",
+             "__median__": "median"}
+
+    p = report.pricing
     dates = [d.isoformat() for d in report.dates]
     lo = (initial[0].isoformat() if initial else (dates[0] if dates else ""))
     hi = (initial[1].isoformat() if initial else (dates[-1] if dates else ""))
@@ -324,6 +405,11 @@ def _payload(report: MatrixReport, initial: tuple[date, date] | None) -> dict:
         "asOf": report.as_of.isoformat(),
         "radiusKm": round(report.radius_m / 1000, 1) if report.radius_m else 0,
         "fixture": report.fixture,
+        "pricing": {
+            "room": round(p.room), "dinner": round(p.dinner),
+            "breakfast": round(p.breakfast), "occupancy": p.occupancy,
+            "floor": round(p.floor), "ceiling": round(p.ceiling),
+        } if p else None,
         "dates": dates,
         "dow": {d.isoformat(): report.day_labels[d] for d in report.dates},
         "events": {d.isoformat(): report.event_labels.get(d, "")
@@ -332,6 +418,7 @@ def _payload(report: MatrixReport, initial: tuple[date, date] | None) -> dict:
         "rows": [
             {
                 "name": r.name,
+                "kind": kinds.get(r.comp_id, "comp"),
                 "tier": r.tier,
                 "weight": None if (r.is_self or r.is_summary) else round(r.weight, 2),
                 "rooms": r.rooms or None,
@@ -403,11 +490,20 @@ h1{{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
 .fields{{display:flex;flex-wrap:wrap;gap:14px 18px;align-items:flex-end}}
 .field{{display:flex;flex-direction:column;gap:5px}}
 .field label{{font-size:11px;color:var(--muted)}}
-input[type=date],select{{font:inherit;font-size:14px;padding:6px 9px;
+input[type=date],input[type=number],select{{font:inherit;font-size:14px;padding:6px 9px;
  border:1px solid var(--line);border-radius:3px;background:var(--field);
  color:var(--ink);min-width:150px}}
-input[type=date]:focus,select:focus,button:focus-visible{{outline:2px solid var(--accent);
+input[type=number]{{min-width:130px;text-align:right;font-variant-numeric:tabular-nums}}
+input:focus,select:focus,button:focus-visible{{outline:2px solid var(--accent);
  outline-offset:1px}}
+
+/* ── 自社価格の内訳 ─────────────────────────────── */
+.calc{{margin-top:13px;padding-top:13px;border-top:1px dashed var(--line);
+ font-size:13px;line-height:1.85;font-variant-numeric:tabular-nums}}
+.calc .eq{{color:var(--muted)}}
+.calc b{{font-size:16px;color:var(--accent)}}
+.calc .bad{{color:var(--warn);font-weight:700}}
+.note{{color:var(--muted);font-size:12px;margin-top:6px;line-height:1.7}}
 .presets{{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px;
  padding-top:13px;border-top:1px dashed var(--line)}}
 button{{font:inherit;font-size:12.5px;padding:5px 11px;border:1px solid var(--line);
@@ -492,6 +588,30 @@ tbody tr:hover td:not(.so):not(.na){{outline:2px solid var(--accent);outline-off
   <div class="err" id="err" hidden></div>
 </div>
 
+<div class="panel">
+  <h2>自社の価格設定（1名あたり・税サ込）</h2>
+  <div class="fields">
+    <div class="field"><label for="pRoom">宿泊単価／人</label>
+      <input type="number" id="pRoom" inputmode="numeric" step="100" min="0"></div>
+    <div class="field"><label for="pDinner">夕食単価／人</label>
+      <input type="number" id="pDinner" inputmode="numeric" step="100" min="0"></div>
+    <div class="field"><label for="pBfast">朝食単価／人</label>
+      <input type="number" id="pBfast" inputmode="numeric" step="100" min="0"></div>
+    <div class="field"><label>&nbsp;</label>
+      <div><button type="button" id="applyPrice" class="primary">この価格で計算</button>
+      <span class="applied" id="priceApplied">反映しました</span></div></div>
+    <div class="field"><label>&nbsp;</label>
+      <div><button type="button" id="resetPrice">初期値に戻す</button></div></div>
+  </div>
+  <div class="calc" id="calc"></div>
+  <div class="err" id="priceErr" hidden></div>
+  <p class="note">夕食・朝食は原価にほぼ固定されるため、値付けで動かせるのは宿泊単価だけです。
+    表の「推奨 宿泊単価／人」は、エンジンの推奨総額から入力された食事単価を差し引いて
+    逆算した、<b>OTAプランにそのまま入れられる数字</b>です。<br>
+    初期値は<b>基準価格（アンカー）の内訳</b>です。実際の掲出価格は季節・曜日で
+    上下するため、表の「現行」行とは一致しません。入力は端末に保存され、次に開いたときも残ります。</p>
+</div>
+
 <div class="stats" id="stats"></div>
 <div class="legend" id="legend"></div>
 <div class="scroll"><table>
@@ -567,7 +687,138 @@ $("apply").onclick = () => {{
   }}
 }};
 
-const yen = (n) => n.toLocaleString("ja-JP");
+const yen = (n) => Math.round(n).toLocaleString("ja-JP");
+
+/* ── 自社の価格設定 ────────────────────────────────
+   マトリクスの単位は「1室2名1泊2食・税サ込」の総額だが、
+   OTAに実際に打ち込むのは1名単価である。内訳を持たせておくと
+   「推奨総額 → 打ち込む宿泊単価」を機械的に変換できる。      */
+const PRICE_FIELDS = [["room", "pRoom"], ["dinner", "pDinner"],
+                      ["breakfast", "pBfast"]];
+const STORE_KEY = "kanoya.rateComponents.v1";
+const DEFAULTS = D.pricing || {{room: 0, dinner: 0, breakfast: 0,
+                               occupancy: 2, floor: 0, ceiling: 0}};
+const OCC = DEFAULTS.occupancy || 2;
+const priceErr = $("priceErr");
+
+// 反映済みの値。入力欄そのものではなくこちらを描画に使う
+// （打ちかけの数字が表に流れ込まないようにするため）
+let PRICE = {{room: DEFAULTS.room, dinner: DEFAULTS.dinner,
+              breakfast: DEFAULTS.breakfast}};
+
+// 前回の入力を憶えておく。localStorage は file:// や
+// プライベートウィンドウで例外を投げることがあるので必ず包む
+function loadStored() {{
+  try {{
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    return PRICE_FIELDS.every(([k]) => typeof v[k] === "number" && v[k] >= 0)
+      ? v : null;
+  }} catch (e) {{ return null; }}
+}}
+function saveStored(v) {{
+  try {{ localStorage.setItem(STORE_KEY, JSON.stringify(v)); }} catch (e) {{}}
+}}
+
+const fillInputs = (v) => {{
+  for (const [key, id] of PRICE_FIELDS) $(id).value = v[key];
+}};
+
+function readInputs() {{
+  const out = {{}};
+  for (const [key, id] of PRICE_FIELDS) {{
+    const n = Number($(id).value);
+    if ($(id).value === "" || !Number.isFinite(n) || n < 0) return null;
+    out[key] = n;
+  }}
+  return out;
+}}
+
+function applyPrice() {{
+  const v = readInputs();
+  if (!v) {{
+    priceErr.textContent = "宿泊・夕食・朝食すべてに0以上の金額を入れてください。";
+    priceErr.hidden = false;
+    return false;
+  }}
+  priceErr.hidden = true;
+  PRICE = v;
+  saveStored(v);
+  render();
+  return true;
+}}
+
+$("applyPrice").onclick = () => {{
+  if (!applyPrice()) return;
+  const flag = $("priceApplied");
+  flag.classList.add("on");
+  setTimeout(() => flag.classList.remove("on"), 1600);
+  $("stats").scrollIntoView({{ behavior: "smooth", block: "start" }});
+}};
+$("resetPrice").onclick = () => {{ fillInputs(DEFAULTS); applyPrice(); }};
+for (const [, id] of PRICE_FIELDS) $(id).onchange = applyPrice;
+
+const stored = loadStored();
+fillInputs(stored || DEFAULTS);
+if (stored) PRICE = {{room: stored.room, dinner: stored.dinner,
+                      breakfast: stored.breakfast}};
+
+const meals = () => PRICE.dinner + PRICE.breakfast;
+const perPerson = () => PRICE.room + meals();
+const roomTotal = () => perPerson() * OCC;
+
+/** 1室総額から、食事を除いた1名あたり宿泊単価を逆算する.
+    食事代が総額を超えるなら値付けとして成立していないので null。 */
+const roomRateFor = (total) => {{
+  const per = total / OCC - meals();
+  return per > 0 ? per : null;
+}};
+
+function renderCalc() {{
+  const total = roomTotal();
+  const parts = "<span class=\\"eq\\">＝ 宿泊 " + yen(PRICE.room) +
+    " ＋ 夕食 " + yen(PRICE.dinner) + " ＋ 朝食 " + yen(PRICE.breakfast) + "</span>";
+  let out = "1名あたり ¥" + yen(perPerson()) + " " + parts +
+    "<br>1室" + OCC + "名1泊2食（表と同じ基準）<b> ¥" + yen(total) + "</b>" +
+    ' <span class="eq">／ 食事が総額に占める割合 ' +
+    (total ? Math.round(meals() * OCC / total * 100) : 0) + "%</span>";
+  const warn = [];
+  if (DEFAULTS.floor && total < DEFAULTS.floor)
+    warn.push("貢献利益フロア ¥" + yen(DEFAULTS.floor) + " を下回っています。");
+  if (DEFAULTS.ceiling && total > DEFAULTS.ceiling)
+    warn.push("上限 ¥" + yen(DEFAULTS.ceiling) + " を超えています。");
+  if (PRICE.room <= 0) warn.push("宿泊単価が0です。食事代しか取れていません。");
+  if (warn.length) out += '<br><span class="bad">⚠ ' + warn.join(" ") + "</span>";
+  $("calc").innerHTML = out;
+}}
+
+/** 表示する行。自社ブロックの直下に、入力から導いた2行を差し込む。 */
+function displayRows() {{
+  const flat = Object.fromEntries(ALL.map(d => [d, Math.round(roomTotal())]));
+  const setRow = {{
+    name: "└ 設定価格（入力）", tier: "自社／入力値", weight: null,
+    rooms: null, distance: null, self: true, summary: false, cells: flat,
+  }};
+  const reco = D.rows.find(r => r.kind === "self_reco");
+  const roomCells = {{}};
+  for (const d of ALL) {{
+    const v = reco ? reco.cells[d] : null;
+    const per = (typeof v === "number") ? roomRateFor(v) : null;
+    roomCells[d] = per === null ? null : Math.round(per);
+  }}
+  const roomRow = {{
+    name: "└ 推奨 宿泊単価／人", tier: "食事を除いた1名分", weight: null,
+    rooms: null, distance: null, self: true, summary: false, cells: roomCells,
+  }};
+
+  const out = [];
+  for (const r of D.rows) {{
+    out.push(r);
+    if (r.kind === "self_reco") out.push(setRow, roomRow);
+  }}
+  return out;
+}}
 
 function ramp(v, lo, hi) {{
   const t = hi > lo ? Math.min(1, Math.max(0, (v - lo) / (hi - lo))) : 0.5;
@@ -578,6 +829,7 @@ function ramp(v, lo, hi) {{
 function render() {{
   const a = fromEl.value, z = toEl.value;
   errEl.hidden = true;
+  renderCalc();
 
   if (!a || !z) {{ return; }}
   if (a > z) {{
@@ -638,7 +890,7 @@ function render() {{
     return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
   }};
 
-  for (const r of D.rows) {{
+  for (const r of displayRows()) {{
     const tr = document.createElement("tr");
     tr.className = r.self ? "self" : (r.summary ? "summary" : "");
     const th = document.createElement("th");
@@ -704,6 +956,13 @@ function render() {{
       else if (v === null || v === undefined) missing++;
     }}
   }}
+  // 推奨総額の平均から、実際に打ち込む宿泊単価を逆算する。
+  // 食事が固定費なので、総額の増減率より宿泊単価の増減率のほうが必ず大きくなる。
+  const recoRoom = rAvg === null ? null : roomRateFor(rAvg);
+  const swing = (recoRoom !== null && PRICE.room > 0)
+    ? (recoRoom / PRICE.room - 1) : null;
+  const pct = (x) => (x >= 0 ? "+" : "") + (x * 100).toFixed(1);
+
   const stat = (k, v, note) =>
     '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v +
     (note ? '<small>' + note + '</small>' : '') + '</div></div>';
@@ -713,6 +972,9 @@ function render() {{
     stat("エンジン推奨 平均", rAvg ? Math.round(rAvg / 1000).toLocaleString("ja-JP") : "—", "千円") +
     stat("市場中央値 平均", mAvg ? Math.round(mAvg / 1000).toLocaleString("ja-JP") : "—", "千円") +
     stat("対 市場中央値", pos ? pos.toFixed(2) : "—", "倍") +
+    stat("設定 1室総額", Math.round(roomTotal() / 1000).toLocaleString("ja-JP"), "千円") +
+    stat("推奨 宿泊単価／人", recoRoom === null ? "—" : yen(recoRoom), "円") +
+    stat("宿泊単価 設定→推奨", swing === null ? "—" : pct(swing), "%") +
     stat("競合の売止", soldout, "セル") +
     stat("データなし", missing, "セル");
 
@@ -722,7 +984,8 @@ function render() {{
     '</span> <b>高</b>（' + Math.round(lo / 1000) + '〜' + Math.round(hi / 1000) + '千円）</span>' +
     '<span><b>満</b> 売止</span><span><b>·</b> データなし</span>' +
     '<span>行順 = <b>類似度スコア降順</b></span>' +
-    '<span>下線付きの日付 = 需要イベント</span>';
+    '<span>下線付きの日付 = 需要イベント</span>' +
+    '<span>「推奨 宿泊単価／人」の行だけ <b>1名・食事別</b>の金額です</span>';
 }}
 
 render();
