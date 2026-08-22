@@ -70,6 +70,19 @@ class SiteTest(unittest.TestCase):
         for name, html in self.pages.items():
             self.assertIn("noindex", html, f"{name} に noindex が無い")
 
+    def test_every_page_declares_utf8_early(self) -> None:
+        """charset を省くとブラウザが文字コードを推測し、日本語が文字化けする.
+
+        仕様上 charset は先頭1024バイト以内に無ければならない。
+        file:// で開いた場合や、Content-Type に charset を付けないサーバ経由で
+        顕在化する（実際に iPad で文字化けした）。
+        """
+        for name in self.pages:
+            head = (SITE / name).read_bytes()[:1024].lower()
+            self.assertIn(b"charset", head,
+                          f"{name} の先頭1024バイトに charset 宣言が無い")
+            self.assertIn(b"utf-8", head, f"{name} の charset が utf-8 でない")
+
     def test_wide_tables_scroll_inside_their_own_container(self) -> None:
         """表が広くてもページ全体が横スクロールしないこと."""
         for name, html in self.pages.items():

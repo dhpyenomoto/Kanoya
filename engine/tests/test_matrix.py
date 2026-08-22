@@ -159,6 +159,18 @@ class MatrixTest(unittest.TestCase):
         self.assertEqual(row.coverage, 1)
         self.assertEqual(row.soldout_count, 1)
 
+    def test_html_is_a_complete_document_declaring_utf8(self) -> None:
+        """単体配布するファイルなので、文書として自己完結している必要がある.
+
+        charset が無いとブラウザが文字コードを推測して日本語が化ける。
+        """
+        out = matrix.render_html(self.report)
+        self.assertTrue(out.lstrip().lower().startswith("<!doctype html>"))
+        head = out.encode("utf-8")[:1024].lower()
+        self.assertIn(b'<meta charset="utf-8">', head)
+        for tag in ("<html", "<head>", "</head>", "<body>", "</body>", "</html>"):
+            self.assertIn(tag, out, f"{tag} が無い")
+
     def test_html_is_self_contained_and_labels_fixture(self) -> None:
         out = matrix.render_html(self.report)
         self.assertIn("<title>", out)
