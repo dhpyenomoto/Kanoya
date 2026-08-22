@@ -413,6 +413,14 @@ input[type=date]:focus,select:focus,button:focus-visible{{outline:2px solid var(
 button{{font:inherit;font-size:12.5px;padding:5px 11px;border:1px solid var(--line);
  border-radius:3px;background:var(--surface);color:var(--ink2);cursor:pointer}}
 button:hover{{background:var(--alt);border-color:var(--accent);color:var(--ink)}}
+button.primary{{background:var(--accent);border-color:var(--accent);color:#fff;
+ font-size:15px;font-weight:700;padding:8px 26px;min-height:40px}}
+button.primary:hover{{background:var(--accent);opacity:.88;color:#fff}}
+button.primary:active{{transform:translateY(1px)}}
+.applied{{display:inline-block;margin-left:12px;font-size:12.5px;color:var(--accent);
+ font-weight:700;opacity:0;transition:opacity .2s}}
+.applied.on{{opacity:1}}
+@media (prefers-reduced-motion:reduce){{.applied{{transition:none}}}}
 .err{{color:var(--warn);font-size:12.5px;margin-top:10px;font-weight:600}}
 
 /* ── サマリ ──────────────────────────────────────── */
@@ -476,6 +484,9 @@ tbody tr:hover td:not(.so):not(.na){{outline:2px solid var(--accent);outline-off
       <input type="date" id="to"></div>
     <div class="field"><label for="month">月でまとめて選ぶ</label>
       <select id="month"><option value="">—</option></select></div>
+    <div class="field"><label>&nbsp;</label>
+      <div><button type="button" id="apply" class="primary">この期間で表示</button>
+      <span class="applied" id="applied">更新しました</span></div></div>
   </div>
   <div class="presets" id="presets"></div>
   <div class="err" id="err" hidden></div>
@@ -542,6 +553,19 @@ monthEl.onchange = () => {{
   render();
 }};
 fromEl.onchange = toEl.onchange = () => {{ monthEl.value = ""; render(); }};
+
+// 日付ピッカーの change がいつ飛ぶかは環境差が大きい（iOSでは閉じるまで来ない）。
+// 明示的に押せるボタンを用意し、「反映された」ことも見えるようにする。
+$("apply").onclick = () => {{
+  render();
+  if (errEl.hidden) {{
+    const flag = $("applied");
+    flag.classList.add("on");
+    setTimeout(() => flag.classList.remove("on"), 1600);
+    // 表は画面外にあることが多いので、結果まで送る
+    $("stats").scrollIntoView({{ behavior: "smooth", block: "start" }});
+  }}
+}};
 
 const yen = (n) => n.toLocaleString("ja-JP");
 

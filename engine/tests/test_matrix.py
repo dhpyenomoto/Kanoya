@@ -159,6 +159,19 @@ class MatrixTest(unittest.TestCase):
         self.assertEqual(row.coverage, 1)
         self.assertEqual(row.soldout_count, 1)
 
+    def test_html_has_an_explicit_apply_button(self) -> None:
+        """日付ピッカーの change がいつ飛ぶかは環境差が大きい（iOSでは閉じるまで来ない）.
+
+        自動更新だけに頼ると「入れたのに何も起きない」状態になるため、
+        明示的に押せるボタンを必ず持たせる。
+        """
+        out = matrix.render_html(self.report)
+        self.assertIn('id="apply"', out)
+        self.assertIn("この期間で表示", out)
+        self.assertIn('$("apply").onclick', out)
+        # 押したことが見えるフィードバックも用意する
+        self.assertIn('id="applied"', out)
+
     def test_html_is_a_complete_document_declaring_utf8(self) -> None:
         """単体配布するファイルなので、文書として自己完結している必要がある.
 
