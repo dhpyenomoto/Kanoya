@@ -357,8 +357,17 @@ def render_html(report: MatrixReport,
     data = data.replace("</", "<\\/")   # </script> による早期終了を防ぐ
     esc = html.escape
 
-    return f"""<title>{esc(report.property_name)} ADRマトリクス</title>
+    # 完全なHTML文書として出力する。charset を省くとブラウザが文字コードを
+    # 推測し、日本語が文字化けする（file:// で開いた場合や、Content-Type に
+    # charset を付けないサーバ経由で顕在化する）。charset は仕様上
+    # 先頭1024バイト以内に置く必要があるため、head の先頭に固定する。
+    return f"""<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
+<title>{esc(report.property_name)} ADRマトリクス</title>
 <style>
 :root {{
   --ground:#F5F6F2; --surface:#FFFFFF; --alt:#EDEFE9; --ink:#1A211C;
@@ -448,6 +457,8 @@ tr.summary th.n,tr.summary td{{background:var(--alt);font-weight:600}}
 tbody tr:hover td:not(.so):not(.na){{outline:2px solid var(--accent);outline-offset:-2px}}
 @media (prefers-reduced-motion:reduce){{*{{transition:none!important}}}}
 </style>
+</head>
+<body>
 
 <h1>ADRマトリクス — {esc(report.property_name)}</h1>
 <p class="sub">基準日 {report.as_of.isoformat()}{
@@ -692,4 +703,6 @@ function render() {{
 
 render();
 </script>
+</body>
+</html>
 """
