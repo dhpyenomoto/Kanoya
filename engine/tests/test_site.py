@@ -21,6 +21,7 @@ SITE = ROOT / "site"
 EXPECTED = {
     "index.html", "01-proposal.html", "02-data-collection.html",
     "03-architecture.html", "04-roadmap-roi.html", "05-operations.html",
+    "06-survey-server.html",
     "adr-matrix-table.html", "adr-matrix.html", "engine.html",
 }
 

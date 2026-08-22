@@ -17,6 +17,20 @@
   "cleanUrls": true,
   "trailingSlash": false,
 
+  "_api補足": [
+    "api/survey.py は画面の「調査」ボタンの受け口。Vercel は api/ をサーバーレス関数",
+    "として自動検出する（outputDirectory を site にしていても別扱いになる）。",
+    "関数は engine/kanoya_rm と engine/config を import するため includeFiles で同梱する。",
+    "data/fixtures は RM_SURVEY_SOURCE=fixture での経路確認用。実運用では不要なので、",
+    "関数サイズを絞りたい場合は該当行を外してよい（2.1MB）。",
+    "依存パッケージは無い（標準ライブラリのみ）ので requirements.txt は置かない。"
+  ],
+  "functions": {
+    "api/survey.py": {
+      "includeFiles": "engine/{kanoya_rm,config,data/fixtures}/**"
+    }
+  },
+
   "headers": [
     {
       "source": "/(.*)",

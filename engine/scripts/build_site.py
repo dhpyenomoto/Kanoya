@@ -39,6 +39,7 @@ PAGES: list[tuple[str, str, str, bool]] = [
     ("docs/03_システムアーキテクチャ.md",   "03-architecture.html", "3. システム設計",      True),
     ("docs/04_導入ロードマップとROI.md",    "04-roadmap-roi.html", "4. ロードマップとROI",  True),
     ("docs/05_収集パイプライン運用手順.md", "05-operations.html",  "5. 運用手順",           True),
+    ("docs/06_調査サーバー構築手順.md",     "06-survey-server.html", "6. 調査サーバー構築",  True),
     ("docs/sample-adr-matrix.md",        "adr-matrix-table.html", "ADRマトリクス（表）",  True),
     ("engine/README.md",                 "engine.html",         "参照実装の使い方",       True),
 ]
