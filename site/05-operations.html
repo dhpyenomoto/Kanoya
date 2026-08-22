@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>5. 運用手順 — 奈良春日 鹿のや レベニューマネジメント基盤</title>
+<style>
+:root{--ground:#F5F6F2;--surface:#FFFFFF;--alt:#EDEFE9;--ink:#1A211C;--ink2:#414B44;
+ --muted:#6B746D;--line:#D8DCD3;--accent:#14584A;--accent-soft:#E2EBE6;--warn:#B8452B}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;--ink2:#C0C7BF;
+ --muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}}
+:root[data-theme="dark"]{--ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;
+ --ink2:#C0C7BF;--muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-size:16px;line-height:1.85;
+ font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif}
+.wrap{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto;gap:34px;
+ padding:0 22px 80px}
+nav{position:sticky;top:0;flex:0 0 232px;padding:30px 0;max-height:100vh;overflow:auto}
+nav .brand{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-size:17px;font-weight:600;line-height:1.5;margin-bottom:18px;display:block;
+ color:var(--ink);text-decoration:none}
+nav a.item{display:block;padding:7px 11px;border-radius:3px;color:var(--ink2);
+ text-decoration:none;font-size:13.5px;border-left:2px solid transparent}
+nav a.item:hover{background:var(--alt);color:var(--ink)}
+nav a.item.on{background:var(--accent-soft);color:var(--accent);font-weight:700;
+ border-left-color:var(--accent)}
+main{flex:1;min-width:0;padding:30px 0}
+h1,h2,h3,h4{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-weight:600;line-height:1.45;text-wrap:balance}
+h1{font-size:29px;margin:0 0 22px;padding-bottom:14px;border-bottom:2px solid var(--accent)}
+h2{font-size:22px;margin:44px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:15px;margin:22px 0 8px}
+p,li{max-width:74ch}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+code{background:var(--alt);padding:2px 5px;border-radius:3px;font-size:.88em;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--alt);border:1px solid var(--line);padding:15px 17px;overflow-x:auto;
+ border-radius:3px;line-height:1.7}
+pre code{background:none;padding:0;font-size:12.5px}
+blockquote{margin:18px 0;padding:14px 18px;background:var(--accent-soft);
+ border-left:3px solid var(--accent);color:var(--ink2)}
+blockquote p{margin:6px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--alt);font-size:12px;letter-spacing:.06em;color:var(--ink2);
+ font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+ font-size:13px;color:var(--muted)}
+@media (max-width:860px){.wrap{flex-direction:column;gap:0}
+ nav{position:static;flex:none;width:100%;max-height:none;
+  border-bottom:1px solid var(--line);padding-bottom:14px}
+ nav .items{display:flex;flex-wrap:wrap;gap:4px}
+ nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
+</style></head>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item on" href="05-operations.html">5. 運用手順</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>収集パイプライン 運用手順書</h1>
+<p>近隣競合の発見 → OTA掲出価格の収集 → ADR判断 までを回すための実務手順。
+設計思想は <a href="02-data-collection.html">データ収集設計</a>、実装は <code>engine/kanoya_rm/sources/</code> および <code>engine/scripts/</code>。</p>
+<hr />
+<h2>1. パイプラインの全体像</h2>
+<pre><code> ①発見                    ②人手確定              ③収集                  ④判断
+ discover_compset.py  →  compset_overrides  →  collect_rates.py  →  survey_report.py
+ Places API              食事条件・客室数        Google Hotels        市場ポジション
+ 近隣宿泊施設を列挙        （人が確定）           階層化スケジュール      ＋ADR推奨
+      ↓                       ↓                      ↓                    ↓
+ compset.generated.json   compset.json         comp_rates_*.csv    market_survey.csv
+</code></pre>
+<p><strong>②を飛ばしてはいけません。</strong> Places API も Google Hotels も、
+「その価格が素泊まりなのか2食付きなのか」「人数課金なのか室課金なのか」を返しません。
+ここを人が確定しないままNAR正規化すると、価格ポジション判断が体系的に歪み、
+しかもエンジン内では正常値に見えます。検出できない種類の誤りです。</p>
+<hr />
+<h2>1.5 調査条件の入力（「本日」と「調べたい日程」）</h2>
+<p>入力口は <strong><code>engine/config/survey_request.json</code> の1か所</strong>です。全スクリプトがこれを読みます。</p>
+<pre><code class="language-json">{
+  &quot;as_of&quot;: &quot;today&quot;,
+  &quot;target&quot;: { &quot;from&quot;: &quot;today&quot;, &quot;to&quot;: &quot;+120d&quot; },
+  &quot;conditions&quot;: { &quot;adults&quot;: 2, &quot;los&quot;: 1, &quot;target_position&quot;: 1.15 }
+}
+</code></pre>
+<h3>1.5.1 2つの日付は別概念</h3>
+<p>混同しやすいので明示的に分けています。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>意味</th>
+<th>例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>as_of</code>（調査基準日＝本日）</strong></td>
+<td><strong>いつ時点</strong>で見た市場か。データの取得日</td>
+<td>今日／1週間前の時点を再現</td>
+</tr>
+<tr>
+<td><strong><code>target.from</code> / <code>to</code>（調査対象期間）</strong></td>
+<td><strong>どの宿泊日</strong>を調べたいか</td>
+<td>11月の紅葉期だけ／直近2週間</td>
+</tr>
+</tbody>
+</table></div>
+<p>この2つは独立しています。「<strong>今日の時点で、11月の紅葉期だけを調べる</strong>」は正当な要求であり、
+以前は対象期間の入口が無く常に「先120日」固定でした。</p>
+<h3>1.5.2 日付の書き方</h3>
+<p>固定日を書くと毎日書き換えることになるため、相対指定を使えるようにしています。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>書き方</th>
+<th>意味</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>today</code> / <code>本日</code></td>
+<td>調査基準日そのもの</td>
+</tr>
+<tr>
+<td><code>2026-11-01</code></td>
+<td>絶対日付</td>
+</tr>
+<tr>
+<td><code>2026-11</code></td>
+<td>月指定。<code>from</code> に書けば<strong>その月まるごと</strong>（月初〜月末）</td>
+</tr>
+<tr>
+<td><code>+90d</code> <code>+12w</code> <code>+3m</code> <code>+1y</code></td>
+<td>基準日からの相対</td>
+</tr>
+<tr>
+<td><code>-7d</code></td>
+<td>過去方向。<code>as_of</code> に書けば1週間前の時点を再現</td>
+</tr>
+</tbody>
+</table></div>
+<h3>1.5.3 その場で上書きする</h3>
+<p>設定ファイルを書き換えずに一度だけ別期間を見たい場合は、CLI引数が常に優先されます。</p>
+<pre><code class="language-bash">python3 scripts/survey_report.py --from 2026-11-01 --to 2026-11-30
+python3 scripts/survey_report.py --from 2026-11              # 11月まるごと
+python3 scripts/survey_report.py --from +30d --days 14       # 30日後から2週間
+python3 scripts/collect_rates.py --as-of 2026-08-15 --from 2026-11 --plan-only
+</code></pre>
+<p>3スクリプト（<code>discover_compset</code> / <code>collect_rates</code> / <code>survey_report</code>）で
+引数名は共通です。以前は同じ「本日」に <code>--run-date</code> と <code>--snapshot</code> の
+2つの名前があったため、<code>--as-of</code> に統合しました（旧名も当面は動作します）。</p>
+<h3>1.5.4 期間を絞ると収集の挙動が変わる</h3>
+<p><strong>62日以下の期間を明示指定した場合、階層化せず期間内の全宿泊日を取得します。</strong>
+「11月を調べたい」に対し、週1スロットで4日分しか返さないのは要求に応えていないためです。
+広い期間では従来どおり階層化します。<code>--full</code> / <code>--tiered</code> で明示的に上書きできます。</p>
+<p>期間を絞ると費用も下がります（実行前に必ず表示されます）。</p>
+<pre><code>今回の収集     : 30 宿泊日（対象期間 30日中）
+  今回の概算費用 : $0.45（30 リクエスト）
+</code></pre>
+<h3>1.5.5 入力の検証</h3>
+<p>不正・危険な入力は実行前に止めるか、警告します。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>入力</th>
+<th>挙動</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>終了日 &lt; 開始日</td>
+<td><strong>エラー</strong>。スタックトレースではなく直せる指示を表示</td>
+</tr>
+<tr>
+<td>開始日が基準日より過去</td>
+<td>基準日へ自動切り上げ＋警告（過去日は販売できない）</td>
+</tr>
+<tr>
+<td>対象期間が全て過去</td>
+<td><strong>エラー</strong></td>
+</tr>
+<tr>
+<td>対象期間が収集ホライズンの外</td>
+<td>警告（超過分はデータが存在しない旨を明示）</td>
+</tr>
+<tr>
+<td>解釈できない書式</td>
+<td><strong>エラー</strong>＋使える形式の一覧を表示</td>
+</tr>
+<tr>
+<td>基準日が実際の今日より未来</td>
+<td>警告（再現・検証用途以外では設定ミスの可能性）</td>
+</tr>
+</tbody>
+</table></div>
+<p>解決後の条件は<strong>全スクリプトの冒頭に必ず表示されます</strong>。何を調べているのかが
+出力を見れば常に分かる状態にしています。</p>
+<pre><code>── 調査条件 ──────────────────────────────────────────────
+  調査基準日（本日）: 2026-08-15
+  調査対象期間      : 2026-11-01 〜 2026-11-30  （30泊分 / リードタイム 78〜107日）
+  条件              : 2名1室 1泊 ／ 目標ポジション 1.15倍
+  入力元            : survey_request.json（CLI引数があればそちらが優先）
+</code></pre>
+<hr />
+<h2>2. 事前準備</h2>
+<h3>2.1 APIキー</h3>
+<p>コードには一切書かず、環境変数から読みます。</p>
+<pre><code class="language-bash">export GOOGLE_PLACES_API_KEY='...'    # 施設発見・レビュー速度
+export SERPAPI_API_KEY='...'          # 競合レート（主）
+# 任意（セカンダリ／クロスチェック用）
+export DATAFORSEO_LOGIN='...'
+export DATAFORSEO_PASSWORD='...'
+</code></pre>
+<p>キーが無い状態でも、<code>--source fixture</code> で全工程をオフライン実行できます
+（擬似データのため判断には使えませんが、設計検証・デモ・CIには十分です）。</p>
+<h3>2.2 Places API 側の設定</h3>
+<ul>
+<li>Google Cloud プロジェクトで <strong>Places API (New)</strong> を有効化</li>
+<li>APIキーに <strong>HTTPリファラ制限ではなく IP制限</strong> をかける（サーバ実行のため）</li>
+<li>課金アラートを設定（フィールドマスクの階層で単価が変わるため）</li>
+</ul>
+<p><code>sources.json</code> の <code>discovery</code> では Pro ティア相当のフィールド
+（rating / userRatingCount / priceLevel）までを取得しています。
+<code>websiteUri</code> 等の Enterprise ティアは単価が上がるため既定では取得しません。</p>
+<hr />
+<h2>3. 手順</h2>
+<h3>① 近隣宿泊施設の発見（四半期に1回）</h3>
+<pre><code class="language-bash">cd engine
+python3 scripts/discover_compset.py --source places --radius 5000
+</code></pre>
+<p>半径5km内の宿泊施設を Places API で全列挙し、5軸類似度スコア
+（距離22% / 価格帯32% / 規模20% / 評判16% / レビュー量10%）で
+PRIMARY / SECONDARY / ASPIRATIONAL に分類します。</p>
+<p><strong>API上限への対処</strong>：<code>searchNearby</code> は1リクエスト最大20件しか返しません。
+密集エリアでは「近い順に20件で打ち切られ、遠方の重要な競合が落ちる」という
+取りこぼしが起きるため、探索円を同心リング上の小円群でタイル分割して網羅します
+（<code>places.py</code> の <code>_ring_centers</code>）。</p>
+<p>出力は <code>config/compset.generated.json</code>。<strong>この時点では本番投入しません。</strong></p>
+<h3>② 施設属性の人手確定（四半期に1回）</h3>
+<p><code>config/compset_overrides.json</code> に、APIからは取得できない項目を確定して書きます。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>なぜ人手か</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rooms</code></td>
+<td>Places API は客室数を返さない</td>
+</tr>
+<tr>
+<td><code>pricing_basis</code></td>
+<td>人数課金か室課金かは掲出画面を見ないと分からない</td>
+</tr>
+<tr>
+<td><code>meal_included</code></td>
+<td>素泊まり／朝食付き／2食付きの別</td>
+</tr>
+<tr>
+<td><code>dinner_uplift</code> / <code>breakfast_uplift</code></td>
+<td>素泊まり掲出の宿を2食付き基準へ揃える補正額</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>confirmed: true</code> を立てるまで、survey レポートは
+「要人手確認」セクションに当該施設を出し続けます。</p>
+<p><strong>upliftの決め方</strong>：①競合施設のレストラン公開価格、②近隣同格店の客単価、
+③自社の食事原価と提供価値からの逆算 — の3点を突き合わせます。
+四半期に1度、実際のOTA画面と突合して検証してください。</p>
+<p>確定後、レビューを経て昇格：</p>
+<pre><code class="language-bash">python3 scripts/discover_compset.py --source places --write   # compset.json へ昇格
+</code></pre>
+<h3>③ 競合レートの収集（日次）</h3>
+<pre><code class="language-bash"># まず計画とコストを確認（ネットワークに出ない）
+python3 scripts/collect_rates.py --plan-only
+
+# 実行
+python3 scripts/collect_rates.py --source serpapi
+</code></pre>
+<p>日次バッチ（<code>03:30 JST</code> 想定）で Cloud Run Jobs から起動します。</p>
+<h3>④ ADR判断（日次）</h3>
+<pre><code class="language-bash">python3 scripts/survey_report.py --explain 2026-11-21
+</code></pre>
+<h3>⑤ ADRマトリクス（施設 × 日付の一覧）</h3>
+<pre><code class="language-bash">python3 scripts/adr_matrix.py --from 2026-11-14 --to 2026-11-30
+python3 scripts/adr_matrix.py --from 2026-11 --open   # 11月まるごと、ブラウザで開く
+</code></pre>
+<p>survey レポートは日ごとの「判断」を出しますが、値付けの現場で実際に見たいのは
+<strong>「この日、競合各社がいくらで出しているか」を横並びにした表</strong>です。
+価格が1社だけ突出しているのか、市場全体が上がっているのかは、
+中央値だけを見ていても分かりません。</p>
+<p>出力は3系統。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>出力</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>端末</td>
+<td>千円単位の一覧。その場で確認する</td>
+</tr>
+<tr>
+<td><code>out/adr_matrix.csv</code></td>
+<td>Excel等での再加工</td>
+</tr>
+<tr>
+<td><code>out/adr_matrix.md</code></td>
+<td>GitHub上でそのまま表示される。社内共有向け</td>
+</tr>
+<tr>
+<td><code>out/adr_matrix.html</code></td>
+<td><strong>ヒートマップ＋日程の切替UI</strong>。ブラウザで開く</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>HTML版は調べたい日程を画面上で変えられます。</strong> 収集済みの全期間をページ内に
+埋め込んであるため、日付を変えるたびに Python を再実行する必要がありません。
+現場で「11月を見て、次は年末を見て」という確認をするのは HTML版が最も速い一方、
+<code>--from/--to</code> は日次バッチや特定期間の収集で使う、という住み分けになります。</p>
+<p>表の作りには意図があります。</p>
+<ul>
+<li><strong>行の並びは類似度スコア降順</strong>（似ている競合が上）。半径5kmに広げても、
+  価格帯・規模が近い宿が上位に来るので、上から数行を見れば足ります</li>
+<li><strong>自社を最上段に固定し、直下に市場中央値</strong>を置く。縦方向に読むだけで
+  「自社が市場のどこにいるか」が分かります</li>
+<li><strong>売止（満）とデータなし（·）を別記号</strong>にする。同じ記号にすると
+  「競合が高くて売れている」のか「単に取得できていない」のか区別できません</li>
+<li>濃淡は<strong>単一色相の明度のみ</strong>で表現。色相を混ぜると大小関係が読めなくなります</li>
+</ul>
+<pre><code>                       11/14 11/15 11/16 ...      平均    類似度
+                         SAT   SUN   MON
+奈良春日 鹿のや                 132   118   118          122
+└ エンジン推奨                 152   131   136          134
+------------------------------------------------------------
+市場中央値（NAR）               129   100    91          101
+------------------------------------------------------------
+月日亭                      141   105    91          106   1.00
+ふふ奈良                     197   164   136          159   0.94
+江戸三                      143   104    98          108   0.92
+</code></pre>
+<p><strong>期間を指定して収集してから実行してください。</strong> 階層化収集のままだと
+遠い日付は毎回は取得されないため、マトリクスに <code>·</code>（データなし）が並びます。</p>
+<pre><code class="language-bash">python3 scripts/collect_rates.py --from 2026-11-14 --to 2026-11-30   # 全日取得
+python3 scripts/adr_matrix.py    --from 2026-11-14 --to 2026-11-30
+</code></pre>
+<hr />
+<h2>4. コスト管理</h2>
+<h3>4.1 3つの水準</h3>
+<p><code>--plan-only</code> は削減効果を3段階で表示します（効果を過大に見せないため）。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>水準</th>
+<th style="text-align: right;">月間リクエスト</th>
+<th style="text-align: right;">月額（$0.015/req）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>①施設別 × 毎日（最も素朴）</td>
+<td style="text-align: right;">43,200</td>
+<td style="text-align: right;">$648</td>
+</tr>
+<tr>
+<td>②エリア一括検索</td>
+<td style="text-align: right;">3,600</td>
+<td style="text-align: right;">$54</td>
+</tr>
+<tr>
+<td>③②＋階層化スケジュール（本設計）</td>
+<td style="text-align: right;">約1,400</td>
+<td style="text-align: right;">約$21</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>削減の大半は「エリア一括検索」から来ています</strong>（1リクエストで複数施設が返る）。
+階層化はそこからさらに2〜3倍を削る、という理解が正確です。</p>
+<h3>4.2 階層化スケジュールの仕組み</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>リードタイム</th>
+<th>頻度</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>D+0〜14</td>
+<td>毎日</td>
+<td>価格変動が最も激しい</td>
+</tr>
+<tr>
+<td>D+15〜45</td>
+<td>3日ごと</td>
+<td>変動は中程度</td>
+</tr>
+<tr>
+<td>D+46〜120</td>
+<td>7日ごと</td>
+<td>ほぼ静的</td>
+</tr>
+</tbody>
+</table></div>
+<p>各宿泊日には安定したスロット番号（<code>stay_date.toordinal() % N</code>）が割り当てられ、
+<code>run_date.toordinal() % N == slot</code> の日に取得されます。これにより
+①各宿泊日はきっかりN日ごとに更新され、②負荷が日々に均等分散されます。</p>
+<p>週末・イベント日は<strong>1段階上の階層</strong>へ引き上げますが、
+リードタイム上限（週末60日／イベント45日）を設けています。
+遠い日付は繁忙日でも日々は動かないため、無制限に引き上げると
+費用だけが増えてカバレッジは改善しません。</p>
+<h3>4.3 上限の強制</h3>
+<p><code>sources.json &gt; budget.monthly_search_cap</code> を超える計画は、
+<code>collect_rates.py</code> が<strong>実行前に停止</strong>します。設定ミスによる想定外課金を防ぐためです。</p>
+<hr />
+<h2>5. 生データの扱い</h2>
+<p>すべての生レスポンスは <code>data/raw/{source}/{取得日}/{hash}.json</code> へ不変保存されます。</p>
+<ul>
+<li><strong>再実行してもキャッシュヒットとなり、二重課金は発生しません</strong></li>
+<li>APIキーはキャッシュに書き込まれません（キー生成時・保存時の両方で除外）</li>
+<li>正規化は必ず下流で行い、生データには手を入れません
+  （正規化ロジックは改善され続けるため、生値があれば遡って再計算できます）</li>
+</ul>
+<hr />
+<h2>6. 障害時の挙動</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>事象</th>
+<th>挙動</th>
+<th>対処</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>APIキー未設定</td>
+<td>起動時に明示エラー＋設定方法を表示</td>
+<td>環境変数を設定、または <code>--source fixture</code></td>
+</tr>
+<tr>
+<td>HTTP 4xx（429以外）</td>
+<td><strong>リトライせず即座に失敗</strong></td>
+<td>リクエスト内容の誤り。設定を確認</td>
+</tr>
+<tr>
+<td>HTTP 429 / 5xx / タイムアウト</td>
+<td>指数バックオフで4回まで再試行</td>
+<td>継続失敗ならベンダー障害を確認</td>
+</tr>
+<tr>
+<td>月次上限超過の計画</td>
+<td>実行前に停止</td>
+<td><code>collection.tiers</code> の頻度を下げる</td>
+</tr>
+<tr>
+<td>名寄せ不能な施設</td>
+<td>破棄せず <code>unmatched</code> として報告</td>
+<td>新規開業なら ① を再実行</td>
+</tr>
+<tr>
+<td>収集が数日止まった</td>
+<td>survey が「最大経過日数」を表示</td>
+<td>10日超が増えたら収集を復旧</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>設計方針</strong>：壊れたデータで価格を配信するより、止まるほうが安全。
+<code>data_quality_check</code> を配信ジョブの前段に置き、鮮度劣化時は自動配信を停止します
+（<a href="03-architecture.html">システムアーキテクチャ §4</a>）。</p>
+<hr />
+<h2>7. 判断ロジック — 3シグナルの合議</h2>
+<p>survey レポートは、価格・在庫・予約ペースの3シグナルのうち
+<strong>2つ以上が揃った日にだけ</strong>強い判断（値上げ／値下げ）を出します。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>シグナル</th>
+<th>値上げ側</th>
+<th>値下げ側</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>価格</td>
+<td>競合NAR中央値比が目標倍率未満</td>
+<td>目標倍率の1.15倍以上（割高）</td>
+</tr>
+<tr>
+<td>在庫</td>
+<td>競合売止率 40%以上</td>
+<td>競合売止率 15%以下</td>
+</tr>
+<tr>
+<td>ペース</td>
+<td>予約ペースが前倒し</td>
+<td>予約ペースが遅れ</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>単一シグナルでは動かしません。</strong> 5室規模では1件の予約でペースが反転し、
+1施設の売止で市場逼迫度が跳ねるため、単一シグナルは簡単に裏切られます。</p>
+<p>有効サンプルが3件未満の日は「判断不可」とし、推測で埋めません。</p>
+<h3>7.1 市場判定とエンジン推奨が食い違う日</h3>
+<p>「市場比では割高だが、需要イベントと予約ペースは値上げを支持する」という日が生じます。
+survey はこれを<strong>★要確認</strong>として別建てで表示し、自動配信の対象外とします。</p>
+<p>矛盾を平均して丸めてしまうと、判断の根拠が消えます。
+食い違いそのものが、人が見るべき情報です。</p>
+<hr />
+<h2>8. オフライン実行（APIキー不要）</h2>
+<pre><code class="language-bash">cd engine
+./scripts/run_pipeline.sh          # 発見→収集→判断→テスト を一気通貫
+</code></pre>
+<p>フィクスチャは<strong>実APIと同じ形のJSON</strong>であり、<strong>実コネクタと同じパーサ</strong>を通ります。
+「オフラインでは動くが本番のレスポンス形では壊れる」という事故を防ぐためです。</p>
+<p>施設名・所在は公開情報に基づく実在の施設ですが、<strong>価格は完全な擬似値</strong>です。
+survey レポートはフィクスチャ由来のデータに対して必ず警告バナーを表示します。</p>
+<hr />
+<h2>9. 本番化チェックリスト</h2>
+<ul>
+<li>[ ] <code>compset_overrides.json</code> の全施設が <code>confirmed: true</code></li>
+<li>[ ] 貢献利益フロア（<code>property.json &gt; guardrails.floor_room_rate</code>）を実原価から算定済み</li>
+<li>[ ] <code>base.anchor_room_rate</code> を <code>calibrate_base.py</code> の出力で更新済み</li>
+<li>[ ] チャネル手数料（<code>property.json &gt; channels</code>）を実契約値に置換済み</li>
+<li>[ ] APIキーを Secret Manager へ格納し、環境変数で注入</li>
+<li>[ ] 月次課金アラートを設定</li>
+<li>[ ] 日次ジョブの失敗通知（Slack）を設定</li>
+<li>[ ] <code>data_quality_check</code> を配信ジョブの前段に配置</li>
+<li>[ ] 回帰テスト（100件）がCIのゲート条件になっている</li>
+<li>[ ] 月次の目視突合（無作為10件をOTA画面と照合）を運用に組み込み済み</li>
+</ul>
+<footer>社内資料。競合施設の実名・価格ポジション・収益前提を含みます。
+取り扱いにご注意ください。</footer>
+</main></div></body></html>

@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>2. データ収集設計 — 奈良春日 鹿のや レベニューマネジメント基盤</title>
+<style>
+:root{--ground:#F5F6F2;--surface:#FFFFFF;--alt:#EDEFE9;--ink:#1A211C;--ink2:#414B44;
+ --muted:#6B746D;--line:#D8DCD3;--accent:#14584A;--accent-soft:#E2EBE6;--warn:#B8452B}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;--ink2:#C0C7BF;
+ --muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}}
+:root[data-theme="dark"]{--ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;
+ --ink2:#C0C7BF;--muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-size:16px;line-height:1.85;
+ font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif}
+.wrap{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto;gap:34px;
+ padding:0 22px 80px}
+nav{position:sticky;top:0;flex:0 0 232px;padding:30px 0;max-height:100vh;overflow:auto}
+nav .brand{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-size:17px;font-weight:600;line-height:1.5;margin-bottom:18px;display:block;
+ color:var(--ink);text-decoration:none}
+nav a.item{display:block;padding:7px 11px;border-radius:3px;color:var(--ink2);
+ text-decoration:none;font-size:13.5px;border-left:2px solid transparent}
+nav a.item:hover{background:var(--alt);color:var(--ink)}
+nav a.item.on{background:var(--accent-soft);color:var(--accent);font-weight:700;
+ border-left-color:var(--accent)}
+main{flex:1;min-width:0;padding:30px 0}
+h1,h2,h3,h4{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-weight:600;line-height:1.45;text-wrap:balance}
+h1{font-size:29px;margin:0 0 22px;padding-bottom:14px;border-bottom:2px solid var(--accent)}
+h2{font-size:22px;margin:44px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:15px;margin:22px 0 8px}
+p,li{max-width:74ch}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+code{background:var(--alt);padding:2px 5px;border-radius:3px;font-size:.88em;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--alt);border:1px solid var(--line);padding:15px 17px;overflow-x:auto;
+ border-radius:3px;line-height:1.7}
+pre code{background:none;padding:0;font-size:12.5px}
+blockquote{margin:18px 0;padding:14px 18px;background:var(--accent-soft);
+ border-left:3px solid var(--accent);color:var(--ink2)}
+blockquote p{margin:6px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--alt);font-size:12px;letter-spacing:.06em;color:var(--ink2);
+ font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+ font-size:13px;color:var(--muted)}
+@media (max-width:860px){.wrap{flex-direction:column;gap:0}
+ nav{position:static;flex:none;width:100%;max-height:none;
+  border-bottom:1px solid var(--line);padding-bottom:14px}
+ nav .items{display:flex;flex-wrap:wrap;gap:4px}
+ nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
+</style></head>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item on" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>データ収集設計書</h1>
+<p>競合OTA情報の自動収集と、需要シグナルの取得設計。<strong><a href="01-proposal.html">企画提案書</a> §3 の詳細版。</strong></p>
+<hr />
+<h2>1. データ源の全体像</h2>
+<p>レベニューマネジメントに必要なデータは3層に分かれます。重要度は上から順であり、<strong>多くの施設が層3（競合レート）に注目しすぎて層1（自社データ）の整備を怠ります</strong>。層1が汚れていると、どれだけ競合データを集めても正しい判断はできません。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>層</th>
+<th>内容</th>
+<th>取得元</th>
+<th>重要度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>層1 自社データ</strong></td>
+<td>OTB、予約明細、キャンセル、リードタイム、チャネル別実績、単価構成</td>
+<td>PMS／サイトコントローラー</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td><strong>層2 需要シグナル</strong></td>
+<td>イベント、天候、祝日、訪日統計、検索トレンド、レビュー速度</td>
+<td>各種公開データ／Places API</td>
+<td>★★</td>
+</tr>
+<tr>
+<td><strong>層3 競合レート</strong></td>
+<td>競合の掲出価格・空室状況</td>
+<td>レートショッパー／Google Hotels API</td>
+<td>★★</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2>2. 層1：自社データ（最優先）</h2>
+<h3>2.1 必要な粒度</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>データ</th>
+<th>粒度</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>予約明細</td>
+<td>1予約1行</td>
+<td>リードタイム分布、チャネル別分析、LOS分析</td>
+</tr>
+<tr>
+<td><strong>日次OTBスナップショット</strong></td>
+<td>宿泊日 × 取得日</td>
+<td><strong>ブッキングカーブの構築（最重要）</strong></td>
+</tr>
+<tr>
+<td>キャンセル</td>
+<td>1件1行（発生日・宿泊日・理由）</td>
+<td>キャンセル率、ポリシー設計</td>
+</tr>
+<tr>
+<td>掲出価格履歴</td>
+<td>宿泊日 × 取得日 × プラン × チャネル</td>
+<td>推奨と実配信の突合、パリティ監視</td>
+</tr>
+<tr>
+<td>F&amp;B・アップセル</td>
+<td>予約単位</td>
+<td>TRevPAR</td>
+</tr>
+</tbody>
+</table></div>
+<h3>2.2 最重要ポイント — OTBスナップショットの蓄積を「今日から」始める</h3>
+<p><strong>ブッキングカーブ（何日前に何室売れているのが正常か）は、過去に遡って復元できません。</strong> 多くのPMSは「現在の予約状況」しか持たず、「30日前時点で何室売れていたか」を保持していないためです。</p>
+<p>したがって、<strong>Phase 0 の初日から、毎日のOTBスナップショットをBigQueryへ蓄積し始めてください。</strong> これは他のどの作業よりも先行して着手すべき事項です。予約明細に予約日が入っていれば過去分をある程度再構成できますが、キャンセル済み予約が抜けるため精度は落ちます。</p>
+<pre><code>毎日 03:00 JST
+  → PMS から「宿塊日ごとの現在OTB」を D+0〜D+365 で取得
+  → fact_otb テーブルへ snapshot_date 付きで append（上書きしない）
+</code></pre>
+<hr />
+<h2>3. 層3：競合レート</h2>
+<h3>3.1 取得経路の比較</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>経路</th>
+<th>精度</th>
+<th>安定性</th>
+<th>法務</th>
+<th>コスト</th>
+<th>判定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A. 商用レートショッパー</strong><br>（メトロエンジン、Lighthouse 等）</td>
+<td>高</td>
+<td>高</td>
+<td>◎ 正規契約</td>
+<td>月3〜8万円</td>
+<td><strong>推奨（主）</strong></td>
+</tr>
+<tr>
+<td><strong>B. Google Hotels API</strong><br>（SerpApi、DataForSEO 経由）</td>
+<td>中〜高</td>
+<td>中</td>
+<td>○</td>
+<td>月2〜4万円</td>
+<td><strong>推奨（従・補完）</strong></td>
+</tr>
+<tr>
+<td><strong>C. OTAパートナーAPI</strong></td>
+<td>高（自社のみ）</td>
+<td>高</td>
+<td>◎</td>
+<td>無料〜</td>
+<td>自社データ取得に使用</td>
+</tr>
+<tr>
+<td><strong>D. 自前スクレイピング</strong></td>
+<td>中</td>
+<td>低</td>
+<td><strong>✗ 規約違反リスク</strong></td>
+<td>開発工数大</td>
+<td><strong>不採用</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>A と B を併用</strong>します。Aを主データ源とし、Bで①Aのカバレッジ外施設、②クロスチェック（データ品質監査）、③インバウンド向け価格の把握、を補完する構成です。単一ベンダー依存を避ける意味もあります。</p>
+<h3>3.2 D（自前スクレイピング）を採らない理由</h3>
+<ul>
+<li>主要OTAの利用規約は、自動化された手段によるアクセス・データ収集を禁止しているのが通例です。</li>
+<li>著作権法30条の4は「情報解析の用に供する場合」の<strong>複製</strong>を許容する規定であり、<strong>サイト利用規約という契約上の義務</strong>を免除するものではありません。</li>
+<li>加えて、アクセス頻度によっては業務妨害の問題、取得データの利用態様によっては不正競争防止法上の論点が生じ得ます。</li>
+<li>収集の安定性も低く（HTML構造変更・Bot対策で頻繁に破綻）、<strong>運用要員を置けない5室施設では現実的な選択肢ではありません</strong>。</li>
+</ul>
+<p>法務判断は最終的に貴社顧問弁護士の確認を要しますが、<strong>リスクとコストの双方から、正規経路のみで構成することを強く推奨します。</strong></p>
+<h3>3.3 収集スケジュールの階層化</h3>
+<p>全数を毎日取得するのはコストの無駄です。<strong>価格が動く場所にだけリクエストを割り当てます。</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>リードタイム帯</th>
+<th style="text-align: right;">対象日数</th>
+<th>頻度</th>
+<th style="text-align: right;">日あたり実効リクエスト（8施設）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>D+0〜14</td>
+<td style="text-align: right;">15日</td>
+<td>毎日</td>
+<td style="text-align: right;">120</td>
+</tr>
+<tr>
+<td>D+15〜45</td>
+<td style="text-align: right;">31日</td>
+<td>週2回</td>
+<td style="text-align: right;">71</td>
+</tr>
+<tr>
+<td>D+46〜120</td>
+<td style="text-align: right;">75日</td>
+<td>週1回</td>
+<td style="text-align: right;">86</td>
+</tr>
+<tr>
+<td><strong>合計</strong></td>
+<td style="text-align: right;">120日</td>
+<td>—</td>
+<td style="text-align: right;"><strong>277／日（月 8,297）</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>全数毎日取得なら月28,800リクエスト。<strong>3.5倍の圧縮</strong>になります。</p>
+<p>さらに以下の優先度調整を重ねます。</p>
+<ul>
+<li><strong>週末・イベント日は1段階上の頻度</strong>へ引き上げ（価格変動が集中するため）</li>
+<li><strong>競合が売止に転じた日は翌日も必ず再取得</strong>（イベント自動検知の精度に直結）</li>
+<li><strong>平日・閑散期の遠い日付は隔週へ落とす</strong></li>
+</ul>
+<h3>3.4 取得データのスキーマ</h3>
+<pre><code>fact_comp_rate
+  snapshot_date    DATE      -- 取得日
+  stay_date        DATE      -- 宿泊日
+  comp_id          STRING    -- 競合施設ID
+  source           STRING    -- rate_shopper / google_hotels
+  channel          STRING    -- 掲出元OTA
+  raw_rate         NUMERIC   -- 掲出価格（そのまま保存）
+  currency         STRING
+  pricing_basis    STRING    -- per_person / per_room（施設マスタから解決）
+  meal_included    STRING    -- none / breakfast / dinner_breakfast
+  available        BOOL      -- 在庫有無
+  los              INT64     -- 対象泊数
+  ingested_at      TIMESTAMP
+</code></pre>
+<p><strong>raw_rate は必ず生値のまま保存</strong>し、正規化は下流で行います。正規化ロジックは改善され続けるため、生データを保持していれば遡って再計算できます。逆に正規化後の値だけを保存すると、ロジック変更時に過去分が再現できなくなります。</p>
+<hr />
+<h2>4. Google系サービスの正しい使い分け</h2>
+<p>ご指摘の「Googleマップからのデータ収集」について、用途を明確に分けます。</p>
+<h3>4.1 Places API — 価格ではなく「発見」と「需要トレンド」</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>取れるもの</th>
+<th>本件での用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>施設名・住所・座標・カテゴリ</td>
+<td><strong>コンペセットの機械的発見</strong>（半径2km・宿泊カテゴリを全列挙）</td>
+</tr>
+<tr>
+<td>評点（rating）・レビュー件数</td>
+<td><strong>レビュー件数の月次増分＝宿泊需要の代理指標</strong>（"レビュー速度"）</td>
+</tr>
+<tr>
+<td>price_level（$〜$$$$）</td>
+<td>❌ 4段階の記号のみ。<strong>実勢ADRとしては使えない</strong></td>
+</tr>
+<tr>
+<td>営業状態・写真・属性</td>
+<td>新規開業／閉業の検知（コンペセットの鮮度維持）</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>レビュー速度</strong>は見落とされがちですが有用です。競合のレビュー件数が前月比で急増していれば、その施設は稼働を伸ばしている＝エリア需要が強いか、その施設が自社から客を奪っている、のいずれかです。価格データを補完する独立したシグナルとして月次で監視します。</p>
+<h3>4.2 Google Hotels — 実勢価格の取得</h3>
+<p>Google Hotels は施設 × チェックイン日の<strong>実勢価格と空室状況</strong>を保持しており、これが競合レートの実質的な取得先です。直接のパブリックAPIは提供されていないため、SerpApi・DataForSEO 等のAPIサービス経由で取得します。</p>
+<p><strong>注意</strong>：Google の Hotel Center／無料予約リンクは、<strong>自社の価格をGoogleへ出稿する</strong>ための仕組みであり、競合価格を取得するためのものではありません。混同されやすい点です（ただし自社の露出施策としては別途価値があり、直販強化の文脈で導入を検討すべきです）。</p>
+<h3>4.3 コンペセット自動発見のフロー</h3>
+<p>探索半径は <strong>5km</strong> を既定としています。奈良公園・春日野・ならまち圏に加え、
+JR奈良駅周辺・高畑・紀寺まで覆う範囲です。</p>
+<p>広げても類似度スコアで並べ替えるため無関係な施設は下位に沈みますが、
+<strong>Places API のリクエスト数は半径の二乗で増えます</strong>（20件上限をタイル分割で
+回避するため）。半径5kmで63リクエスト。四半期に1回の実行なので費用影響は
+軽微ですが、実行前に必ずリクエスト数を表示します。</p>
+<pre><code>探索半径   : 5,000 m ／ 発見 23 件 → フィルタ後 20 件
+探索リクエスト: 63 回（タイル分割） ／ 概算 $2.21
+</code></pre>
+<pre><code>月次バッチ
+ 1. Places API: 施設座標から半径5km・lodging カテゴリを全列挙
+ 2. 各施設の rating / user_ratings_total / price_level / 客室数（別途） を取得
+ 3. 類似度スコアを算定
+      score = w1·距離近接 + w2·価格帯重複 + w3·規模近接
+              + w4·評点近接 + w5·食事形態一致
+ 4. 上位N件を候補として提示 → 四半期レビューで人が最終承認
+ 5. 新規開業・閉業を差分検知してアラート
+</code></pre>
+<p><strong>完全自動にせず「候補提示＋四半期承認」とする</strong>のは、競合認定が事業判断を含むためです。ただし候補の生成を機械化することで、「気づいたら近隣に強力な新規開業があった」という取りこぼしを防ぎます。</p>
+<hr />
+<h2>5. 層2：需要シグナル</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>シグナル</th>
+<th>取得元</th>
+<th>更新頻度</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>祝日・連休</td>
+<td>内閣府 祝日CSV</td>
+<td>年1回</td>
+<td>基準価格の連休前夜補正</td>
+</tr>
+<tr>
+<td>奈良の年中行事</td>
+<td>各社寺・奈良市観光協会の公開情報</td>
+<td>四半期</td>
+<td>イベントスコア</td>
+</tr>
+<tr>
+<td>天候予報</td>
+<td>気象庁／天気API</td>
+<td>日次</td>
+<td>直前期の需要補正（Phase 3）</td>
+</tr>
+<tr>
+<td>訪日外客数</td>
+<td>日本政府観光局（JNTO）統計</td>
+<td>月次</td>
+<td>インバウンド需要トレンド</td>
+</tr>
+<tr>
+<td>為替</td>
+<td>公開API</td>
+<td>日次</td>
+<td><strong>海外OTA掲出価格の実質水準監視</strong></td>
+</tr>
+<tr>
+<td>レビュー速度</td>
+<td>Places API</td>
+<td>月次</td>
+<td>エリア需要と競合の勢い</td>
+</tr>
+<tr>
+<td>検索トレンド</td>
+<td>Google Trends</td>
+<td>週次</td>
+<td>先行指標（Phase 3）</td>
+</tr>
+</tbody>
+</table></div>
+<h3>5.1 為替を監視する理由</h3>
+<p>インバウンド比率が高い施設では、円建て価格を据え置いても、<strong>為替次第で海外顧客から見た実質価格が10〜20%変動</strong>します。円安局面では実質値下げが起きており、値上げ余地があります。逆に円高局面では、円建てを据え置くと海外需要が落ちます。</p>
+<p>海外OTA向けの価格判断には、<strong>USD／CNY／EUR建ての自社価格の推移</strong>をダッシュボードに常設し、円建てだけを見て判断しないことを推奨します。</p>
+<h3>5.2 奈良固有の需要カレンダー（初期セット）</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>時期</th>
+<th>行事</th>
+<th>想定スコア</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1月下旬</td>
+<td>若草山焼き</td>
+<td>0.70</td>
+</tr>
+<tr>
+<td>3月1〜14日</td>
+<td>修二会・お水取り</td>
+<td>0.65</td>
+</tr>
+<tr>
+<td>3月下旬〜4月上旬</td>
+<td>桜</td>
+<td>PEAKシーズン</td>
+</tr>
+<tr>
+<td>4月末〜5月上旬</td>
+<td>ゴールデンウィーク</td>
+<td>0.90</td>
+</tr>
+<tr>
+<td>8月上旬〜中旬</td>
+<td>なら燈花会・お盆</td>
+<td>0.70〜0.85</td>
+</tr>
+<tr>
+<td>10月中旬</td>
+<td>鹿の角きり・スポーツの日連休</td>
+<td>0.55</td>
+</tr>
+<tr>
+<td>10月下旬〜11月上旬</td>
+<td><strong>正倉院展</strong></td>
+<td>0.75</td>
+</tr>
+<tr>
+<td>11月中旬〜下旬</td>
+<td>紅葉</td>
+<td>0.80</td>
+</tr>
+<tr>
+<td>12月末〜1月初</td>
+<td>年末年始</td>
+<td>0.95</td>
+</tr>
+</tbody>
+</table></div>
+<p>これは初期セットであり、<strong>登録漏れは自動検知機構が補完します</strong>（企画提案書 §2.4）。人が完璧なカレンダーを維持する必要はない、という設計が要点です。</p>
+<hr />
+<h2>6. データ品質管理</h2>
+<p>自動収集の最大のリスクは「壊れたデータに気づかないまま価格を配信すること」です。以下を必須の防御線とします。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>チェック</th>
+<th>内容</th>
+<th>違反時の挙動</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>鮮度</td>
+<td>競合レートの最終取得から24時間以内</td>
+<td>超過で<strong>自動配信を停止</strong>、モデル値を凍結</td>
+</tr>
+<tr>
+<td>カバレッジ</td>
+<td>PRIMARY施設の取得成功率 80%以上</td>
+<td>下回れば当日の comp 項を無効化（他の項のみで算定）</td>
+</tr>
+<tr>
+<td>値域</td>
+<td>NAR が 20,000〜600,000円 の範囲内</td>
+<td>範囲外は母数から自動除外</td>
+</tr>
+<tr>
+<td>前日比</td>
+<td>競合NAR中央値の前日比が ±40% 以内</td>
+<td>超過でアラート（収集エラーの疑い）</td>
+</tr>
+<tr>
+<td>突合監査</td>
+<td>月1回、無作為10件をOTA画面と目視突合</td>
+<td>乖離があれば正規化パラメータを是正</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>月次の目視突合は省略しないでください。</strong> 食事条件や人数課金の設定が実態とズレていると、正規化後の価格が体系的に歪み、しかもエンジン内では正常値に見えます。自動化されたパイプラインで唯一、人間の目でしか検出できない種類の誤りです。</p>
+<hr />
+<h2>7. 収集コスト試算</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>月額（税別・概算）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>商用レートショッパー</td>
+<td>30,000〜80,000円</td>
+</tr>
+<tr>
+<td>Google Hotels API（SerpApi $150プラン相当）</td>
+<td>20,000〜30,000円</td>
+</tr>
+<tr>
+<td>Places API（コンペ発見・レビュー速度／月次バッチ）</td>
+<td>1,000〜3,000円</td>
+</tr>
+<tr>
+<td>その他公開データ</td>
+<td>0円</td>
+</tr>
+<tr>
+<td><strong>合計</strong></td>
+<td><strong>51,000〜113,000円／月</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>年間 <strong>61万〜136万円</strong>。想定効果 約960万円に対して十分に見合う水準です。</p>
+<p>なお Phase 1 では <strong>Google Hotels API 単独（月2〜3万円）で開始</strong>し、精度検証の上で商用レートショッパーの要否を判断する段階的調達を推奨します。最初から両方契約する必要はありません。</p>
+<hr />
+<h2>8. 実装（参照実装への対応）</h2>
+<p>本書の設計は <code>engine/kanoya_rm/sources/</code> に実装済みです。運用手順は
+<a href="05-operations.html">収集パイプライン運用手順</a> を参照してください。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>本書の節</th>
+<th>実装</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>§3.1 取得経路の比較</td>
+<td><code>sources/serpapi_hotels.py</code>（主）、<code>sources/dataforseo_hotels.py</code>（従）</td>
+</tr>
+<tr>
+<td>§3.3 収集スケジュールの階層化</td>
+<td><code>schedule.py</code> — スロット方式。週末・イベントは1段階上の階層へ</td>
+</tr>
+<tr>
+<td>§3.4 スキーマ（生値保存）</td>
+<td><code>sources/http.py</code> — <code>data/raw/{source}/{取得日}/</code> へ不変保存</td>
+</tr>
+<tr>
+<td>§4.1 Places API（発見・レビュー速度）</td>
+<td><code>sources/places.py</code> — 20件上限をリングタイル分割で回避</td>
+</tr>
+<tr>
+<td>§4.3 コンペセット自動発見</td>
+<td><code>discovery.py</code> — 5軸スコア＋候補提示、承認は人</td>
+</tr>
+<tr>
+<td>§6 データ品質管理</td>
+<td><code>survey.py</code> — 鮮度・サンプル数を明示、3件未満は判断不可</td>
+</tr>
+</tbody>
+</table></div>
+<h3>8.1 実装で判明した設計上の要点</h3>
+<p><strong>① 削減効果の内訳を正しく分けること</strong></p>
+<p>当初「全数毎日 28,800 → 階層化 8,297 で3.5倍圧縮」と見積もりましたが、
+実装してみると削減の大半は<strong>エリア一括検索</strong>（1リクエストで複数施設が返る）から
+来ており、階層化はそこからさらに2〜3倍を削るという構造でした。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>水準</th>
+<th style="text-align: right;">月間リクエスト</th>
+<th style="text-align: right;">月額</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>①施設別 × 毎日</td>
+<td style="text-align: right;">43,200</td>
+<td style="text-align: right;">$648</td>
+</tr>
+<tr>
+<td>②エリア一括検索</td>
+<td style="text-align: right;">3,600</td>
+<td style="text-align: right;">$54</td>
+</tr>
+<tr>
+<td>③②＋階層化</td>
+<td style="text-align: right;">約1,400</td>
+<td style="text-align: right;">約$21</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>--plan-only</code> はこの3水準を並べて表示します。効果を過大に見せないためです。</p>
+<p><strong>② 遠い日付の繁忙日を毎日取りに行かないこと</strong></p>
+<p>「週末・イベント日は頻度を上げる」を無条件に適用すると、120日先の紅葉シーズン
+全17日を毎日取得することになり、費用だけが増えてカバレッジは改善しません。
+リードタイム上限（週末60日／イベント45日）を設けています。</p>
+<p><strong>③ 収集した日のデータだけを見てはいけない</strong></p>
+<p>階層化収集では、遠い宿泊日は毎日は更新されません。「今日取得した行」だけで
+判断しようとすると、対象120日のうち78日がデータ無しになりました。
+<strong>(宿泊日, 競合) ごとに基準日以前で最新の観測を採用</strong>し、経過日数を鮮度として
+持つのが正しい実装です。</p>
+<p><strong>④ 欠測と売止を区別すること</strong></p>
+<p>Google Hotels のレスポンスに施設が現れない場合、それは「売止」です。
+これを欠測として無視すると市場逼迫度の判定が壊れるため、
+計画に含まれるが結果に現れなかった施設は <code>available=0</code> として明示的に記録します。</p>
+<p><strong>⑤ 距離スコアを探索半径で割ってはいけない</strong></p>
+<p>当初「1 − 距離 ÷ 探索半径」で距離の近さを採点していましたが、これだと
+<strong>探索半径を2.5km→5kmに広げるだけで、2km先の施設のスコアが0.2→0.6に跳ね上がり</strong>、
+既存施設のティア分類が勝手に変わってしまいます。
+「2km先の競合がどれだけ近いか」は、何km圏を見ようと同じであるべきです。
+半減距離1.5kmの指数減衰（1.5kmで0.5、3kmで0.25、5kmで0.10）へ変更しました。</p>
+<p><strong>⑥ タイル分割の点数を固定にしない</strong></p>
+<p>探索円を小円で覆う際、リング上の点数を固定（6点・8点）にしていたため、
+半径5kmでは小円の間に隙間ができ、そこにある施設を丸ごと取りこぼしていました。
+点数を半径に応じて増やし、隣接する小円が必ず重なるようにしています
+（回帰テストで「探索点から届かない領域がゼロ」を検証）。</p>
+<p><strong>⑦ 施設名の名寄せで一般語を落としすぎないこと</strong></p>
+<p>表記ゆれ対策として「ホテル」「奈良」等の一般語を除去したところ、
+『奈良ホテル』が空文字になり、どの施設とも突合できなくなりました。
+業態語や地名は施設の識別に効く情報です。落とすのは区切り記号と空白のみとします。</p>
+<footer>社内資料。競合施設の実名・価格ポジション・収益前提を含みます。
+取り扱いにご注意ください。</footer>
+</main></div></body></html>

@@ -46,6 +46,29 @@
 
 ---
 
+## サイトとして見る
+
+`site/` に静的サイトを生成済みです。**ホスティング側でのビルドは不要**で、そのまま配信できます。
+
+```bash
+cd engine && pip install markdown && python3 scripts/build_site.py   # 文書を更新したら再生成
+```
+
+| 置き場所 | 手順 |
+|---|---|
+| ローカル | `site/index.html` をブラウザで開く |
+| Vercel | `vercel.json` 同梱済み。Framework は自動判定させず `site/` を配信 |
+| 社内ファイルサーバ | `site/` をそのままコピー |
+
+ビルド工程を持たせない方針です。ビルドが無いものは壊れません
+（`_config.yml` を Vercel が Jekyll と誤検出して失敗した経緯があります）。
+
+**`site/` は誰でも見られる状態で配信されます。** 閲覧者を限定するには、
+Vercel の Deployment Protection を設定するか、社内ネットワーク内に置いてください。
+全ページに `noindex` を入れてありますが、これは検索避けであってアクセス制限ではありません。
+
+---
+
 ## 参照実装
 
 企画書の数式・ガードレール・出力フォーマットは、すべて動作するコードとして `engine/` に実装されています（標準ライブラリのみ、依存パッケージなし）。
@@ -94,7 +117,7 @@ SOURCE=serpapi ./scripts/run_pipeline.sh
 python3 scripts/make_fixtures.py                           # 検証用データ生成
 python3 scripts/calibrate_base.py                          # 基準価格の校正レポート
 python3 -m kanoya_rm.cli --days 120 --explain 2026-11-21   # 推奨価格＋根拠の分解
-python3 -m unittest discover -s tests                      # 回帰テスト（100件）
+python3 -m unittest discover -s tests                      # 回帰テスト（117件）
 ```
 
 出力例：
