@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>概要 — 奈良春日 鹿のや レベニューマネジメント基盤</title>
+<style>
+:root{--ground:#F5F6F2;--surface:#FFFFFF;--alt:#EDEFE9;--ink:#1A211C;--ink2:#414B44;
+ --muted:#6B746D;--line:#D8DCD3;--accent:#14584A;--accent-soft:#E2EBE6;--warn:#B8452B}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;--ink2:#C0C7BF;
+ --muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}}
+:root[data-theme="dark"]{--ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;
+ --ink2:#C0C7BF;--muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-size:16px;line-height:1.85;
+ font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif}
+.wrap{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto;gap:34px;
+ padding:0 22px 80px}
+nav{position:sticky;top:0;flex:0 0 232px;padding:30px 0;max-height:100vh;overflow:auto}
+nav .brand{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-size:17px;font-weight:600;line-height:1.5;margin-bottom:18px;display:block;
+ color:var(--ink);text-decoration:none}
+nav a.item{display:block;padding:7px 11px;border-radius:3px;color:var(--ink2);
+ text-decoration:none;font-size:13.5px;border-left:2px solid transparent}
+nav a.item:hover{background:var(--alt);color:var(--ink)}
+nav a.item.on{background:var(--accent-soft);color:var(--accent);font-weight:700;
+ border-left-color:var(--accent)}
+main{flex:1;min-width:0;padding:30px 0}
+h1,h2,h3,h4{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-weight:600;line-height:1.45;text-wrap:balance}
+h1{font-size:29px;margin:0 0 22px;padding-bottom:14px;border-bottom:2px solid var(--accent)}
+h2{font-size:22px;margin:44px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:15px;margin:22px 0 8px}
+p,li{max-width:74ch}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+code{background:var(--alt);padding:2px 5px;border-radius:3px;font-size:.88em;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--alt);border:1px solid var(--line);padding:15px 17px;overflow-x:auto;
+ border-radius:3px;line-height:1.7}
+pre code{background:none;padding:0;font-size:12.5px}
+blockquote{margin:18px 0;padding:14px 18px;background:var(--accent-soft);
+ border-left:3px solid var(--accent);color:var(--ink2)}
+blockquote p{margin:6px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--alt);font-size:12px;letter-spacing:.06em;color:var(--ink2);
+ font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+ font-size:13px;color:var(--muted)}
+@media (max-width:860px){.wrap{flex-direction:column;gap:0}
+ nav{position:static;flex:none;width:100%;max-height:none;
+  border-bottom:1px solid var(--line);padding-bottom:14px}
+ nav .items{display:flex;flex-wrap:wrap;gap:4px}
+ nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
+</style></head>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item on" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>奈良春日 鹿のや — レベニューマネジメント基盤</h1>
+<p>全5室オーベルジュ「奈良春日 鹿のや」を対象とした、<strong>レベニューマネージャーの経験・力量に依存しない</strong>ダイナミックプライシング基盤の企画書と参照実装。</p>
+<p>近隣競合のOTA掲出情報を自動収集・正規化し、需要シグナルと組み合わせて日次の最適ADRを算出、ガードレール内は自動でOTAへ配信、逸脱分のみ人が承認する——という運用を設計しています。</p>
+<blockquote>
+<h3>⚠️ 公開範囲について</h3>
+<p>本リポジトリは<strong>社内資料</strong>です。競合施設の実名、価格ポジション、収益前提、
+原価にかかわるガードレール値を含みます。
+<strong>リポジトリを Private に設定し、閲覧者を Collaborator で限定してください。</strong>
+設定: <code>Settings → General → Danger Zone → Change repository visibility → Private</code>
+閲覧者追加: <code>Settings → Collaborators → Add people</code></p>
+</blockquote>
+<hr />
+<h2>中核となる考え方</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>原則</th>
+<th>実装</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>判断のコード化</strong></td>
+<td>値付けを「基準価格 × 5つの補正係数」の決定論モデルとして外部化</td>
+</tr>
+<tr>
+<td><strong>説明可能性の強制</strong></td>
+<td>全推奨価格を「基準価格＋各要因の円建て寄与」に分解して出力</td>
+</tr>
+<tr>
+<td><strong>例外管理への転換</strong></td>
+<td>ガードレール内は自動配信、逸脱分のみ承認キューへ（日次運用15分）</td>
+</tr>
+<tr>
+<td><strong>記入漏れの構造的排除</strong></td>
+<td>イベント表への人手入力に頼らず、競合の売止・価格急騰から需要を逆算検知</td>
+</tr>
+<tr>
+<td><strong>属人判断の自動校正</strong></td>
+<td>最も属人的な「基準価格をいくらに置くか」を市場整合×予算整合の2条件から機械的に解く</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2>ドキュメント</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>文書</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><a href="01-proposal.html">企画提案書</a></td>
+<td>全体提案。課題構造・価格設計・ガードレール・運用設計・KPI・リスク</td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="02-data-collection.html">データ収集設計</a></td>
+<td>競合レート取得の経路比較・法務・コスト圧縮・Google系サービスの使い分け</td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="03-architecture.html">システムアーキテクチャ</a></td>
+<td>構成・データモデル・ジョブ設計・Build/Buy・監視</td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="04-roadmap-roi.html">導入ロードマップとROI</a></td>
+<td>4フェーズの計画・投資対効果・運用体制・成功の定義</td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="05-operations.html">収集パイプライン運用手順</a></td>
+<td>調査条件の入力・APIキー設定・コスト管理・ADRマトリクス・本番化チェックリスト</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>出力見本 — ADRマトリクス（施設×日付のADR一覧）</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>形式</th>
+<th>見方</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="adr-matrix-table.html">Markdown版</a></td>
+<td><strong>GitHub上でそのまま表示されます</strong>。スタッフはこれを開けば読めます</td>
+</tr>
+<tr>
+<td><a href="adr-matrix.html">HTML版</a></td>
+<td>ヒートマップ付き。<strong>ページ上で調べたい日程を変えられます</strong>。ダウンロードしてブラウザで開いてください</td>
+</tr>
+</tbody>
+</table></div>
+<p>いずれも価格は擬似データです（施設名は実名）。実データは <code>engine/scripts/adr_matrix.py</code> で生成します。</p>
+<hr />
+<h2>サイトとして見る</h2>
+<p><code>site/</code> に静的サイトを生成済みです。<strong>ホスティング側でのビルドは不要</strong>で、そのまま配信できます。</p>
+<pre><code class="language-bash">cd engine &amp;&amp; pip install markdown &amp;&amp; python3 scripts/build_site.py   # 文書を更新したら再生成
+</code></pre>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>置き場所</th>
+<th>手順</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ローカル</td>
+<td><code>site/index.html</code> をブラウザで開く</td>
+</tr>
+<tr>
+<td>Vercel</td>
+<td><code>vercel.json</code> 同梱済み。Framework は自動判定させず <code>site/</code> を配信</td>
+</tr>
+<tr>
+<td>社内ファイルサーバ</td>
+<td><code>site/</code> をそのままコピー</td>
+</tr>
+</tbody>
+</table></div>
+<p>ビルド工程を持たせない方針です。ビルドが無いものは壊れません
+（<code>_config.yml</code> を Vercel が Jekyll と誤検出して失敗した経緯があります）。</p>
+<p><strong><code>site/</code> は誰でも見られる状態で配信されます。</strong> 閲覧者を限定するには、
+Vercel の Deployment Protection を設定するか、社内ネットワーク内に置いてください。
+全ページに <code>noindex</code> を入れてありますが、これは検索避けであってアクセス制限ではありません。</p>
+<hr />
+<h2>参照実装</h2>
+<p>企画書の数式・ガードレール・出力フォーマットは、すべて動作するコードとして <code>engine/</code> に実装されています（標準ライブラリのみ、依存パッケージなし）。</p>
+<h3>調査条件の入力</h3>
+<p>「<strong>いつ時点で</strong>（本日）」「<strong>どの宿泊日を</strong>（対象期間）」調べるかは、
+<code>engine/config/survey_request.json</code> の1か所で指定します。CLI引数でも上書きできます。</p>
+<pre><code class="language-bash">python3 scripts/survey_report.py --from 2026-11-01 --to 2026-11-30
+python3 scripts/survey_report.py --from 2026-11         # 11月まるごと
+python3 scripts/survey_report.py --from +30d --days 14  # 30日後から2週間
+</code></pre>
+<p><code>as_of</code>（基準日）と <code>target</code>（対象期間）は独立した別概念です。
+詳細は <a href="05-operations.html">収集パイプライン運用手順 §1.5</a>。</p>
+<h3>収集パイプライン（発見 → 収集 → ADR判断）</h3>
+<pre><code class="language-bash">cd engine
+./scripts/run_pipeline.sh                               # APIキー不要のオフライン実行
+FROM=2026-11-01 TO=2026-11-30 ./scripts/run_pipeline.sh  # 期間を絞る
+</code></pre>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>工程</th>
+<th>スクリプト</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 発見</td>
+<td><code>discover_compset.py</code></td>
+<td>Places API で<strong>半径5km</strong>内の宿泊施設を全列挙し、5軸類似度スコアでティア分類</td>
+</tr>
+<tr>
+<td>② 確定</td>
+<td><code>config/compset_overrides.json</code></td>
+<td><strong>人手</strong>で客室数・課金方式・食事条件・uplift を確定（APIからは取得不可）</td>
+</tr>
+<tr>
+<td>③ 収集</td>
+<td><code>collect_rates.py</code></td>
+<td>Google Hotels から階層化スケジュールで実勢価格を収集</td>
+</tr>
+<tr>
+<td>④ 判断</td>
+<td><code>survey_report.py</code></td>
+<td>NAR正規化して市場ポジションを算出、3シグナル合議でADR判断</td>
+</tr>
+<tr>
+<td>⑤ 可視化</td>
+<td><code>adr_matrix.py</code></td>
+<td>施設×日付のADRマトリクス（端末／CSV／HTMLヒートマップ）</td>
+</tr>
+</tbody>
+</table></div>
+<p>実データで動かす場合は環境変数にAPIキーを設定します（コードには書きません）。</p>
+<pre><code class="language-bash">export GOOGLE_PLACES_API_KEY='...'
+export SERPAPI_API_KEY='...'
+SOURCE=serpapi ./scripts/run_pipeline.sh
+</code></pre>
+<h3>プライシング単体</h3>
+<pre><code class="language-bash">python3 scripts/make_fixtures.py                           # 検証用データ生成
+python3 scripts/calibrate_base.py                          # 基準価格の校正レポート
+python3 -m kanoya_rm.cli --days 120 --explain 2026-11-21   # 推奨価格＋根拠の分解
+python3 -m unittest discover -s tests                      # 回帰テスト（117件）
+</code></pre>
+<p>出力例：</p>
+<pre><code>■ 2026-11-21（SAT）紅葉 / PEAK:WEEKEND
+  リードタイム 98日 ／ 残室 4室 ／ MLOS 1泊
+  基準価格                             136,372 円
+   予約ペース（対ベンチマーク）        +8,673 円  (z=+0.15) →   145,045 円
+   競合ポジション（NAR中央値比）       -7,551 円  (z=-0.17) →   137,494 円
+   需要イベント                       +37,295 円  (z=+0.80) →   174,789 円
+   リードタイム                        -5,166 円  (z=-0.15) →   169,623 円
+   残室希少性                              +0 円  (z=-0.00) →   169,623 円
+  モデル出力                           169,623 円
+   ガードレール: 日次変動幅 ±15% で上方制限
+  ▶ 推奨価格   152,000 円（現行 132,000 円 / +15.2% / 要承認）
+  競合NAR中央値 131,900 円 に対し 1.15 倍 ／ 紅葉ピーク
+
+  競合内訳（NAR = 1室2名2食・税サ込 換算）  サンプル12件
+    ふふ奈良                             213,400 円
+    ANDO HOTEL 奈良若草山                 154,400 円
+    古都の宿 むさし野                        146,300 円
+    江戸三                              142,300 円
+    NIPPONIA HOTEL 奈良ならまち            131,900 円
+    奈良ホテル                            120,800 円
+    ...
+</code></pre>
+<p>詳細は <a href="engine.html">engine/README.md</a>。</p>
+<hr />
+<h2>注意事項</h2>
+<ul>
+<li>同梱のサンプルデータは<strong>決定論的な擬似データ</strong>であり、実データではありません。</li>
+<li>施設の実績数値は非公開のため、企画書中の経営数値は公開情報と同規模施設の一般的水準から置いた<strong>仮定値</strong>です（「※仮定」と明記）。Phase 0 で実データに差し替える前提です。</li>
+<li>競合施設名・属性も公開情報ベースの想定であり、Phase 0 で確定します。</li>
+<li>競合レートの取得は、商用レートショッパーおよび公式／準公式APIに限定する設計です（OTAサイトの自前スクレイピングは規約・法務リスクから採用しません）。詳細は <a href="02-data-collection.html">データ収集設計 §3.2</a>。</li>
+<li>社外へ資料を共有する必要が生じた場合は、<code>adr_matrix.py --anonymize</code> で競合名を「競合A/B/…」に伏せた版を生成できます。</li>
+</ul>
+<footer>社内資料。競合施設の実名・価格ポジション・収益前提を含みます。
+取り扱いにご注意ください。</footer>
+</main></div></body></html>

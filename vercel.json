@@ -1,0 +1,29 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "_なぜ必要か": [
+    "リポジトリ直下に _config.yml があるため、Vercel がこれを Jekyll サイトと",
+    "自動判定し、Ruby/Gemfile が無いまま jekyll build を実行して失敗していた。",
+    "framework:null で自動判定を止め、生成済みの site/ をそのまま配信させる。"
+  ],
+  "_ビルドしない方針": [
+    "site/ は engine/scripts/build_site.py で生成し、リポジトリへコミットする。",
+    "ホスティング側にビルド工程を持たせないので、Vercel でも GitHub Pages でも",
+    "社内ファイルサーバでも同じように開ける。ビルドが無いものは壊れない。"
+  ],
+
+  "framework": null,
+  "outputDirectory": "site",
+  "cleanUrls": true,
+  "trailingSlash": false,
+
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    }
+  ],
+  "_headers補足": "社内資料のため検索エンジンへの登録を拒否する。ただしこれはアクセス制限ではない。閲覧者を限定するには Vercel の Deployment Protection を設定すること。"
+}

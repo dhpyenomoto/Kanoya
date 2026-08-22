@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>4. ロードマップとROI — 奈良春日 鹿のや レベニューマネジメント基盤</title>
+<style>
+:root{--ground:#F5F6F2;--surface:#FFFFFF;--alt:#EDEFE9;--ink:#1A211C;--ink2:#414B44;
+ --muted:#6B746D;--line:#D8DCD3;--accent:#14584A;--accent-soft:#E2EBE6;--warn:#B8452B}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;--ink2:#C0C7BF;
+ --muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}}
+:root[data-theme="dark"]{--ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;
+ --ink2:#C0C7BF;--muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-size:16px;line-height:1.85;
+ font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif}
+.wrap{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto;gap:34px;
+ padding:0 22px 80px}
+nav{position:sticky;top:0;flex:0 0 232px;padding:30px 0;max-height:100vh;overflow:auto}
+nav .brand{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-size:17px;font-weight:600;line-height:1.5;margin-bottom:18px;display:block;
+ color:var(--ink);text-decoration:none}
+nav a.item{display:block;padding:7px 11px;border-radius:3px;color:var(--ink2);
+ text-decoration:none;font-size:13.5px;border-left:2px solid transparent}
+nav a.item:hover{background:var(--alt);color:var(--ink)}
+nav a.item.on{background:var(--accent-soft);color:var(--accent);font-weight:700;
+ border-left-color:var(--accent)}
+main{flex:1;min-width:0;padding:30px 0}
+h1,h2,h3,h4{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-weight:600;line-height:1.45;text-wrap:balance}
+h1{font-size:29px;margin:0 0 22px;padding-bottom:14px;border-bottom:2px solid var(--accent)}
+h2{font-size:22px;margin:44px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:15px;margin:22px 0 8px}
+p,li{max-width:74ch}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+code{background:var(--alt);padding:2px 5px;border-radius:3px;font-size:.88em;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--alt);border:1px solid var(--line);padding:15px 17px;overflow-x:auto;
+ border-radius:3px;line-height:1.7}
+pre code{background:none;padding:0;font-size:12.5px}
+blockquote{margin:18px 0;padding:14px 18px;background:var(--accent-soft);
+ border-left:3px solid var(--accent);color:var(--ink2)}
+blockquote p{margin:6px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--alt);font-size:12px;letter-spacing:.06em;color:var(--ink2);
+ font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+ font-size:13px;color:var(--muted)}
+@media (max-width:860px){.wrap{flex-direction:column;gap:0}
+ nav{position:static;flex:none;width:100%;max-height:none;
+  border-bottom:1px solid var(--line);padding-bottom:14px}
+ nav .items{display:flex;flex-wrap:wrap;gap:4px}
+ nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
+</style></head>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item on" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>導入ロードマップ・投資対効果・運用体制</h1>
+<p><strong><a href="01-proposal.html">企画提案書</a> §0.4／§8 の詳細版。</strong></p>
+<hr />
+<h2>1. ロードマップ全体像</h2>
+<pre><code>Phase 0 診断        Phase 1 MVP           Phase 2 半自動運用      Phase 3 高度化
+0──4週             5──12週               13──24週                25──40週
+│                  │                     │                       │
+│ データ棚卸し       │ 基盤構築            │ 自動配信開始           │ 需要予測精緻化
+│ コンペセット定義   │ 競合収集開始        │ 承認キュー運用         │ TRevPAR最適化
+│ 原価→フロア算定    │ 推奨算出（配信なし） │ MLOS/gap最適化        │ 直販シフト施策
+│ Baseline確立      │ シャドーモード検証   │ Playbook確定          │ 多施設展開対応
+▼                  ▼                     ▼                       ▼
+[Gate] Baseline    [Gate] 一致率70%超    [Gate] 採用率85%超      [Gate] RevPAR+7%
+       KPI確定             事故ゼロ              事故ゼロ
+</code></pre>
+<hr />
+<h2>2. Phase 0：診断（0〜4週）</h2>
+<h3>2.1 成果物</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>成果物</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>実績データ棚卸し報告</strong></td>
+<td>過去2〜3年の予約明細・キャンセル・チャネル別実績・リードタイム分布</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Baseline KPI</strong></td>
+<td>ADR／OCC／RevPAR／Net RevPAR／直販比率の現状値（月別・日カテゴリ別）</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>貢献利益フロアの算定</strong></td>
+<td>1室2名2食あたりの変動費（食材・リネン・アメニティ・変動人件費・OTA手数料）から下限価格を確定</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>シーズンカレンダー</strong></td>
+<td>12〜16区分のシーズン定義（実績と市場から策定）</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>コンペセット定義書</strong></td>
+<td>PRIMARY／SECONDARY／ASPIRATIONAL と重み、各社の正規化パラメータ（食事uplift・課金方式）</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>チャネル契約条件の整理</strong></td>
+<td>各OTAの手数料率・ポイント原資・パリティ条項・販促プログラムの実質コスト</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>OTBスナップショット蓄積の開始</strong></td>
+<td>★最優先。初日から毎日蓄積を始める</td>
+</tr>
+</tbody>
+</table></div>
+<h3>2.2 Phase 0 の落とし穴</h3>
+<p><strong>「データがないので分析できない」で止まらないこと。</strong> この規模の施設ではデータが整備されていないのが常態です。重要なのは、</p>
+<ol>
+<li><strong>今日からOTBスナップショットの蓄積を始める</strong>（過去に遡って復元できない唯一のデータ）</li>
+<li>過去データは「あるものだけ」で Baseline を作り、精度は後から上げる</li>
+<li>貢献利益フロアの算定だけは、データの有無にかかわらず<strong>必ず今やる</strong>（これがないと安全に自動化できない）</li>
+</ol>
+<p>の3点です。完璧なデータ整備を待つと、Phase 0 が半年になります。</p>
+<h3>2.3 コンペセットの食事uplift をどう決めるか</h3>
+<p>競合が素泊まりで売っている場合、「その施設に泊まる客が夕食にいくら使うか」を推定する必要があります。実務的には、</p>
+<ul>
+<li>競合施設のレストラン公開価格（コース単価）</li>
+<li>近隣の同格レストランの客単価</li>
+<li>自社の食事原価と提供価値からの逆算</li>
+</ul>
+<p>を突き合わせて、四半期に1度見直します。<strong>この値が誤っていると競合ポジション判断が体系的に歪む</strong>ため、Phase 0 で現地確認を含めて丁寧に置いてください。</p>
+<hr />
+<h2>3. Phase 1：MVP／シャドーモード（5〜12週）</h2>
+<h3>3.1 やること</h3>
+<ul>
+<li>データ基盤構築（GCS／BigQuery／Cloud Run Jobs／Scheduler）</li>
+<li>Google Hotels API 経由の競合レート収集開始（<strong>まずは単一ソースで開始</strong>）</li>
+<li>PMS連携（OTB日次スナップショット）</li>
+<li>価格エンジンの実装・設定投入・基準価格の初回校正</li>
+<li>推奨価格の<strong>算出のみ</strong>（配信しない）／ CSV・ダッシュボード出力</li>
+<li><strong>シャドーモード検証</strong>：毎日、推奨価格と実際に人が付けた価格を並べて記録</li>
+</ul>
+<h3>3.2 シャドーモードを省略してはいけない理由</h3>
+<p>いきなり自動配信を始めると、モデルの欠陥が<strong>売上毀損として顕在化してからしか分かりません</strong>。5室では1件の判断ミスが月次業績に見える規模で効きます。</p>
+<p>シャドーモードでは、
+- 推奨と人の判断が乖離した日を毎週レビューし、<strong>どちらが正しかったかを検証</strong>する
+- 乖離の原因が「モデルに欠けている変数」なら、モデルを直す
+- 「人が見落としている要因」なら、人の運用を直す</p>
+<p>これを8週間続けると、モデルの信頼度と現場の納得の両方が積み上がります。<strong>現場が納得していない自動化は必ず形骸化します</strong>（手動オーバーライドだらけになり、結局属人運用に戻る）。技術的な理由以上に、組織的な理由でこの期間が必要です。</p>
+<h3>3.3 Gate 条件</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>条件</th>
+<th>基準</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>推奨と人の判断の一致率（±10%以内）</td>
+<td>70%超</td>
+</tr>
+<tr>
+<td>データ収集成功率</td>
+<td>PRIMARY施設 90%超</td>
+</tr>
+<tr>
+<td>乖離事例のレビュー完了</td>
+<td>全件</td>
+</tr>
+<tr>
+<td>回帰テスト</td>
+<td>全件パス</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2>4. Phase 2：半自動運用（13〜24週）</h2>
+<h3>4.1 やること</h3>
+<ul>
+<li>サイトコントローラーAPI連携（<strong>ドライラン → 一部日付 → 全期間</strong>の3段階で開始）</li>
+<li>自動適用帯（±12%）内の推奨を自動配信</li>
+<li>承認キュー運用開始（Slack通知 → 支配人が理由コード付きで承認／却下）</li>
+<li>MLOS・gap night 最適化の有効化</li>
+<li><strong>Revenue Playbook の確定</strong>（判断基準の全文書化）</li>
+<li>意思決定ログの運用開始</li>
+<li>週次 Revenue Meeting の定例化（資料は自動生成）</li>
+</ul>
+<h3>4.2 段階的な配信開始</h3>
+<p>いきなり365日分を自動配信しないでください。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>段階</th>
+<th>対象</th>
+<th>期間</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① ドライラン</td>
+<td>配信せず差分だけ出力</td>
+<td>1週</td>
+</tr>
+<tr>
+<td>② 近日のみ</td>
+<td>D+0〜30 のみ自動配信</td>
+<td>2週</td>
+</tr>
+<tr>
+<td>③ 中期まで</td>
+<td>D+0〜90</td>
+<td>2週</td>
+</tr>
+<tr>
+<td>④ 全期間</td>
+<td>D+0〜365</td>
+<td>以降</td>
+</tr>
+</tbody>
+</table></div>
+<p>各段階で事故ゼロを確認してから次へ進みます。</p>
+<h3>4.3 Gate 条件</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>条件</th>
+<th>基準</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>推奨採用率</td>
+<td>85%超</td>
+</tr>
+<tr>
+<td>配信事故</td>
+<td>ゼロ</td>
+</tr>
+<tr>
+<td>承認キュー滞留時間</td>
+<td>平均24時間以内</td>
+</tr>
+<tr>
+<td>Revenue Playbook</td>
+<td>確定・関係者レビュー完了</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2>5. Phase 3：高度化（25〜40週）</h2>
+<ul>
+<li>需要予測モデルの精緻化（1年分の自社OTBデータが蓄積された段階で着手）</li>
+<li>天候・検索トレンド等の先行指標の組み込み</li>
+<li>アップセル最適化（客室アップグレード・飲料ペアリング・レイトチェックアウト・送迎）→ <strong>TRevPAR</strong>へ主KPIを拡張</li>
+<li>直販シフト施策（会員制度・自社限定パッケージ・CRM）</li>
+<li>商用レートショッパーの追加導入判断</li>
+<li><strong>多施設展開への対応</strong>（設定ファイルの分離は初期設計で済んでいる）</li>
+</ul>
+<h3>5.1 需要予測を Phase 3 まで待つ理由</h3>
+<p>需要予測モデルは魅力的ですが、<strong>学習データがなければ機能しません</strong>。年間1,825室というサンプルサイズでは、1年分でようやく日カテゴリごとに数十サンプルです。</p>
+<p>Phase 1〜2 は「ルールベース＋競合連動」で十分な効果が出ます（RM導入効果の大半は、価格解像度を上げること自体から得られます）。予測モデルはその上積みであり、順序を間違えると<strong>データ不足のモデルに振り回されて信頼を失います</strong>。</p>
+<hr />
+<h2>6. 投資対効果</h2>
+<h3>6.1 前提（※すべて仮定値。Phase 0 で確定）</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>客室数</td>
+<td>5室</td>
+</tr>
+<tr>
+<td>年間販売可能室数</td>
+<td>1,825室</td>
+</tr>
+<tr>
+<td>稼働率（現状）</td>
+<td>65%</td>
+</tr>
+<tr>
+<td>ADR（1室2名2食総額）</td>
+<td>95,000円</td>
+</tr>
+<tr>
+<td>客室売上（2食総額ベース）</td>
+<td>約1.1億円／年</td>
+</tr>
+<tr>
+<td>直販比率（現状）</td>
+<td>20%</td>
+</tr>
+</tbody>
+</table></div>
+<h3>6.2 効果試算</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>効果項目</th>
+<th>算定</th>
+<th>年間</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RevPAR改善 +7%</strong></td>
+<td>1.1億円 × 7%。RM導入効果の業界一般レンジ（+5〜12%）の保守側</td>
+<td><strong>+770万円</strong></td>
+</tr>
+<tr>
+<td><strong>直販シフト 20%→35%</strong></td>
+<td>1.1億円 × 15pt × (平均OTAコスト15.0% − 直販3.5%)</td>
+<td><strong>+190万円</strong></td>
+</tr>
+<tr>
+<td>合計（GOP寄与）</td>
+<td>※重複計上回避のため直販効果は手取り差のみ</td>
+<td><strong>約 +960万円</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3>6.3 感度分析</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th style="text-align: right;">RevPAR改善率</th>
+<th style="text-align: right;">年間効果（RevPARのみ）</th>
+<th style="text-align: right;">＋直販シフト</th>
+<th>投資回収</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">+5%（悲観）</td>
+<td style="text-align: right;">550万円</td>
+<td style="text-align: right;">740万円</td>
+<td>約12ヶ月</td>
+</tr>
+<tr>
+<td style="text-align: right;"><strong>+7%（基準）</strong></td>
+<td style="text-align: right;"><strong>770万円</strong></td>
+<td style="text-align: right;"><strong>960万円</strong></td>
+<td><strong>約9ヶ月</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">+10%</td>
+<td style="text-align: right;">1,100万円</td>
+<td style="text-align: right;">1,290万円</td>
+<td>約7ヶ月</td>
+</tr>
+<tr>
+<td style="text-align: right;">+12%（楽観）</td>
+<td style="text-align: right;">1,320万円</td>
+<td style="text-align: right;">1,510万円</td>
+<td>約6ヶ月</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>悲観ケースでも1年強で回収</strong>します。5室という小規模ゆえに投資額を抑えられる（データ調達量が少ない）一方、効果は売上比例で効くため、投資対効果はむしろ良好です。</p>
+<h3>6.4 投資額</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>区分</th>
+<th>項目</th>
+<th>金額</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>初期</strong></td>
+<td>Phase 0 診断（データ棚卸し・原価分析・コンペセット定義）</td>
+<td>80〜150万円</td>
+</tr>
+<tr>
+<td></td>
+<td>Phase 1 基盤・エンジン構築</td>
+<td>180〜300万円</td>
+</tr>
+<tr>
+<td></td>
+<td>Phase 2 配信連携・運用設計・Playbook策定</td>
+<td>90〜150万円</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>初期 小計</strong></td>
+<td><strong>350〜600万円</strong></td>
+</tr>
+<tr>
+<td><strong>運用（年間）</strong></td>
+<td>データ調達（レートショッパー／API）</td>
+<td>61〜136万円</td>
+</tr>
+<tr>
+<td></td>
+<td>インフラ（GCP）</td>
+<td>6〜18万円</td>
+</tr>
+<tr>
+<td></td>
+<td>保守・四半期校正支援</td>
+<td>30〜60万円</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>運用 小計</strong></td>
+<td><strong>97〜214万円／年</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>※内製比率を上げれば初期費用は圧縮できます。上記は外部委託を含む場合のレンジです。</p>
+<h3>6.5 「レベニューマネージャー採用」との比較</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>選択肢</th>
+<th>年間コスト</th>
+<th>属人性</th>
+<th>拡張性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>専任RM採用</td>
+<td>600〜900万円（人件費）</td>
+<td><strong>極大</strong>（退職で運用停止）</td>
+<td>施設が増えても1人では見きれない</td>
+</tr>
+<tr>
+<td><strong>本提案</strong></td>
+<td>初年度 450〜810万円<br>2年目以降 97〜214万円</td>
+<td><strong>小</strong>（判断がコード化されている）</td>
+<td>設定ファイル追加で多施設対応</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>2年目以降の差は年間400〜700万円</strong>です。加えて、専任RMの場合は「その人がいなくなったら何も残らない」のに対し、本提案は<strong>判断ロジックと意思決定ログが組織に残ります</strong>。</p>
+<hr />
+<h2>7. 運用体制</h2>
+<h3>7.1 RACI</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>業務</th>
+<th>オーナー</th>
+<th>支配人</th>
+<th>外部アドバイザー</th>
+<th>システム</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>日次の推奨確認・承認</td>
+<td>I</td>
+<td><strong>R/A</strong></td>
+<td>—</td>
+<td>R（自動配信）</td>
+</tr>
+<tr>
+<td>週次 Revenue Meeting</td>
+<td>A</td>
+<td><strong>R</strong></td>
+<td>C</td>
+<td>R（資料自動生成）</td>
+</tr>
+<tr>
+<td>月次プランミックス見直し</td>
+<td>A</td>
+<td><strong>R</strong></td>
+<td>C</td>
+<td>I</td>
+</tr>
+<tr>
+<td>四半期 基準価格校正</td>
+<td><strong>A</strong></td>
+<td>C</td>
+<td><strong>R</strong></td>
+<td>R（校正レポート）</td>
+</tr>
+<tr>
+<td>四半期 コンペセット再定義</td>
+<td><strong>A</strong></td>
+<td>C</td>
+<td><strong>R</strong></td>
+<td>R（候補提示）</td>
+</tr>
+<tr>
+<td>年次 予算・貢献利益フロア</td>
+<td><strong>R/A</strong></td>
+<td>C</td>
+<td>C</td>
+<td>I</td>
+</tr>
+<tr>
+<td>ガードレール設定変更</td>
+<td><strong>A</strong></td>
+<td>C</td>
+<td>C</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>R=実行 / A=承認 / C=相談 / I=報告</p>
+<p><strong>日次業務の負荷が支配人の「15分」に収まっていること</strong>が設計の要件です。ここが30分を超えるようなら、自動適用帯を広げるかモデルを改善します。運用負荷は監視すべきKPIの一つです。</p>
+<h3>7.2 週次 Revenue Meeting のアジェンダ（60分・資料は自動生成）</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>時間</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10分</td>
+<td>先週の実績（ADR／OCC／RevPAR／Net RevPAR／チャネルミックス）</td>
+</tr>
+<tr>
+<td>10分</td>
+<td>ピックアップとブッキングペース（次90日の対ベンチマーク進捗）</td>
+</tr>
+<tr>
+<td>10分</td>
+<td>競合動向（NAR中央値の推移、自社ポジション、売止状況）</td>
+</tr>
+<tr>
+<td>15分</td>
+<td><strong>要判断事項</strong>（承認キューの積み残し、MLOS設定日、gap night、閑散日の対策）</td>
+</tr>
+<tr>
+<td>10分</td>
+<td>先週のオーバーライドのレビュー（正しかったか）</td>
+</tr>
+<tr>
+<td>5分</td>
+<td>アクション確認</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>「オーバーライドのレビュー」を毎週やることが、属人的な勘を組織知に変える具体的な仕掛けです。</strong> 誰かの判断が良かったならモデルに取り込み、悪かったなら次回から控える。この往復を回し続ける限り、担当者が変わっても知見は失われません。</p>
+<hr />
+<h2>8. 成功の定義</h2>
+<p>Phase 3 完了時点で、以下がすべて満たされていれば成功です。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>条件</th>
+<th>意味</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>RevPAR 前年比 +7%超</td>
+<td>収益効果が出ている</td>
+</tr>
+<tr>
+<td>2</td>
+<td>日次運用時間 15分以下</td>
+<td>運用が回っている</td>
+</tr>
+<tr>
+<td>3</td>
+<td>推奨採用率 85%超</td>
+<td>モデルが信頼されている</td>
+</tr>
+<tr>
+<td>4</td>
+<td>直販比率 35%超</td>
+<td>手取りが改善している</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>支配人が3日不在でも価格運用が止まらない</strong></td>
+<td><strong>属人性が解消されている</strong></td>
+</tr>
+<tr>
+<td>6</td>
+<td>新任者が Playbook を読んで1週間で運用に入れる</td>
+<td>知見が組織に残っている</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>5番が本件の本質的なゴール</strong>です。RevPARの改善は結果であり、「特定の個人がいなくても、質の高い値付けが毎日継続される状態」を作ることが、自社運営でレベニューマネジメントを内製化する本当の目的です。</p>
+<footer>社内資料。競合施設の実名・価格ポジション・収益前提を含みます。
+取り扱いにご注意ください。</footer>
+</main></div></body></html>

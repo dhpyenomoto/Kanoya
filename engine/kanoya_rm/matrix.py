@@ -358,6 +358,7 @@ def render_html(report: MatrixReport,
     esc = html.escape
 
     return f"""<title>{esc(report.property_name)} ADRマトリクス</title>
+<meta name="robots" content="noindex,nofollow">
 <style>
 :root {{
   --ground:#F5F6F2; --surface:#FFFFFF; --alt:#EDEFE9; --ink:#1A211C;

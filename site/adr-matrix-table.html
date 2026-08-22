@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>ADRマトリクス（表） — 奈良春日 鹿のや レベニューマネジメント基盤</title>
+<style>
+:root{--ground:#F5F6F2;--surface:#FFFFFF;--alt:#EDEFE9;--ink:#1A211C;--ink2:#414B44;
+ --muted:#6B746D;--line:#D8DCD3;--accent:#14584A;--accent-soft:#E2EBE6;--warn:#B8452B}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;--ink2:#C0C7BF;
+ --muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}}
+:root[data-theme="dark"]{--ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;
+ --ink2:#C0C7BF;--muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-size:16px;line-height:1.85;
+ font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif}
+.wrap{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto;gap:34px;
+ padding:0 22px 80px}
+nav{position:sticky;top:0;flex:0 0 232px;padding:30px 0;max-height:100vh;overflow:auto}
+nav .brand{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-size:17px;font-weight:600;line-height:1.5;margin-bottom:18px;display:block;
+ color:var(--ink);text-decoration:none}
+nav a.item{display:block;padding:7px 11px;border-radius:3px;color:var(--ink2);
+ text-decoration:none;font-size:13.5px;border-left:2px solid transparent}
+nav a.item:hover{background:var(--alt);color:var(--ink)}
+nav a.item.on{background:var(--accent-soft);color:var(--accent);font-weight:700;
+ border-left-color:var(--accent)}
+main{flex:1;min-width:0;padding:30px 0}
+h1,h2,h3,h4{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-weight:600;line-height:1.45;text-wrap:balance}
+h1{font-size:29px;margin:0 0 22px;padding-bottom:14px;border-bottom:2px solid var(--accent)}
+h2{font-size:22px;margin:44px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:15px;margin:22px 0 8px}
+p,li{max-width:74ch}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+code{background:var(--alt);padding:2px 5px;border-radius:3px;font-size:.88em;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--alt);border:1px solid var(--line);padding:15px 17px;overflow-x:auto;
+ border-radius:3px;line-height:1.7}
+pre code{background:none;padding:0;font-size:12.5px}
+blockquote{margin:18px 0;padding:14px 18px;background:var(--accent-soft);
+ border-left:3px solid var(--accent);color:var(--ink2)}
+blockquote p{margin:6px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--alt);font-size:12px;letter-spacing:.06em;color:var(--ink2);
+ font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+ font-size:13px;color:var(--muted)}
+@media (max-width:860px){.wrap{flex-direction:column;gap:0}
+ nav{position:static;flex:none;width:100%;max-height:none;
+  border-bottom:1px solid var(--line);padding-bottom:14px}
+ nav .items{display:flex;flex-wrap:wrap;gap:4px}
+ nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
+</style></head>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item on" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>ADRマトリクス — 奈良春日 鹿のや</h1>
+<ul>
+<li>基準日: <strong>2026-08-15</strong> ／ 対象 17日</li>
+<li>単位は<strong>千円</strong>。すべて「1室2名1泊2食・税サ込」へ正規化（NAR）した値</li>
+<li><code>満</code> = 売止（在庫なし） ／ <code>·</code> = データなし</li>
+<li>調査範囲 半径5.0km ／ 行順 = 類似度スコア降順</li>
+</ul>
+<blockquote>
+<p>⚠️ <strong>フィクスチャ（擬似）データです。実勢価格ではありません。</strong><br />
+実データで判断するには APIキーを設定し <code>--source serpapi</code> で再実行してください。</p>
+</blockquote>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>施設</th>
+<th>11/14<br>SAT</th>
+<th>11/15<br>SUN</th>
+<th>11/16<br>MON</th>
+<th>11/17<br>TUE</th>
+<th>11/18<br>WED</th>
+<th>11/19<br>THU</th>
+<th>11/20<br>FRI</th>
+<th>11/21<br>SAT</th>
+<th>11/22<br>SUN</th>
+<th>11/23<br>MON</th>
+<th>11/24<br>TUE</th>
+<th>11/25<br>WED</th>
+<th>11/26<br>THU</th>
+<th>11/27<br>FRI</th>
+<th>11/28<br>SAT</th>
+<th>11/29<br>SUN</th>
+<th>11/30<br>MON</th>
+<th>平均</th>
+<th>類似度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>奈良春日 鹿のや</strong></td>
+<td><strong>132</strong></td>
+<td><strong>118</strong></td>
+<td><strong>118</strong></td>
+<td><strong>118</strong></td>
+<td><strong>118</strong></td>
+<td><strong>118</strong></td>
+<td><strong>132</strong></td>
+<td><strong>132</strong></td>
+<td><strong>118</strong></td>
+<td><strong>118</strong></td>
+<td><strong>118</strong></td>
+<td><strong>118</strong></td>
+<td><strong>118</strong></td>
+<td><strong>132</strong></td>
+<td><strong>132</strong></td>
+<td><strong>118</strong></td>
+<td><strong>118</strong></td>
+<td><strong>122</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>└ エンジン推奨</strong></td>
+<td><strong>152</strong></td>
+<td><strong>131</strong></td>
+<td><strong>118</strong></td>
+<td><strong>115</strong></td>
+<td><strong>123</strong></td>
+<td><strong>126</strong></td>
+<td><strong>152</strong></td>
+<td><strong>152</strong></td>
+<td><strong>129</strong></td>
+<td><strong>120</strong></td>
+<td><strong>114</strong></td>
+<td><strong>119</strong></td>
+<td><strong>128</strong></td>
+<td><strong>151</strong></td>
+<td><strong>152</strong></td>
+<td><strong>136</strong></td>
+<td><strong>123</strong></td>
+<td><strong>132</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>市場中央値（NAR）</strong></td>
+<td><strong>129</strong></td>
+<td><strong>100</strong></td>
+<td><strong>91</strong></td>
+<td><strong>89</strong></td>
+<td><strong>95</strong></td>
+<td><strong>96</strong></td>
+<td><strong>115</strong></td>
+<td><strong>126</strong></td>
+<td><strong>96</strong></td>
+<td><strong>89</strong></td>
+<td><strong>84</strong></td>
+<td><strong>89</strong></td>
+<td><strong>95</strong></td>
+<td><strong>110</strong></td>
+<td><strong>125</strong></td>
+<td><strong>100</strong></td>
+<td><strong>90</strong></td>
+<td><strong>101</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td>月日亭</td>
+<td>141</td>
+<td>105</td>
+<td>91</td>
+<td>92</td>
+<td>95</td>
+<td>101</td>
+<td>119</td>
+<td>136</td>
+<td>102</td>
+<td>86</td>
+<td>84</td>
+<td>88</td>
+<td>104</td>
+<td>121</td>
+<td>128</td>
+<td>104</td>
+<td>97</td>
+<td>106</td>
+<td>1.00</td>
+</tr>
+<tr>
+<td>ふふ奈良</td>
+<td>197</td>
+<td>164</td>
+<td>136</td>
+<td>136</td>
+<td>134</td>
+<td>145</td>
+<td>189</td>
+<td>196</td>
+<td>159</td>
+<td>138</td>
+<td>132</td>
+<td>136</td>
+<td>154</td>
+<td>179</td>
+<td>200</td>
+<td>164</td>
+<td>145</td>
+<td>159</td>
+<td>0.94</td>
+</tr>
+<tr>
+<td>江戸三</td>
+<td>143</td>
+<td>104</td>
+<td>98</td>
+<td>89</td>
+<td>97</td>
+<td>99</td>
+<td>115</td>
+<td>137</td>
+<td>99</td>
+<td>95</td>
+<td>98</td>
+<td>98</td>
+<td>104</td>
+<td>118</td>
+<td>137</td>
+<td>101</td>
+<td>98</td>
+<td>108</td>
+<td>0.92</td>
+</tr>
+<tr>
+<td>NIPPONIA HOTEL 奈良ならまち</td>
+<td>129</td>
+<td>100</td>
+<td>92</td>
+<td>92</td>
+<td>95</td>
+<td>96</td>
+<td>117</td>
+<td>126</td>
+<td>96</td>
+<td>93</td>
+<td>89</td>
+<td>96</td>
+<td>95</td>
+<td>110</td>
+<td>125</td>
+<td>100</td>
+<td>90</td>
+<td>102</td>
+<td>0.92</td>
+</tr>
+<tr>
+<td>古都の宿 むさし野</td>
+<td>145</td>
+<td>120</td>
+<td>108</td>
+<td>101</td>
+<td>110</td>
+<td>118</td>
+<td>137</td>
+<td>143</td>
+<td>117</td>
+<td>109</td>
+<td>97</td>
+<td>98</td>
+<td>105</td>
+<td>140</td>
+<td>148</td>
+<td>113</td>
+<td>111</td>
+<td>119</td>
+<td>0.88</td>
+</tr>
+<tr>
+<td>紀寺の家</td>
+<td>98</td>
+<td>78</td>
+<td>70</td>
+<td>73</td>
+<td>73</td>
+<td>78</td>
+<td>88</td>
+<td>96</td>
+<td>74</td>
+<td>74</td>
+<td>74</td>
+<td>76</td>
+<td>79</td>
+<td>92</td>
+<td>103</td>
+<td>81</td>
+<td>74</td>
+<td>81</td>
+<td>0.85</td>
+</tr>
+<tr>
+<td>静観荘</td>
+<td>102</td>
+<td>71</td>
+<td>68</td>
+<td>69</td>
+<td>71</td>
+<td>77</td>
+<td>85</td>
+<td>95</td>
+<td>71</td>
+<td>72</td>
+<td>66</td>
+<td>68</td>
+<td>78</td>
+<td>89</td>
+<td>104</td>
+<td>79</td>
+<td>72</td>
+<td>79</td>
+<td>0.84</td>
+</tr>
+<tr>
+<td>ANDO HOTEL 奈良若草山</td>
+<td>137</td>
+<td>114</td>
+<td>97</td>
+<td>93</td>
+<td>95</td>
+<td>106</td>
+<td>129</td>
+<td>147</td>
+<td>114</td>
+<td>104</td>
+<td>102</td>
+<td>98</td>
+<td>101</td>
+<td>133</td>
+<td>146</td>
+<td>104</td>
+<td>98</td>
+<td>113</td>
+<td>0.83</td>
+</tr>
+<tr>
+<td>セトレ ならまち</td>
+<td>99</td>
+<td>80</td>
+<td>71</td>
+<td>73</td>
+<td>77</td>
+<td>76</td>
+<td>91</td>
+<td>103</td>
+<td>79</td>
+<td>76</td>
+<td>77</td>
+<td>70</td>
+<td>81</td>
+<td>86</td>
+<td>106</td>
+<td>82</td>
+<td>76</td>
+<td>83</td>
+<td>0.78</td>
+</tr>
+<tr>
+<td>奈良ホテル</td>
+<td>113</td>
+<td>88</td>
+<td>88</td>
+<td>84</td>
+<td>90</td>
+<td>89</td>
+<td>104</td>
+<td>115</td>
+<td>90</td>
+<td>89</td>
+<td>84</td>
+<td>89</td>
+<td>88</td>
+<td>101</td>
+<td>119</td>
+<td>93</td>
+<td>89</td>
+<td>95</td>
+<td>0.74</td>
+</tr>
+<tr>
+<td>奈良倶楽部</td>
+<td>69</td>
+<td>57</td>
+<td>50</td>
+<td>51</td>
+<td>51</td>
+<td>52</td>
+<td>65</td>
+<td>74</td>
+<td>54</td>
+<td>50</td>
+<td>49</td>
+<td>50</td>
+<td>55</td>
+<td>62</td>
+<td>72</td>
+<td>55</td>
+<td>53</td>
+<td>57</td>
+<td>0.71</td>
+</tr>
+<tr>
+<td>春日ホテル</td>
+<td>92</td>
+<td>68</td>
+<td>65</td>
+<td>59</td>
+<td>59</td>
+<td>67</td>
+<td>82</td>
+<td>89</td>
+<td>73</td>
+<td>62</td>
+<td>62</td>
+<td>61</td>
+<td>69</td>
+<td>85</td>
+<td>87</td>
+<td>71</td>
+<td>66</td>
+<td>72</td>
+<td>0.69</td>
+</tr>
+<tr>
+<td>飛鳥荘</td>
+<td>83</td>
+<td>61</td>
+<td>51</td>
+<td>55</td>
+<td>53</td>
+<td>59</td>
+<td>67</td>
+<td>81</td>
+<td>62</td>
+<td>51</td>
+<td>52</td>
+<td>51</td>
+<td>57</td>
+<td>67</td>
+<td>79</td>
+<td>55</td>
+<td>51</td>
+<td>61</td>
+<td>0.60</td>
+</tr>
+<tr>
+<td>奈良万葉若草の宿 三笠</td>
+<td>87</td>
+<td>63</td>
+<td>59</td>
+<td>59</td>
+<td>58</td>
+<td>62</td>
+<td>70</td>
+<td>85</td>
+<td>63</td>
+<td>56</td>
+<td>54</td>
+<td>58</td>
+<td>64</td>
+<td>71</td>
+<td>86</td>
+<td>59</td>
+<td>55</td>
+<td>65</td>
+<td>0.60</td>
+</tr>
+<tr>
+<td>ホテルニューわかさ</td>
+<td>69</td>
+<td>49</td>
+<td>48</td>
+<td>45</td>
+<td>50</td>
+<td>48</td>
+<td>59</td>
+<td>72</td>
+<td>50</td>
+<td>45</td>
+<td>47</td>
+<td>48</td>
+<td>48</td>
+<td>58</td>
+<td>72</td>
+<td>53</td>
+<td>49</td>
+<td>53</td>
+<td>0.59</td>
+</tr>
+</tbody>
+</table></div>
+<footer>社内資料。競合施設の実名・価格ポジション・収益前提を含みます。
+取り扱いにご注意ください。</footer>
+</main></div></body></html>

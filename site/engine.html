@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>参照実装の使い方 — 奈良春日 鹿のや レベニューマネジメント基盤</title>
+<style>
+:root{--ground:#F5F6F2;--surface:#FFFFFF;--alt:#EDEFE9;--ink:#1A211C;--ink2:#414B44;
+ --muted:#6B746D;--line:#D8DCD3;--accent:#14584A;--accent-soft:#E2EBE6;--warn:#B8452B}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;--ink2:#C0C7BF;
+ --muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}}
+:root[data-theme="dark"]{--ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;
+ --ink2:#C0C7BF;--muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-size:16px;line-height:1.85;
+ font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif}
+.wrap{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto;gap:34px;
+ padding:0 22px 80px}
+nav{position:sticky;top:0;flex:0 0 232px;padding:30px 0;max-height:100vh;overflow:auto}
+nav .brand{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-size:17px;font-weight:600;line-height:1.5;margin-bottom:18px;display:block;
+ color:var(--ink);text-decoration:none}
+nav a.item{display:block;padding:7px 11px;border-radius:3px;color:var(--ink2);
+ text-decoration:none;font-size:13.5px;border-left:2px solid transparent}
+nav a.item:hover{background:var(--alt);color:var(--ink)}
+nav a.item.on{background:var(--accent-soft);color:var(--accent);font-weight:700;
+ border-left-color:var(--accent)}
+main{flex:1;min-width:0;padding:30px 0}
+h1,h2,h3,h4{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-weight:600;line-height:1.45;text-wrap:balance}
+h1{font-size:29px;margin:0 0 22px;padding-bottom:14px;border-bottom:2px solid var(--accent)}
+h2{font-size:22px;margin:44px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:15px;margin:22px 0 8px}
+p,li{max-width:74ch}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+code{background:var(--alt);padding:2px 5px;border-radius:3px;font-size:.88em;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--alt);border:1px solid var(--line);padding:15px 17px;overflow-x:auto;
+ border-radius:3px;line-height:1.7}
+pre code{background:none;padding:0;font-size:12.5px}
+blockquote{margin:18px 0;padding:14px 18px;background:var(--accent-soft);
+ border-left:3px solid var(--accent);color:var(--ink2)}
+blockquote p{margin:6px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--alt);font-size:12px;letter-spacing:.06em;color:var(--ink2);
+ font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+ font-size:13px;color:var(--muted)}
+@media (max-width:860px){.wrap{flex-direction:column;gap:0}
+ nav{position:static;flex:none;width:100%;max-height:none;
+  border-bottom:1px solid var(--line);padding-bottom:14px}
+ nav .items{display:flex;flex-wrap:wrap;gap:4px}
+ nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
+</style></head>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item on" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>プライシングエンジン 参照実装</h1>
+<p>依存パッケージなし（Python 3.11+ 標準ライブラリのみ）。</p>
+<h2>調査条件の入力</h2>
+<p>「<strong>いつ時点で</strong>（本日）」「<strong>どの宿泊日を</strong>（対象期間）」調べるかは、
+<code>config/survey_request.json</code> の1か所で指定します。全スクリプトがここを読みます。</p>
+<pre><code class="language-json">{
+  &quot;as_of&quot;: &quot;today&quot;,
+  &quot;target&quot;: { &quot;from&quot;: &quot;today&quot;, &quot;to&quot;: &quot;+120d&quot; }
+}
+</code></pre>
+<p>この2つは<strong>独立した別概念</strong>です。「今日の時点で、11月の紅葉期だけを調べる」は正当な要求です。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>書き方</th>
+<th>意味</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>today</code> / <code>本日</code></td>
+<td>調査基準日そのもの</td>
+</tr>
+<tr>
+<td><code>2026-11-01</code></td>
+<td>絶対日付</td>
+</tr>
+<tr>
+<td><code>2026-11</code></td>
+<td>月指定。<code>from</code> に書けば<strong>その月まるごと</strong></td>
+</tr>
+<tr>
+<td><code>+90d</code> <code>+3m</code> <code>+1y</code></td>
+<td>基準日からの相対（d=日 w=週 m=月 y=年）</td>
+</tr>
+<tr>
+<td><code>-7d</code></td>
+<td>過去方向。<code>as_of</code> に書けば1週間前の時点を再現</td>
+</tr>
+</tbody>
+</table></div>
+<p>CLI引数が常に優先されるので、設定ファイルを書き換えずに一度だけ別期間も見られます。</p>
+<pre><code class="language-bash">python3 scripts/survey_report.py --from 2026-11-01 --to 2026-11-30
+python3 scripts/survey_report.py --from 2026-11            # 11月まるごと
+python3 scripts/survey_report.py --from +30d --days 14     # 30日後から2週間
+python3 scripts/collect_rates.py --as-of -7d --plan-only   # 1週間前の時点で計画を確認
+</code></pre>
+<p>引数名は3スクリプトで共通（<code>--as-of</code> / <code>--from</code> / <code>--to</code> / <code>--days</code>）。
+解決後の条件は各コマンドの冒頭に必ず表示されます。</p>
+<p><strong>62日以下の期間を明示指定すると、階層化せず全宿泊日を取得します</strong>
+（「11月を調べたい」に週1スロットで4日しか返さないのは要求に応えていないため）。
+<code>--full</code> / <code>--tiered</code> で上書きできます。</p>
+<h2>収集パイプライン（発見 → 収集 → ADR判断）</h2>
+<p>近隣宿泊施設の列挙、OTA掲出価格の収集、ADR判断までを一気通貫で実行します。</p>
+<pre><code class="language-bash">./scripts/run_pipeline.sh                              # APIキー不要（フィクスチャ再生）
+FROM=2026-11-01 TO=2026-11-30 ./scripts/run_pipeline.sh # 期間を絞る
+</code></pre>
+<p>個別に実行する場合:</p>
+<pre><code class="language-bash"># ① 近隣宿泊施設の発見とコンペセット候補生成（四半期に1回）
+python3 scripts/discover_compset.py --source places --radius 5000
+
+# ② 施設属性を config/compset_overrides.json で人が確定 → 昇格
+python3 scripts/discover_compset.py --source places --write
+
+# ③ 競合レート収集（日次）。まず計画とコストを確認
+python3 scripts/collect_rates.py --plan-only
+python3 scripts/collect_rates.py --source serpapi
+
+# ④ マーケットポジション調査とADR判断（日次）
+python3 scripts/survey_report.py --explain 2026-11-21
+
+# ⑤ 施設×日付のADRマトリクス（可視化）
+python3 scripts/adr_matrix.py --from 2026-11-14 --to 2026-11-30 --open
+</code></pre>
+<p><code>adr_matrix.py</code> は端末一覧に加えて <code>out/adr_matrix.csv</code>、<code>out/adr_matrix.md</code>、
+<code>out/adr_matrix.html</code> を出力します。</p>
+<p><strong>HTML版は、ページ上で調べたい日程を変えられます。</strong> 収集済みの全期間のデータを
+ページ内に埋め込んであるため、日付を変えるたびに Python を再実行したり
+HTMLを書き換えたりする必要はありません。</p>
+<ul>
+<li>開始日 / 終了日の日付入力（収集済みの範囲外は選べません）</li>
+<li>「月でまとめて選ぶ」セレクタ</li>
+<li>クイック選択（基準日から7日 / 14日 / 30日 / 90日 / 全期間）</li>
+<li>選択に応じて、対象日数・自社平均・市場中央値・対中央値・売止セル数を再計算</li>
+</ul>
+<p>行は<strong>類似度スコア降順</strong>、自社を最上段に固定し直下に市場中央値を置くので、
+縦に読むだけで自社の市場内位置が分かります。売止（満）とデータなし（·）は別記号です。</p>
+<pre><code>                       11/14 11/15 11/16 ...      平均    類似度
+                         SAT   SUN   MON
+奈良春日 鹿のや                 132   118   118          122
+└ エンジン推奨                 152   131   136          134
+------------------------------------------------------------
+市場中央値（NAR）               129   100    91          101
+------------------------------------------------------------
+月日亭                      141   105    91          106   1.00
+ふふ奈良                     197   164   136          159   0.94
+江戸三                      143   104    98          108   0.92
+</code></pre>
+<p>マトリクスに <code>·</code> が並ぶときは、収集時に期間を指定していません。
+<code>collect_rates.py --from ... --to ...</code> で全日取得してから実行してください。</p>
+<p>APIキーは環境変数から読みます（コードに書きません）。未設定なら <code>--source fixture</code>
+で全工程がオフライン実行できます。</p>
+<pre><code class="language-bash">export GOOGLE_PLACES_API_KEY='...'
+export SERPAPI_API_KEY='...'
+</code></pre>
+<p>運用手順・コスト管理・障害時の挙動は
+<a href="05-operations.html">../docs/05_収集パイプライン運用手順.md</a>。</p>
+<h2>プライシング単体</h2>
+<pre><code class="language-bash"># 1. 検証用データ生成（本番では レートショッパー / PMS コネクタの出力に置換）
+python3 scripts/make_fixtures.py
+
+# 2. 基準価格の校正レポート（四半期に1回）
+python3 scripts/calibrate_base.py --position 1.15 --revpar 62000 --occ 0.72
+
+# 3. 推奨価格の算出（日次）
+python3 -m kanoya_rm.cli --days 120 --explain 2026-11-21
+
+# 4. 回帰テスト（CIゲート条件）
+python3 -m unittest discover -s tests -v
+</code></pre>
+<p>出力は <code>out/recommendations.csv</code> と <code>out/market_survey.csv</code>
+（Excelでそのまま開けるBOM付きUTF-8）。</p>
+<h2>価格算定式</h2>
+<pre><code>log P = log(P_base) + b_pace·z_pace + b_comp·z_comp
+                    + b_event·z_event + b_lead·z_lead + b_remain·z_remain
+</code></pre>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>項</th>
+<th>内容</th>
+<th>z の定義</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P_base</td>
+<td>シーズン × 曜日 × 連休前夜</td>
+<td>—</td>
+</tr>
+<tr>
+<td>z_pace</td>
+<td>予約進捗</td>
+<td>(実OTB − 期待OTB) ÷ 1.5室</td>
+</tr>
+<tr>
+<td>z_comp</td>
+<td>競合ポジション</td>
+<td>log(競合NAR中央値 ÷ 基準価格) ÷ 0.30 ＋ 0.5×市場逼迫度</td>
+</tr>
+<tr>
+<td>z_event</td>
+<td>需要イベント</td>
+<td>登録スコアと自動検知スコアの最大値</td>
+</tr>
+<tr>
+<td>z_lead</td>
+<td>リードタイム</td>
+<td>区分別固定補正 ÷ b_lead</td>
+</tr>
+<tr>
+<td>z_remain</td>
+<td>残室希少性</td>
+<td>(2×販売済率 − 1) × リードタイム減衰</td>
+</tr>
+</tbody>
+</table></div>
+<p>各項の対数寄与は ±0.28 にクリップ。</p>
+<h2>ガードレール適用順序</h2>
+<p><strong>モデル出力 → 日次変動幅(±15%) → 丸め(1,000円) → 絶対境界(フロア/天井)</strong></p>
+<p>絶対境界を最後に効かせることで、他のルールがフロア・天井を越えられないようにしています
+（順序を逆にすると変動幅の緩和が天井を突破します。テストで担保）。</p>
+<p>判定：<code>±12%以内 → AUTO_APPLY</code> / <code>±12〜35% → APPROVAL_REQUIRED</code> / <code>±35%超 → REJECTED_ANOMALY</code></p>
+<h2>モジュール</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>ファイル</th>
+<th>役割</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sources/http.py</code></td>
+<td>HTTPクライアント（リトライ・レート制限・生データキャッシュ・キー秘匿）</td>
+</tr>
+<tr>
+<td><code>sources/places.py</code></td>
+<td>Google Places API (New)。<strong>施設発見とレビュー速度専用</strong>（価格は取得不可）</td>
+</tr>
+<tr>
+<td><code>sources/serpapi_hotels.py</code></td>
+<td>SerpApi google_hotels。競合の実勢価格（主データ源）</td>
+</tr>
+<tr>
+<td><code>sources/dataforseo_hotels.py</code></td>
+<td>DataForSEO。代替経路・クロスチェック用</td>
+</tr>
+<tr>
+<td><code>sources/fixture.py</code></td>
+<td>記録済みレスポンスの再生（実コネクタと同じパーサを通す）</td>
+</tr>
+<tr>
+<td><code>discovery.py</code></td>
+<td>コンペセットの5軸スコアリングとティア分類</td>
+</tr>
+<tr>
+<td><code>schedule.py</code></td>
+<td>階層化収集スケジュール（スロット方式）とコスト見積</td>
+</tr>
+<tr>
+<td><code>collect.py</code></td>
+<td>収集オーケストレーションと施設名の名寄せ</td>
+</tr>
+<tr>
+<td><code>survey.py</code></td>
+<td>マーケットポジション調査・3シグナル合議によるADR判断</td>
+</tr>
+<tr>
+<td><code>config.py</code></td>
+<td>設定読込、シーズン／イベント／祝日の解決、日カテゴリ算定</td>
+</tr>
+<tr>
+<td><code>normalize.py</code></td>
+<td>競合価格 → NAR（1室2名1泊2食・税サ込）正規化</td>
+</tr>
+<tr>
+<td><code>compset.py</code></td>
+<td>重み付き中央値、市場逼迫度、<strong>イベント自動検知</strong></td>
+</tr>
+<tr>
+<td><code>pace.py</code></td>
+<td>日カテゴリ別ブッキングカーブに対する進捗評価</td>
+</tr>
+<tr>
+<td><code>calibrate.py</code></td>
+<td><strong>基準価格の自動校正</strong>（市場整合 × 予算整合）</td>
+</tr>
+<tr>
+<td><code>pricing.py</code></td>
+<td>対数加法モデル、ウォーターフォール分解、ガードレール</td>
+</tr>
+<tr>
+<td><code>restrictions.py</code></td>
+<td>MLOS、gap night 検知</td>
+</tr>
+<tr>
+<td><code>channels.py</code></td>
+<td>チャネル別 Net ADR、直販シフト効果試算</td>
+</tr>
+<tr>
+<td><code>report.py</code></td>
+<td>CSV／説明文／サマリ出力</td>
+</tr>
+<tr>
+<td><code>cli.py</code></td>
+<td>日次実行エントリポイント</td>
+</tr>
+</tbody>
+</table></div>
+<h2>設定ファイル</h2>
+<p>エンジン本体は<strong>施設非依存</strong>です。以下3ファイルの差し替えのみで別施設に適用できます。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>ファイル</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config/property.json</code></td>
+<td>施設情報、基準価格、ガードレール、係数、リードタイム曲線、チャネル手数料</td>
+</tr>
+<tr>
+<td><code>config/compset.json</code></td>
+<td><strong>人が承認した確定コンペセット</strong>。<code>discover_compset.py --write</code> で昇格する</td>
+</tr>
+<tr>
+<td><code>config/calendar.json</code></td>
+<td>シーズン区分、イベント、祝日、ペースベンチマーク</td>
+</tr>
+<tr>
+<td><code>config/sources.json</code></td>
+<td>データ源、探索半径、スコア重み、収集階層、予算上限、レート制限</td>
+</tr>
+<tr>
+<td><code>config/compset_overrides.json</code></td>
+<td><strong>人が確定した施設属性</strong>（客室数・課金方式・食事条件・uplift）。再発見しても上書きされない</td>
+</tr>
+</tbody>
+</table></div>
+<h2>本番化にあたって差し替えるもの</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>現在</th>
+<th>本番</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts/make_fixtures.py</code> の擬似データ</td>
+<td>レートショッパー／Google Hotels API／PMS の各コネクタ</td>
+</tr>
+<tr>
+<td>CSV 入出力</td>
+<td>BigQuery（<code>fact_comp_rate</code> / <code>fact_otb</code> / <code>mart_daily_recommendation</code>）</td>
+</tr>
+<tr>
+<td>標準出力</td>
+<td>Slack通知（承認キュー）＋ Looker Studio</td>
+</tr>
+<tr>
+<td>なし</td>
+<td>サイトコントローラーAPIへの配信、<code>log_decision</code> への記録</td>
+</tr>
+</tbody>
+</table></div>
+<p>詳細は <a href="03-architecture.html">../docs/03_システムアーキテクチャ.md</a>。</p>
+<footer>社内資料。競合施設の実名・価格ポジション・収益前提を含みます。
+取り扱いにご注意ください。</footer>
+</main></div></body></html>
