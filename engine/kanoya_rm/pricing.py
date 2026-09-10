@@ -1,12 +1,30 @@
 """価格推奨エンジン本体.
 
-  log P = log(P_base) + b_pace·z_pace + b_comp·z_comp + b_event·z_event
-                      + b_lead·z_lead + b_remain·z_remain
+  log P = log(P_base) + b_demand·z_demand + b_comp·z_comp
+                      + b_event·z_event + b_lead·z_lead
 
 対数加法モデルを採用する理由:
   ・各要因の寄与が乗数として独立に解釈でき、円単位のウォーターフォールに分解できる
-  ・係数が「%влияние」として現場に説明可能（ブラックボックスAIにしない）
+  ・係数が「寄与率」として現場に説明可能（ブラックボックスAIにしない）
   ・要因の追加・削除が既存挙動を壊さない
+
+**内部需要シグナルの統合（2026-09 の設計変更）**
+
+以前は「予約ペース(b_pace=0.42)」と「残室希少性(b_remain=0.34)」を
+別々の項として持っていた。しかしどちらも otb_rooms の線形関数で符号も同じ、
+つまり同一の変数に二重に係数がかかっていた。実効重み 0.76 は
+競合ポジション(0.32)の2倍以上であり、意図した設計ではない。
+
+実測（感度分析ツール scripts/sensitivity.py）:
+  OTB 0室→満室 でモデル出力が 2.74〜3.06倍 動いていた。
+  5室規模の予約1件は偶然の範囲であり、需要の反映ではなくノイズの増幅である。
+  さらに60行中45行(75%)でガードレールがモデル出力を上書きしており、
+  「モデルではなくガードレールが価格を決めている」状態だった。
+
+上記2項を pace.py 側で単一の内部需要シグナル z_demand へ統合し、
+実効重みを b_comp(0.32) 以下（b_demand=0.30）に抑えた。
+各項の対数寄与は term_clip(±0.28) で制限されるため、
+1項に統合したことで内部需要由来の振れ幅は自動的に e^0.56 = 1.75倍 が上限になる。
 
 最終価格は必ず guardrails を通す（貢献利益フロア／天井／日次変動幅／丸め）。
 """
@@ -19,7 +37,7 @@ from datetime import date
 
 from .compset import CompSnapshot, detect_market_event
 from .config import Settings
-from .pace import PaceResult, remaining_z
+from .pace import PaceResult
 
 
 @dataclass
@@ -96,8 +114,8 @@ def recommend(
     p_base, season, season_label, dow = base_rate(settings, day)
 
     # --- 各シグナルの z（−1..+1）を求める ---
-    z_pace = pace.z
-    z_remain = remaining_z(pace)
+    # 内部需要（予約ペース × 残室希少性）は pace.py で1本に統合済み
+    z_demand = pace.z
 
     cal_score, cal_label = settings.event_score_of(day)
     event_score, event_label = cal_score, cal_label
@@ -120,11 +138,10 @@ def recommend(
     z_lead = max(-1.0, min(1.0, z_lead))
 
     terms = [
-        ("pace",   z_pace,   float(coef["b_pace"]),   "予約ペース（対ベンチマーク）"),
+        ("demand", z_demand, float(coef["b_demand"]), "内部需要（予約ペース×残室希少性）"),
         ("comp",   z_comp,   float(coef["b_comp"]),   "競合ポジション（NAR中央値比）"),
         ("event",  z_event,  float(coef["b_event"]),  "需要イベント"),
         ("lead",   z_lead,   float(coef["b_lead"]),   "リードタイム"),
-        ("remain", z_remain, float(coef["b_remain"]), "残室希少性"),
     ]
 
     # --- ウォーターフォール（円建て寄与）を作りながら価格を積み上げる ---

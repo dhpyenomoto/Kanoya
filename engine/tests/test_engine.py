@@ -197,10 +197,18 @@ class EndToEndTest(unittest.TestCase):
         )
 
     def test_every_day_has_explainable_contributions(self) -> None:
+        """全日について、価格を4項へ分解して説明できること.
+
+        2026-09 に pace と remain を demand へ統合して 5項→4項 になった
+        （同一変数への二重計上だったため。pricing.py の docstring 参照）。
+        項数のマジックナンバーではなく因子名で固定する。増減があれば
+        ウォーターフォールの説明文も直す必要があり、そこで気づけるように。
+        """
         _, recs = build(ROOT, None, 60)
         self.assertGreater(len(recs), 50)
         for rec in recs.values():
-            self.assertEqual(len(rec.contributions), 5)
+            self.assertEqual([c.factor for c in rec.contributions],
+                             ["demand", "comp", "event", "lead"])
             self.assertGreater(rec.recommended_rate, 0)
 
     def test_no_recommendation_breaches_hard_stop(self) -> None:

@@ -198,20 +198,25 @@ python3 -m unittest discover -s tests -v
 ## 価格算定式
 
 ```
-log P = log(P_base) + b_pace·z_pace + b_comp·z_comp
-                    + b_event·z_event + b_lead·z_lead + b_remain·z_remain
+log P = log(P_base) + b_demand·z_demand + b_comp·z_comp
+                    + b_event·z_event + b_lead·z_lead
 ```
 
 | 項 | 内容 | z の定義 |
 |---|---|---|
 | P_base | シーズン × 曜日 × 連休前夜 | — |
-| z_pace | 予約進捗 | (実OTB − 期待OTB) ÷ 1.5室 |
+| z_demand | 内部需要（予約ペース×残室希少性） | (実OTB − 期待OTB) ÷ 飽和点 × リードタイム減衰 |
 | z_comp | 競合ポジション | log(競合NAR中央値 ÷ 基準価格) ÷ 0.30 ＋ 0.5×市場逼迫度 |
 | z_event | 需要イベント | 登録スコアと自動検知スコアの最大値 |
 | z_lead | リードタイム | 区分別固定補正 ÷ b_lead |
-| z_remain | 残室希少性 | (2×販売済率 − 1) × リードタイム減衰 |
 
 各項の対数寄与は ±0.28 にクリップ。
+
+**内部需要は1項にまとめてあります。** 以前は「予約ペース(0.42)」と
+「残室希少性(0.34)」を別項に持っていましたが、どちらも OTB室数の線形関数で
+符号も同じ、つまり同一の変数に係数が二重にかかっていました。実効重み0.76 は
+競合ポジション(0.32)の2倍以上で、5室では予約1件でモデル出力が3倍動いていました
+（実測 2.74〜3.06倍 → 統合後 1.49〜1.75倍）。
 
 ## ガードレール適用順序
 
@@ -231,7 +236,7 @@ log P = log(P_base) + b_pace·z_pace + b_comp·z_comp
 python3 scripts/sensitivity.py --sweep otb   --date 2026-11-21   # OTB 0室〜満室
 python3 scripts/sensitivity.py --sweep uplift --date 2026-11-21  # 食事uplift 0.5〜2.0倍
 python3 scripts/sensitivity.py --sweep lead  --date 2026-11-21   # リードタイム 0〜120日
-python3 scripts/sensitivity.py --sweep coef=b_pace --date 2026-11-21
+python3 scripts/sensitivity.py --sweep coef=b_demand --date 2026-11-21
 python3 scripts/sensitivity.py --sweep otb --days 30             # 複数日サマリ
 python3 scripts/sensitivity.py --sweep otb --date 2026-11-21 --csv ../out/sens.csv
 ```
@@ -262,7 +267,7 @@ python3 scripts/sensitivity.py --sweep otb --date 2026-11-21 --csv ../out/sens.c
 | `config.py` | 設定読込、シーズン／イベント／祝日の解決、日カテゴリ算定 |
 | `normalize.py` | 競合価格 → NAR（1室2名1泊2食・税サ込）正規化 |
 | `compset.py` | 重み付き中央値、市場逼迫度、**イベント自動検知** |
-| `pace.py` | 日カテゴリ別ブッキングカーブに対する進捗評価 |
+| `pace.py` | 内部需要シグナル（進捗評価 × リードタイム減衰） |
 | `calibrate.py` | **基準価格の自動校正**（市場整合 × 予算整合） |
 | `pricing.py` | 対数加法モデル、ウォーターフォール分解、ガードレール |
 | `restrictions.py` | MLOS、gap night 検知 |
