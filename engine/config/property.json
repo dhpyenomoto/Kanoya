@@ -53,12 +53,27 @@
   },
 
   "coefficients": {
-    "_form": "log P = log(P_base) + b_pace*z_pace + b_comp*z_comp + b_event*z_event + b_lead*z_lead + b_remain*z_remain",
-    "b_pace": 0.42,
+    "_form": "log P = log(P_base) + b_demand*z_demand + b_comp*z_comp + b_event*z_event + b_lead*z_lead",
+
+    "_migration_2026_09": [
+        "b_pace(0.42) と b_remain(0.34) を b_demand(0.30) へ統合した。",
+        "両者はどちらも otb_rooms の線形関数で符号も同じ、つまり同一の変数に",
+        "係数が二重にかかっていた。実効重み0.76は b_comp(0.32) の2倍以上で、",
+        "5室規模では予約1件でモデル出力が3倍動いていた（ノイズの増幅）。",
+        "旧キー b_pace / b_remain は廃止。残っていても読まれないので削除すること。",
+        "統合シグナル z_demand は pace.py が算出し、",
+        "『ベンチマーク比の進捗』×『リードタイム減衰』の形を取る。"
+    ],
+    "b_demand": 0.30,
+    "_b_demand_note": "内部需要（予約ペース×残室希少性）。b_comp を超えないこと。自社5室の売れ行きより、市場全体の価格の方が情報量が多いため。",
     "b_comp": 0.32,
     "b_event": 0.30,
     "b_lead": 0.20,
-    "b_remain": 0.34,
+
+    "demand_lead_full_effect_days": 21,
+    "demand_lead_half_life_days": 30,
+    "demand_lead_far_floor": 0.35,
+    "_demand_lead_note": "内部需要シグナルのリードタイム減衰。21日先までは減衰なし、以降30日ごとに半減し、0.35で下げ止まる。ゼロまで落とすと遠い日付で満室に近づいても価格が動かず、繁忙日を取りこぼす。",
     "term_clip": 0.28,
     "_clip_note": "各項の対数寄与を ±0.28（およそ ±32%）に制限し、単一シグナルの暴走を防ぐ。"
   },

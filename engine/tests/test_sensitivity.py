@@ -63,14 +63,14 @@ class SensitivityTest(unittest.TestCase):
         self.assertGreater(len({round(r.z["lead"], 4) for r in rows}), 1)
 
     def test_coef_sweep_scales_the_named_coefficient(self) -> None:
-        rows = self.sens.sweep_coef(self.ctx, TARGET, "b_pace")
+        rows = self.sens.sweep_coef(self.ctx, TARGET, "b_demand")
         self.assertEqual([r.knob_value for r in rows], self.sens.COEF_SCALES)
 
     def test_unknown_coefficient_fails_loudly(self) -> None:
         """名前を間違えたまま「効果なし」と結論づけられるのが最悪."""
         with self.assertRaises(SystemExit) as cm:
             self.sens.sweep_coef(self.ctx, TARGET, "b_nonexistent")
-        self.assertIn("b_pace", str(cm.exception), "指定できる係数名を示すこと")
+        self.assertIn("b_demand", str(cm.exception), "指定できる係数名を示すこと")
 
     def test_uplift_sweep_moves_the_competitor_position(self) -> None:
         """uplift は NAR 正規化に効く。z_comp が動かないなら通っていない."""
@@ -135,9 +135,9 @@ class SensitivityTest(unittest.TestCase):
 
     def test_sweeping_does_not_mutate_the_shared_settings(self) -> None:
         """診断のたびに本番の設定が書き換わっては、次の実行が信用できない."""
-        before = float(self.ctx.settings.property["coefficients"]["b_pace"])
-        self.sens.sweep_coef(self.ctx, TARGET, "b_pace")
-        after = float(self.ctx.settings.property["coefficients"]["b_pace"])
+        before = float(self.ctx.settings.property["coefficients"]["b_demand"])
+        self.sens.sweep_coef(self.ctx, TARGET, "b_demand")
+        after = float(self.ctx.settings.property["coefficients"]["b_demand"])
         self.assertEqual(before, after)
 
     def test_uplift_sweep_leaves_the_compset_file_untouched(self) -> None:

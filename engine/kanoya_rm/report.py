@@ -23,7 +23,7 @@ def write_recommendations_csv(recs: dict[date, Recommendation], path: Path) -> N
             "宿泊日", "曜日", "日カテゴリ", "シーズン", "リードタイム",
             "現行価格", "推奨価格", "変動率", "判定", "残室", "MLOS",
             "競合中央値(NAR)", "対競合ポジション", "イベント", "イベントスコア",
-            "基準価格", "ペース寄与", "競合寄与", "イベント寄与", "リード寄与", "残室寄与",
+            "基準価格", "内部需要寄与", "競合寄与", "イベント寄与", "リード寄与",
             "ガードレール",
         ])
         for day in sorted(recs):
@@ -36,8 +36,8 @@ def write_recommendations_csv(recs: dict[date, Recommendation], path: Path) -> N
                 round(r.comp_median), f"{r.comp_position:.2f}" if r.comp_position else "",
                 r.event_label, f"{r.event_score:.2f}",
                 round(r.base_rate),
-                round(c.get("pace", 0)), round(c.get("comp", 0)), round(c.get("event", 0)),
-                round(c.get("lead", 0)), round(c.get("remain", 0)),
+                round(c.get("demand", 0)), round(c.get("comp", 0)), round(c.get("event", 0)),
+                round(c.get("lead", 0)),
                 " / ".join(r.guardrail_notes),
             ])
 

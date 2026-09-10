@@ -11,7 +11,7 @@
     python3 scripts/sensitivity.py --sweep uplift --date 2026-11-21
 
     # 特定の係数を 0.5〜2.0倍
-    python3 scripts/sensitivity.py --sweep coef=b_pace --date 2026-11-21
+    python3 scripts/sensitivity.py --sweep coef=b_demand --date 2026-11-21
 
     # リードタイムを 0〜120日
     python3 scripts/sensitivity.py --sweep lead --date 2026-11-21
@@ -52,7 +52,7 @@ from kanoya_rm.cli import build_context  # noqa: E402
 from kanoya_rm.config import parse_date  # noqa: E402
 from kanoya_rm.pricing import recommend  # noqa: E402
 
-FACTORS = ["pace", "comp", "event", "lead", "remain"]
+FACTORS = ["demand", "comp", "event", "lead"]
 
 UPLIFT_SCALES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
 COEF_SCALES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
