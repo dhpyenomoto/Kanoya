@@ -222,6 +222,30 @@ log P = log(P_base) + b_pace·z_pace + b_comp·z_comp
 
 判定：`±12%以内 → AUTO_APPLY` / `±12〜35% → APPROVAL_REQUIRED` / `±35%超 → REJECTED_ANOMALY`
 
+## 感度分析（係数設計の検証）
+
+係数を変えたときに推奨価格がどう動くかを見る**読み取り専用の診断ツール**です。
+これが無いとキャリブレーションは「たぶんこのくらい」の議論にしかなりません。
+
+```bash
+python3 scripts/sensitivity.py --sweep otb   --date 2026-11-21   # OTB 0室〜満室
+python3 scripts/sensitivity.py --sweep uplift --date 2026-11-21  # 食事uplift 0.5〜2.0倍
+python3 scripts/sensitivity.py --sweep lead  --date 2026-11-21   # リードタイム 0〜120日
+python3 scripts/sensitivity.py --sweep coef=b_pace --date 2026-11-21
+python3 scripts/sensitivity.py --sweep otb --days 30             # 複数日サマリ
+python3 scripts/sensitivity.py --sweep otb --date 2026-11-21 --csv ../out/sens.csv
+```
+
+「基準価格 / 各項のz / モデル出力 / ガードレール適用後の推奨 / 判定」を1行ずつ並べ、
+最後に **「N/M 行でガードレールがモデル出力を上書き」** を集計します。
+
+上書きの判定には `guardrail_notes` を使います。丸め（1,000円単位）による差は
+設計どおりの挙動であってガードレールの上書きではないためです。
+
+**エンジン本体は変更しません。** 設定を複製して差し替え、公開されている
+`build_context` / `recommend` を呼ぶだけです。診断のために本番経路へ分岐を足すと、
+その分岐自体が次の不具合になります。
+
 ## モジュール
 
 | ファイル | 役割 |

@@ -317,6 +317,23 @@ python3 -m unittest discover -s tests -v
 <p>絶対境界を最後に効かせることで、他のルールがフロア・天井を越えられないようにしています
 （順序を逆にすると変動幅の緩和が天井を突破します。テストで担保）。</p>
 <p>判定：<code>±12%以内 → AUTO_APPLY</code> / <code>±12〜35% → APPROVAL_REQUIRED</code> / <code>±35%超 → REJECTED_ANOMALY</code></p>
+<h2>感度分析（係数設計の検証）</h2>
+<p>係数を変えたときに推奨価格がどう動くかを見る<strong>読み取り専用の診断ツール</strong>です。
+これが無いとキャリブレーションは「たぶんこのくらい」の議論にしかなりません。</p>
+<pre><code class="language-bash">python3 scripts/sensitivity.py --sweep otb   --date 2026-11-21   # OTB 0室〜満室
+python3 scripts/sensitivity.py --sweep uplift --date 2026-11-21  # 食事uplift 0.5〜2.0倍
+python3 scripts/sensitivity.py --sweep lead  --date 2026-11-21   # リードタイム 0〜120日
+python3 scripts/sensitivity.py --sweep coef=b_pace --date 2026-11-21
+python3 scripts/sensitivity.py --sweep otb --days 30             # 複数日サマリ
+python3 scripts/sensitivity.py --sweep otb --date 2026-11-21 --csv ../out/sens.csv
+</code></pre>
+<p>「基準価格 / 各項のz / モデル出力 / ガードレール適用後の推奨 / 判定」を1行ずつ並べ、
+最後に <strong>「N/M 行でガードレールがモデル出力を上書き」</strong> を集計します。</p>
+<p>上書きの判定には <code>guardrail_notes</code> を使います。丸め（1,000円単位）による差は
+設計どおりの挙動であってガードレールの上書きではないためです。</p>
+<p><strong>エンジン本体は変更しません。</strong> 設定を複製して差し替え、公開されている
+<code>build_context</code> / <code>recommend</code> を呼ぶだけです。診断のために本番経路へ分岐を足すと、
+その分岐自体が次の不具合になります。</p>
 <h2>モジュール</h2>
 <div class="tablewrap"><table>
 <thead>
