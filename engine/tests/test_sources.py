@@ -402,6 +402,12 @@ class LatestReadingTest(unittest.TestCase):
     """
 
     def setUp(self) -> None:
+        # レートCSVは自前で組むが、OTB（自社予約状況）は build_context が要る。
+        # 生成物なのでコミットしておらず、クローン直後は存在しない。
+        # 他のデータ依存テストと同じくスキップする（エラーにすると、
+        # 何も間違えていない人がクローン直後に赤を見ることになる）。
+        if not (ROOT / "data" / "otb.csv").exists():
+            self.skipTest("自社OTB未生成（scripts/make_fixtures.py）")
         self._tmp = tempfile.TemporaryDirectory()
         self.rates = Path(self._tmp.name) / "rates.csv"
         settings = Settings.load(ROOT / "config")
