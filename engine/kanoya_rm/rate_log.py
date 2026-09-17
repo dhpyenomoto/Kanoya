@@ -12,6 +12,24 @@
 current_public_rate が0だと全日が AUTO_APPLY になる。実データ検証で
 自動配信100%と出たのは較正が良いからではなく、比べる相手が無いからである。
 
+**「行が無い日」の曖昧さと、実行記録**
+
+変更履歴だけを持つと、行が無い日が2つのことを同時に意味してしまう。
+
+  (a) 人が確認したうえで「変わっていない」
+  (b) 誰も見ていない（実行していない）
+
+(b) を (a) と読むと、**確認していない日に「価格を据え置いた」という
+事実でない記録が残る**。しかもその誤りは、あとから区別する手がかりが無い。
+
+そこで実行そのものを別ファイル（rate_log_runs.csv）に残す。1行は
+「この日に、この宿泊日範囲を確認した」という意味を持つ。価格が変わったか
+どうかとは独立で、変更が無くても1行増える。
+
+解決のときは**実行記録に裏付けられた値だけ**を使う。裏付けの無い期間は
+「記録あり」として扱わず、据え置きも仮定しない。分からないことを
+分かっているように見せるほうが、値が無いことより危ない。
+
 **なぜ変更履歴（差分）として持つか**
 
 5室 × 4形態 × 120日を毎日全部書くと年17万行になる。しかも実際には
@@ -41,6 +59,12 @@ from .config import parse_date
 
 COLUMNS = ("stay_date", "snapshot_date", "product_type",
            "posted_rate", "channel", "note")
+RUN_COLUMNS = ("run_date", "stay_from", "stay_to", "product_type",
+               "channel", "note")
+
+# 最後に確認してからこの日数を超えたら、その値はもう裏付けが無いとみなす。
+# 設定（sources.json の rate_log.max_unconfirmed_days）で上書きできる。
+DEFAULT_MAX_UNCONFIRMED_DAYS = 3
 
 # 部屋代へ戻すときの優先順。素泊まりがあればそれが一番素直（加算ゼロ）。
 FORM_PREFERENCE = ("room_only", "breakfast", "dinner", "two_meals")
@@ -64,6 +88,100 @@ class Entry:
             "channel": self.channel,
             "note": self.note,
         }
+
+
+@dataclass(frozen=True)
+class Run:
+    """「この日に、この宿泊日範囲を確認した」という記録.
+
+    価格が変わったかどうかとは独立している。変更が無くても1行増える。
+    product_type / channel が空なら「すべて」を意味する。
+    """
+
+    run_date: date
+    stay_from: date
+    stay_to: date
+    product_type: str = ""
+    channel: str = ""
+    note: str = ""
+
+    def covers(self, stay: date, *, product_type: str = "",
+               channel: str = "") -> bool:
+        if not (self.stay_from <= stay <= self.stay_to):
+            return False
+        if self.product_type and product_type and self.product_type != product_type:
+            return False
+        if self.channel and channel and self.channel != channel:
+            return False
+        return True
+
+    def as_row(self) -> dict[str, str]:
+        return {
+            "run_date": self.run_date.isoformat(),
+            "stay_from": self.stay_from.isoformat(),
+            "stay_to": self.stay_to.isoformat(),
+            "product_type": self.product_type,
+            "channel": self.channel,
+            "note": self.note,
+        }
+
+
+def runs_path_for(log_path: Path) -> Path:
+    """価格の記録に対応する実行記録の場所（同じディレクトリに置く）."""
+    return log_path.with_name(log_path.stem + "_runs.csv")
+
+
+def read_runs(path: Path) -> list[Run]:
+    if not path.exists():
+        return []
+    out: list[Run] = []
+    with path.open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            if not (row.get("run_date") or "").strip():
+                continue
+            try:
+                out.append(Run(
+                    run_date=parse_date(row["run_date"]),
+                    stay_from=parse_date(row["stay_from"]),
+                    stay_to=parse_date(row["stay_to"]),
+                    product_type=(row.get("product_type") or "").strip(),
+                    channel=(row.get("channel") or "").strip(),
+                    note=(row.get("note") or "").strip(),
+                ))
+            except (KeyError, ValueError):
+                continue        # 壊れた行で運用を止めない
+    return out
+
+
+def write_runs(path: Path, runs: list[Run]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ordered = sorted(runs, key=lambda r: (r.run_date, r.stay_from, r.stay_to))
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(RUN_COLUMNS))
+        writer.writeheader()
+        for run in ordered:
+            writer.writerow(run.as_row())
+
+
+def append_run(path: Path, run: Run) -> None:
+    write_runs(path, read_runs(path) + [run])
+
+
+def last_confirmed(runs: list[Run], stay: date, as_of: date, *,
+                   product_type: str = "", channel: str = "") -> date | None:
+    """その宿泊日を最後に確認した実行日（無ければ None）."""
+    dates = [r.run_date for r in runs
+             if r.run_date <= as_of
+             and r.covers(stay, product_type=product_type, channel=channel)]
+    return max(dates, default=None)
+
+
+def unconfirmed_days(runs: list[Run], as_of: date) -> int | None:
+    """最後の実行から何日空いているか（一度も実行していなければ None）."""
+    dates = [r.run_date for r in runs if r.run_date <= as_of]
+    if not dates:
+        return None
+    return (as_of - max(dates)).days
 
 
 def read(path: Path) -> list[Entry]:
@@ -133,14 +251,46 @@ def posted_as_of(entries: list[Entry], stay: date, as_of: date, *,
     return {form: rate for form, (_taken, rate) in best.items()}
 
 
+def confirmed_as_of(entries: list[Entry], runs: list[Run], stay: date,
+                    as_of: date, *, channel: str = "",
+                    max_unconfirmed_days: int | None = None
+                    ) -> tuple[dict[str, float], date | None]:
+    """**実行記録に裏付けられた**提示価格と、その裏付け日を返す.
+
+    裏付けが無ければ空を返す。値を返さないほうが、確認していない値を
+    「据え置き」として返すより安全である。前者は「分からない」と分かるが、
+    後者は間違った値が正しい顔で通ってしまう。
+
+    max_unconfirmed_days に負値を渡すと裏付けを問わず、記録をそのまま
+    信用する。実行記録を導入する前のデータを読むための移行用であって、
+    常用するものではない（「誰も見ていない日」が「据え置き」に化ける）。
+    """
+    limit = (DEFAULT_MAX_UNCONFIRMED_DAYS if max_unconfirmed_days is None
+             else max_unconfirmed_days)
+    if limit < 0:
+        return posted_as_of(entries, stay, as_of, channel=channel), None
+    confirmed = last_confirmed(runs, stay, as_of, channel=channel)
+    if confirmed is None:
+        return {}, None                 # 一度も確認していない
+    if (as_of - confirmed).days > limit:
+        return {}, confirmed            # 未実行の期間。据え置きを仮定しない
+    return posted_as_of(entries, stay, confirmed, channel=channel), confirmed
+
+
 def room_rate_as_of(entries: list[Entry], stay: date, as_of: date, products,
-                    *, channel: str = "") -> float:
+                    *, channel: str = "", runs: list[Run] | None = None,
+                    max_unconfirmed_days: int | None = None) -> float:
     """基準日時点の提示価格を**部屋代**へ戻す（0なら記録なし）.
 
     エンジンが比べる current_public_rate は部屋代（1室2名1泊・食事抜き）。
     記録が食事付きの形態しかない場合は、その形態の食事加算を引いて戻す。
+
+    runs を渡すと、実行記録に裏付けられた値だけを返す。裏付けの無い
+    期間は0（記録なし扱い）になる。据え置きを仮定しないため。
     """
-    posted = posted_as_of(entries, stay, as_of, channel=channel)
+    posted, _confirmed = confirmed_as_of(
+        entries, runs or [], stay, as_of, channel=channel,
+        max_unconfirmed_days=max_unconfirmed_days)
     if not posted:
         return 0.0
     for form in FORM_PREFERENCE:
@@ -153,12 +303,22 @@ def room_rate_as_of(entries: list[Entry], stay: date, as_of: date, products,
 
 @dataclass
 class Coverage:
-    """提示価格の記録がどれだけ埋まっているか."""
+    """提示価格の記録がどれだけ埋まっているか.
+
+    unconfirmed は「記録はあるが、実行記録の裏付けが無いので使わない日」。
+    never_recorded は「そもそも一度も記録されていない日」。
+    この2つを足したものが missing になる。混ぜると、運用が止まっているのか
+    まだ始まっていないのかが読めない。
+    """
 
     covered: int
     total: int
     latest: date | None
     stale_days: int | None
+    unconfirmed: int = 0
+    never_recorded: int = 0
+    last_run: date | None = None
+    days_since_run: int | None = None
 
     @property
     def missing(self) -> int:
@@ -166,11 +326,27 @@ class Coverage:
 
 
 def coverage(entries: list[Entry], days: list[date], as_of: date, products,
-             *, channel: str = "") -> Coverage:
-    covered = sum(1 for day in days
-                  if room_rate_as_of(entries, day, as_of, products,
-                                     channel=channel) > 0)
+             *, channel: str = "", runs: list[Run] | None = None,
+             max_unconfirmed_days: int | None = None) -> Coverage:
+    runs = runs or []
+    covered = unconfirmed = never = 0
+    for day in days:
+        rate = room_rate_as_of(entries, day, as_of, products, channel=channel,
+                               runs=runs,
+                               max_unconfirmed_days=max_unconfirmed_days)
+        if rate > 0:
+            covered += 1
+            continue
+        raw = posted_as_of(entries, day, as_of, channel=channel)
+        if raw:
+            unconfirmed += 1      # 値はあるが裏付けが無い
+        else:
+            never += 1            # 一度も記録されていない
     latest = latest_entry_date([e for e in entries if e.snapshot_date <= as_of])
     stale = (as_of - latest).days if latest else None
+    run_dates = [r.run_date for r in runs if r.run_date <= as_of]
+    last_run = max(run_dates, default=None)
     return Coverage(covered=covered, total=len(days), latest=latest,
-                    stale_days=stale)
+                    stale_days=stale, unconfirmed=unconfirmed,
+                    never_recorded=never, last_run=last_run,
+                    days_since_run=(as_of - last_run).days if last_run else None)

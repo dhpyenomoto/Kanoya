@@ -208,9 +208,15 @@ def rate_log_line(coverage) -> str:
     if coverage is None or coverage.total == 0:
         return ""
     line = (f"提示価格の記録        : {coverage.covered} / {coverage.total} 日"
-            f"（最終記録 {coverage.latest or '—'}）")
+            f"（最終記録 {coverage.latest or '—'}"
+            f"／最後の実行 {coverage.last_run or '—'}）")
+    if coverage.never_recorded:
+        line += (f"\n　　　　　　　　　　    一度も記録なし {coverage.never_recorded}日")
+    if coverage.unconfirmed:
+        line += (f"\n　　　　　　　　　　    記録はあるが未確認 {coverage.unconfirmed}日"
+                 "（実行記録が無いので据え置きを仮定しない）")
     if coverage.missing:
-        line += (f"\n　　　　　　　　　　    記録の無い {coverage.missing}日 は"
+        line += (f"\n　　　　　　　　　　    解決できない {coverage.missing}日 は"
                  "日次変動幅ガードがかからず、承認区分も判定できていない")
     return line
 

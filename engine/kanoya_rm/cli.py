@@ -57,18 +57,29 @@ def _warn_about_rate_log(coverage, path, settings) -> None:
               "  scripts/log_rates.py で今日から記録を始めてください（過去分は復元できません）。",
               file=sys.stderr)
         return
-    if coverage.missing:
-        print(f"⚠️  提示価格の記録がない日が {coverage.missing} / {coverage.total} 日 あります"
-              f"（{path}）。\n"
-              "  その日は日次変動幅ガードがかからず、承認区分も判定できません。",
-              file=sys.stderr)
     limit = int((settings.sources.get("rate_log") or {}).get("stale_warning_days", 3))
-    if coverage.stale_days is not None and coverage.stale_days > limit:
-        print(f"⚠️  提示価格の記録が {coverage.stale_days}日 止まっています"
-              f"（最終記録 {coverage.latest}）。\n"
-              "  記録は変更履歴なので、値が変わらない日は行が増えません。"
-              "そのため『変わっていない』のか\n"
-              "  『記録していない』のかは、この日数でしか分かりません。",
+    if coverage.days_since_run is not None and coverage.days_since_run > limit:
+        print(f"⚠️  提示価格の確認が {coverage.days_since_run}日間 未実行です"
+              f"（最後の実行 {coverage.last_run}）。\n"
+              "  記録は変更履歴なので、行が無い日は『確認して変わっていない』とも\n"
+              "  『誰も見ていない』とも取れます。実行記録が無い期間は後者として扱い、\n"
+              "  据え置きを仮定しません（該当日の提示価格は未解決になります）。\n"
+              "  scripts/log_rates.py を実行してください（変更が無ければ Enter だけで済みます）。",
+              file=sys.stderr)
+    elif coverage.last_run is None and coverage.total:
+        print("⚠️  提示価格の確認が一度も実行されていません。\n"
+              "  記録があっても裏付けが無いため、current_public_rate は解決しません。",
+              file=sys.stderr)
+    if coverage.missing:
+        detail = []
+        if coverage.never_recorded:
+            detail.append(f"一度も記録なし {coverage.never_recorded}日")
+        if coverage.unconfirmed:
+            detail.append(f"記録はあるが未確認 {coverage.unconfirmed}日")
+        print(f"⚠️  提示価格が解決できない日が {coverage.missing} / {coverage.total} 日 あります"
+              f"（{'／'.join(detail)}）。\n"
+              f"  記録 {path}\n"
+              "  その日は日次変動幅ガードがかからず、承認区分も判定できません。",
               file=sys.stderr)
 
 
@@ -118,18 +129,26 @@ def build_context(root: Path, snapshot: date | None, days: int, *,
     # ---- 提示価格の日次記録（あれば current_public_rate より優先）----
     log_path = resolve_private_path(root / "config", settings.sources, "rate_log")
     entries = rate_log.read(log_path) if log_path else []
-    channel = str((settings.sources.get("rate_log") or {}).get("channel") or "")
+    # 実行記録。「人が確認して変わっていない」と「誰も見ていない」を
+    # 区別するために要る。裏付けの無い日は据え置きを仮定しない。
+    runs = rate_log.read_runs(rate_log.runs_path_for(log_path)) if log_path else []
+    log_settings = settings.sources.get("rate_log") or {}
+    channel = str(log_settings.get("channel") or "")
+    max_unconfirmed = int(log_settings.get(
+        "max_unconfirmed_days", rate_log.DEFAULT_MAX_UNCONFIRMED_DAYS))
     products = load_products(settings)
     horizon = [snapshot + timedelta(days=offset) for offset in range(days)]
     open_horizon = [d for d in horizon if settings.is_open(d)]
     posted = {}
     for stay in open_horizon:
         rate = rate_log.room_rate_as_of(entries, stay, snapshot, products,
-                                        channel=channel)
+                                        channel=channel, runs=runs,
+                                        max_unconfirmed_days=max_unconfirmed)
         if rate > 0:
             posted[stay] = rate
     log_coverage = rate_log.coverage(entries, open_horizon, snapshot, products,
-                                     channel=channel)
+                                     channel=channel, runs=runs,
+                                     max_unconfirmed_days=max_unconfirmed)
 
     snapshots = {
         stay: compset.build_snapshot(settings, stay, rows)
