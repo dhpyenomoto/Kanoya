@@ -64,6 +64,21 @@ def warn_if_benchmark_provenance_unknown(calendar: dict[str, Any], *,
         print(f"⚠️  出所不明のベンチマーク{where}\n  {message}", file=sys.stderr)
 
 
+def _warn_about_product_pricing(settings) -> None:
+    """商品形態別フロアと部屋代アンカーの整合を起動時に確認する.
+
+    暫定フロアを確定値と取り違えたまま本番配信すると、
+    貢献利益を割った価格を出し続けることになる。黙って通さない。
+    """
+    from . import products          # 遅延importで循環を避ける
+    try:
+        pricing = products.load(settings)
+    except Exception:
+        return
+    for message in products.warnings_for(pricing):
+        print(f"⚠️  {message}", file=sys.stderr)
+
+
 @dataclass
 class Competitor:
     id: str
@@ -131,8 +146,10 @@ class Settings:
             )
             for c in compset["competitors"]
         }
-        return cls(root=root, property=prop, compset=compset, calendar=calendar,
-                   competitors=competitors)
+        settings = cls(root=root, property=prop, compset=compset, calendar=calendar,
+                       competitors=competitors)
+        _warn_about_product_pricing(settings)
+        return settings
 
     # ---- カレンダー解決 -------------------------------------------------
 

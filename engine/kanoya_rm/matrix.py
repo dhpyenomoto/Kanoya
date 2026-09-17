@@ -118,11 +118,20 @@ def self_pricing_of(settings: Settings) -> SelfPricing:
     room = comps.get("room_per_person")
     if room is None:
         room = max(0.0, anchor / occupancy - dinner - breakfast)
+
+    # マトリクスの単位は「1室2名2食」なので、フロア・天井もその基準で持つ。
+    # anchor_room_rate は部屋代へ移行したため、天井も食事分を足して戻す。
+    floors = guards.get("floors") or {}
+    two_meals = floors.get("two_meals") or {}
+    floor = float(two_meals.get("value", 0.0)) if isinstance(two_meals, dict) \
+        else float(two_meals)
+    meals_total = (dinner + breakfast) * occupancy
+    ceiling = float(guards.get("ceiling_room_rate", 0.0))
     return SelfPricing(
         room=float(room), dinner=dinner, breakfast=breakfast,
         occupancy=occupancy,
-        floor=float(guards.get("floor_room_rate", 0.0)),
-        ceiling=float(guards.get("ceiling_room_rate", 0.0)),
+        floor=floor,
+        ceiling=ceiling + meals_total if ceiling else 0.0,
     )
 
 
@@ -190,13 +199,16 @@ def build(settings: Settings, ctx, window: tuple[date, date], *,
                     tier="自社", weight=1.0,
                     rooms=int(settings.property["property"]["rooms"]),
                     distance_km=0.0, is_self=True)
-    own_reco = MatrixRow(comp_id="__self_reco__", name="└ エンジン推奨",
+    own_reco = MatrixRow(comp_id="__self_reco__", name="└ エンジン推奨（2食付き換算）",
                          tier="自社", weight=1.0, rooms=0, distance_km=0.0,
                          is_self=True)
+    # 表の単位は競合と揃えて「1室2名1泊2食・税サ込」（NAR）。
+    # エンジンの出力は部屋代なので、2食付き相当へ戻してから並べる。
+    # 素の部屋代を競合NARと並べると、食事2名分だけ自社が安く見える。
     for day in dates:
         rec = ctx.recommendations[day]
         own.cells[day] = rec.current_rate
-        own_reco.cells[day] = rec.recommended_rate
+        own_reco.cells[day] = rec.two_meal_total or rec.recommended_rate
     rows.extend([own, own_reco])
 
     # ② 市場中央値（自社の直下に置き、縦方向で位置が読めるようにする）

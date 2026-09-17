@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from kanoya_rm import pace as pace_mod  # noqa: E402
 from kanoya_rm.cli import build_context  # noqa: E402
 from kanoya_rm.config import Settings  # noqa: E402
+from kanoya_rm.products import load as load_products  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -210,7 +211,7 @@ class DefaultScenarioTest(unittest.TestCase):
     def test_guardrails_hold_on_scenario_days(self) -> None:
         """乖離を入れても、ガードレールの不変条件は破れないこと."""
         guard = self.settings.property["guardrails"]
-        floor = float(guard["floor_room_rate"])
+        floor = load_products(self.settings).room_floor()[0]
         ceiling = float(guard["ceiling_room_rate"])
         band = float(guard["max_change_per_day_pct"])
         unit = float(guard["rounding_unit"])

@@ -242,6 +242,13 @@ def render(report: SurveyReport, *, top: int = 12,
         lines.append("  ██ 警告: フィクスチャ（擬似）データです。実勢価格ではありません。 ██")
         lines.append("     実データで判断するには APIキーを設定し --source serpapi で再実行してください。")
 
+    lines.append("")
+    lines.append("  ⚠ 市場ポジションの数値は、当面は目安にとどめてください。")
+    lines.append("     自社の最適化単位は『部屋代』へ移行しましたが（2026-09）、競合価格は依然")
+    lines.append("     『1室2名1泊2食』基準で正規化しています。比較時は2食付き換算へ戻していますが、")
+    lines.append("     競合各社の食事条件（meal_included / dinner_uplift）は未実測の想定値のままです。")
+    lines.append("     ここが確定するまで、対競合の倍率は方向の目安として読んでください。")
+
     counts: dict[str, int] = {}
     for d in report.days:
         counts[d.signal] = counts.get(d.signal, 0) + 1
