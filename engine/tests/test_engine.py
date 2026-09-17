@@ -205,7 +205,13 @@ class EndToEndTest(unittest.TestCase):
         ウォーターフォールの説明文も直す必要があり、そこで気づけるように。
         """
         _, recs = build(ROOT, None, 60)
-        self.assertGreater(len(recs), 50)
+        # 閉館日（火・水）は推奨対象から外れるので、暦日ではなく営業日で数える
+        settings = Settings.load(ROOT / "config")
+        start = min(recs)
+        expected_open = len(settings.open_days(start, 60))
+        self.assertGreater(len(recs), expected_open * 0.8)
+        self.assertTrue(all(settings.is_open(d) for d in recs),
+                        "閉館日に推奨が出ている")
         for rec in recs.values():
             self.assertEqual([c.factor for c in rec.contributions],
                              ["demand", "comp", "event", "lead"])

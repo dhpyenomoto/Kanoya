@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -83,10 +84,19 @@ def build_context(root: Path, snapshot: date | None, days: int, *,
 
     recs: dict[date, object] = {}
     paces: dict[date, object] = {}
+    closed_with_bookings: list[tuple[date, int]] = []
     for offset in range(days):
         stay = snapshot + timedelta(days=offset)
         otb = otb_by_stay.get(stay)
         if otb is None:
+            continue
+        if settings.is_closed(stay):
+            # 販売していない日の推奨価格を出しても使い道がない。
+            # ただし連泊がまたぐ等で既存予約が乗ることはある（実績で17室夜）。
+            # 正常系なので止めず、気づけるように控える。
+            booked = int(otb["rooms_otb"])
+            if booked > 0:
+                closed_with_bookings.append((stay, booked))
             continue
         pace_result = pace.evaluate(settings, stay, snapshot, int(otb["rooms_otb"]))
         paces[stay] = pace_result
@@ -96,6 +106,15 @@ def build_context(root: Path, snapshot: date | None, days: int, *,
             settings, stay, pace_result, snap, baseline,
             float(otb["current_public_rate"]),
         )
+
+    if closed_with_bookings:
+        nights = sum(rooms for _day, rooms in closed_with_bookings)
+        head = ", ".join(f"{d}({r}室)" for d, r in closed_with_bookings[:5])
+        more = f" 他{len(closed_with_bookings) - 5}日" if len(closed_with_bookings) > 5 else ""
+        print(f"ℹ️  閉館日に予約があります（{len(closed_with_bookings)}日・{nights}室夜）: "
+              f"{head}{more}\n"
+              f"   連泊がまたぐ場合などに起こり得ます。価格推奨の対象からは外しています。",
+              file=sys.stderr)
 
     apply_mlos(settings, recs)          # type: ignore[arg-type]
     detect_gap_nights(settings, recs)   # type: ignore[arg-type]

@@ -168,6 +168,36 @@ class Settings:
     def dow_of(self, day: date) -> str:
         return DOW[day.weekday()]
 
+    # ---- 閉館日（定休日） -----------------------------------------------
+
+    def is_closed(self, day: date) -> bool:
+        """当日が閉館日（販売しない日）か.
+
+        曜日指定と日付単位の指定を併用でき、**日付指定が曜日指定を上書きする**。
+        繁忙期は定休日でも営業するため（実績でGW・お盆の火水に17室夜の宿泊がある）、
+        曜日だけでは表現できない。
+
+        closed_days が無い設定では常に False を返す。定休日を持たない施設にも
+        エンジンをそのまま適用できるようにするため（施設非依存の方針）。
+        """
+        cfg = self.calendar.get("closed_days")
+        if not isinstance(cfg, dict):
+            return False
+        key = day.isoformat()
+        if key in set(cfg.get("open_dates") or []):
+            return False          # 日付指定の営業日が最優先
+        if key in set(cfg.get("closed_dates") or []):
+            return True
+        return self.dow_of(day) in set(cfg.get("weekdays") or [])
+
+    def is_open(self, day: date) -> bool:
+        return not self.is_closed(day)
+
+    def open_days(self, start: date, days: int) -> list[date]:
+        """start から days 日分のうち、営業日だけを返す（稼働率の分母）."""
+        return [d for d in (start + timedelta(days=i) for i in range(days))
+                if self.is_open(d)]
+
     def day_class(self, day: date) -> str:
         """シーズン×曜日タイプの『日カテゴリ』。5室規模での統計プーリング単位."""
         season, _ = self.season_of(day)

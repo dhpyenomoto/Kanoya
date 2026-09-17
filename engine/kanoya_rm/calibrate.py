@@ -61,13 +61,16 @@ def budget_anchor(settings: Settings, target_revpar: float,
 
     年間の基準価格プロファイル（季節×曜日）の平均が、目標ADR に一致するよう解く。
     目標ADR = 目標RevPAR ÷ 想定稼働。
+
+    プロファイルの平均は**営業日のみ**で取る。閉館日は販売しないので
+    RevPARの分母に入れてはいけない。暦日で割ると稼働率が実態より低く出て
+    （実績: 暦日基準 21.2% / 営業日基準 27.8%）、必要ADRが過大に算出される。
     """
     anchor = float(settings.property["base"]["anchor_room_rate"])
-    profile = []
-    for offset in range(days):
-        day = start + timedelta(days=offset)
-        p_base, _, _, _ = base_rate(settings, day)
-        profile.append(p_base / anchor)
+    open_days = settings.open_days(start, days)
+    if not open_days:
+        raise ValueError("対象期間に営業日が1日もありません。closed_days の設定を確認してください。")
+    profile = [base_rate(settings, day)[0] / anchor for day in open_days]
     mean_profile = sum(profile) / len(profile)
     target_adr = target_revpar / max(1e-9, assumed_occupancy)
     return target_adr / mean_profile

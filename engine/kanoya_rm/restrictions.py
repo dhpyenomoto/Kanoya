@@ -32,9 +32,20 @@ def apply_mlos(settings: Settings, recs: dict[date, Recommendation]) -> None:
 
 
 def detect_gap_nights(settings: Settings, recs: dict[date, Recommendation]) -> None:
-    """前後日が満室に近く、当日だけ空いている『1泊の空隙』を検知する."""
+    """前後日が満室に近く、当日だけ空いている『1泊の空隙』を検知する.
+
+    閉館日が隣接する日は空隙にならない。空隙が問題なのは「連泊で埋められない
+    1泊分の在庫」だからで、翌日が閉館なら連泊自体が成立しない。
+
+    これを見ないと、火・水が定休の施設では月曜（翌日が閉館）が構造的に
+    毎週必ず空隙判定される。存在しない機会を毎週報告し続けることになり、
+    本当の空隙が埋もれる。
+    """
     rooms = int(settings.property["property"]["rooms"])
     for day, rec in recs.items():
+        if settings.is_closed(day - timedelta(days=1)) or \
+           settings.is_closed(day + timedelta(days=1)):
+            continue
         prev_rec = recs.get(day - timedelta(days=1))
         next_rec = recs.get(day + timedelta(days=1))
         if prev_rec is None or next_rec is None:
