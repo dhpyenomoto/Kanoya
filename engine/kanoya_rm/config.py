@@ -173,6 +173,37 @@ def private_data_paths(root: Path, sources: dict[str, Any], key: str = "path",
     return out
 
 
+def resolve_private_path(root: Path, sources: dict[str, Any], block: str,
+                         key: str = "path",
+                         fallback_key: str = "fallback_paths") -> Path | None:
+    """Private 側ファイルの実在するパスを返す（無ければ None）.
+
+    書き込み先としても使うため、1つも実在しない場合は先頭候補を
+    「これから作る場所」として扱えるよう、呼び出し側で
+    private_path_candidates() を使う。
+    """
+    for path in private_path_candidates(root, sources, block, key, fallback_key):
+        if path.exists():
+            return path
+    return None
+
+
+def private_path_candidates(root: Path, sources: dict[str, Any], block: str,
+                            key: str = "path",
+                            fallback_key: str = "fallback_paths") -> list[Path]:
+    section = sources.get(block)
+    if not isinstance(section, dict):
+        return []
+    engine_root = root.parent          # root は engine/config
+    out: list[Path] = []
+    for value in [section.get(key, "")] + list(section.get(fallback_key) or []):
+        if not str(value).strip():
+            continue
+        path = Path(value)
+        out.append(path if path.is_absolute() else (engine_root / path))
+    return out
+
+
 def resolve_private_json(root: Path, sources: dict[str, Any], key: str,
                          fallback_key: str) -> tuple[dict, Path | None]:
     """Private 側 JSON を読む。無ければ (空, None)."""
@@ -291,6 +322,8 @@ class Settings:
     compset: dict[str, Any]
     calendar: dict[str, Any]
     competitors: dict[str, Competitor] = field(default_factory=dict)
+    # sources.json。Private 側データの置き場所などが入っている。
+    sources: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def load(cls, config_dir: str | Path, *,
@@ -342,7 +375,7 @@ class Settings:
             for c in compset["competitors"]
         }
         settings = cls(root=root, property=prop, compset=compset, calendar=calendar,
-                       competitors=competitors)
+                       competitors=competitors, sources=sources)
         _warn_about_product_pricing(settings)
         return settings
 
