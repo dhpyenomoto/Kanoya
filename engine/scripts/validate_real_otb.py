@@ -262,13 +262,26 @@ def main() -> None:
         print("【内部需要が前提にしている稼働と、実績の稼働】")
         print(f"  実績（営業日・最終OTB）の平均稼働率 {realized:.1%}"
               f"（{len(final)}営業日）")
-        print("  pace.evaluate が使う目標稼働  PEAK 95% / HIGH 88% /")
-        print("    SHOULDER 75% / LOW 62% / DEEP_LOW 50%")
-        print("  → 目標が実績の2〜3倍にあるため、実勢どおりに埋まった日でも")
-        print("     進捗は常に不足と判定される。これは較正の問題であって、")
-        print("     P15（最適化単位）の範囲外。目標稼働を実測に合わせるか、")
-        print("     目標として意図した値なのかを決める必要がある。")
+        configured = " / ".join(
+            f"{s} {pace_mod.expected_final_occupancy(settings, s):.0%}"
+            for s in ("PEAK", "HIGH", "SHOULDER", "LOW", "DEEP_LOW"))
+        print(f"  設定の最終稼働見込み  {configured}")
         print()
+
+    # 内部需要シグナルが実際に効いている日数。無効化された日は z=0 に
+    # なるが、出力上は「寄与0円」としか出ない。想定どおりだったのか、
+    # そもそも見ていないのかが区別できないので、ここで数える。
+    off = sum(1 for p in paces.values() if p.below_min_expected)
+    print("【内部需要シグナルが効いている日数】")
+    print(f"  有効 {len(paces) - off} / {len(paces)} 日"
+          f"（{off}日は期待室数が min_expected_rooms 未満のため不使用）")
+    if off:
+        print("  ※ 無効化された日は競合・イベント・曜日季節だけで価格が決まる。")
+        print("     最終稼働の見込みを実測へ下げると期待室数が小さくなり、")
+        print("     min_expected_rooms に届くリード帯が狭まる。")
+        print("     価格が上がったとしても、それは遅れ判定が消えたためであって、")
+        print("     進捗を正しく測れるようになったためではない。")
+    print()
 
     actions = collections.Counter(r.action for r in recs.values())
     print("【アクション区分】")

@@ -160,16 +160,45 @@ def lead_damping(lead_days: int, *, full_days: float = DEFAULT_FULL_EFFECT_DAYS,
     return far_floor + (1.0 - far_floor) * decay
 
 
+# 実測値が無い設定でも動くための保険。経営目標ではなく、
+# 小規模宿の実勢に寄せた控えめな見込み値を置く。
+DEFAULT_EXPECTED_FINAL_OCCUPANCY = {
+    "PEAK": 0.49, "HIGH": 0.29, "SHOULDER": 0.28, "LOW": 0.22, "DEEP_LOW": 0.22,
+}
+
+
+def expected_final_occupancy(settings, season: str) -> float:
+    """そのシーズンで**最終的にどこまで埋まると見込むか**.
+
+    経営目標ではない。expected_rooms = 客室数 × この値 × 進捗率 として
+    「あるべきOTB」を作り、実OTBとの差を内部需要シグナルにする。
+    つまりこれは予測変数であって、目標変数ではない。
+
+    実際にここを取り違えていた。経営目標
+    （PEAK 0.95 / HIGH 0.88 / SHOULDER 0.75 / LOW 0.62 / DEEP_LOW 0.50）が
+    コードに直書きされており、実績（順に 49.1 / 29.1 / 27.5 / 22.0 / 10.0%）から
+    全シーズンで40〜59ポイント上振れしていた。その結果、実勢どおりに
+    埋まった日でも常に進捗不足と判定され、z_demand の中央値が -0.73、
+    価格寄与が約 -20% となっていた。値付けを押し下げる自動装置である。
+
+    値上げしたいときにここを触らないこと。上げれば全日が「遅れ」判定になり、
+    かえって値下げ方向に働く。
+    """
+    table = settings.property.get("expected_final_occupancy") or {}
+    value = table.get(season)
+    if value is None:
+        value = DEFAULT_EXPECTED_FINAL_OCCUPANCY.get(season, 0.28)
+    return max(0.0, min(1.0, float(value)))
+
+
 def evaluate(settings, day: date, snapshot_date: date, otb_rooms: int) -> PaceResult:
     rooms = int(settings.property["property"]["rooms"])
     lead = (day - snapshot_date).days
     ratio = expected_ratio(settings, day, lead)
     cfg = _demand_config(settings)
 
-    # 当該日カテゴリの想定最終稼働（シーズン別の目標稼働）
     season, _ = settings.season_of(day)
-    target_occ = {"PEAK": 0.95, "HIGH": 0.88, "SHOULDER": 0.75, "LOW": 0.62, "DEEP_LOW": 0.50}[season]
-    expected_rooms = rooms * target_occ * ratio
+    expected_rooms = rooms * expected_final_occupancy(settings, season) * ratio
     gap = otb_rooms - expected_rooms
 
     # 期待室数が小さすぎるリード帯では、内部需要を使わない。

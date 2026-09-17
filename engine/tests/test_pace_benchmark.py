@@ -35,13 +35,21 @@ LEGACY_CURVE = [(120, 0.08), (90, 0.15), (60, 0.28), (45, 0.38), (30, 0.52),
                 (21, 0.62), (14, 0.73), (7, 0.86), (3, 0.94), (0, 1.0)]
 LEGACY_MULTIPLIER = {"PEAK": 1.25, "HIGH": 1.12, "SHOULDER": 1.0,
                      "LOW": 0.88, "DEEP_LOW": 0.8}
+# 差し替え前は、経営目標がそのまま「最終稼働の見込み」の位置に入っていた。
+# 旧カーブの被害を再現するには、当時の設定を丸ごと組み立てる必要がある
+# （カーブだけ戻して稼働見込みは実測のまま、では当時の状態ではない）。
+LEGACY_EXPECTED_OCCUPANCY = {"PEAK": 0.95, "HIGH": 0.88, "SHOULDER": 0.75,
+                             "LOW": 0.62, "DEEP_LOW": 0.50}
 
 # 実予約明細から復元した進捗（2026-02〜09）
 MEASURED = {120: 0.005, 90: 0.014, 60: 0.014, 45: 0.027, 30: 0.072,
             21: 0.149, 14: 0.284, 10: 0.347, 7: 0.450, 5: 0.532,
             3: 0.635, 1: 0.856, 0: 0.995}
-TARGET_OCC = {"PEAK": 0.95, "HIGH": 0.88, "SHOULDER": 0.75,
-              "LOW": 0.62, "DEEP_LOW": 0.50}
+# 「実測どおりに埋まった場合」のOTBを組み立てるための最終稼働。
+# 2026-09 までは経営目標（PEAK 0.95 / SHOULDER 0.75 …）を置いていたが、
+# それは『実測どおりに埋まった場合』ではない。設定側の実測値を使う。
+def target_occ(settings, season: str) -> float:
+    return pace_mod.expected_final_occupancy(settings, season)
 
 
 class ProvenanceTest(unittest.TestCase):
@@ -120,7 +128,7 @@ class CurveShapeTest(unittest.TestCase):
     def test_season_multipliers_are_documented(self) -> None:
         """サンプル不足で1.0固定にした経緯を、値と一緒に残しておく."""
         mult = self.bench["season_multiplier"]
-        self.assertEqual(set(mult), set(TARGET_OCC))
+        self.assertEqual(set(mult), {"PEAK", "HIGH", "SHOULDER", "LOW", "DEEP_LOW"})
         if all(v == 1.0 for v in mult.values()):
             self.assertTrue(
                 self.bench.get("_season_multiplier_note", "").strip(),
@@ -135,13 +143,28 @@ class RealisticOtbTest(unittest.TestCase):
     実測カーブどおりに埋まった場合のOTBを組み立てて評価する。
     """
 
+    ACTIVE_BAND_NOTE = """
+    カーブの良し悪しを見るには、内部需要シグナルの無効化を外す必要がある。
+
+    2026-09 に最終稼働の見込みを経営目標から実測へ下げた結果、期待室数が
+    2.7分の1になり、min_expected_rooms(1.0室) に届くのはリード0〜2日だけに
+    なった。出荷設定のままリード14日以遠を見ると、カーブが正しかろうと
+    壊れていようと z=0 で、どちらも同じに見えてしまう。
+
+    そこで閾値だけを外して比べる。ここで測りたいのはカーブの形であって、
+    無効化の効き方ではない（無効化の側は下の ShippedConfigTest で見る）。
+    """
+
     def setUp(self) -> None:
         self.new = Settings.load(ROOT / "config")
+        self.new.property["coefficients"]["min_expected_rooms"] = 0.0
         self.old = copy.deepcopy(self.new)
         self.old.calendar["pace_benchmark"]["curve"] = [
             {"lead_days": l, "ratio": r} for l, r in LEGACY_CURVE]
         self.old.calendar["pace_benchmark"]["season_multiplier"] = \
             dict(LEGACY_MULTIPLIER)
+        self.old.property["expected_final_occupancy"] = \
+            dict(LEGACY_EXPECTED_OCCUPANCY)
         self.day = date(2027, 3, 15)            # SHOULDER の平日
         self.rooms = int(self.new.property["property"]["rooms"])
         coef = self.new.property["coefficients"]
@@ -150,7 +173,7 @@ class RealisticOtbTest(unittest.TestCase):
 
     def _evaluate(self, settings, lead: int):
         season, _ = settings.season_of(self.day)
-        otb = round(self.rooms * TARGET_OCC[season] * MEASURED[lead])
+        otb = round(self.rooms * target_occ(settings, season) * MEASURED[lead])
         return pace_mod.evaluate(settings, self.day,
                                  self.day - timedelta(days=lead), otb)
 
@@ -192,6 +215,45 @@ class RealisticOtbTest(unittest.TestCase):
         mean = sum(effects) / len(effects)
         self.assertLess(mean, -0.10,
                         f"旧カーブの押し下げが再現しない（{mean:+.1%}）。前提が変わった")
+
+
+class ShippedConfigTest(unittest.TestCase):
+    """出荷設定では、遠いリードの内部需要が丸ごと切れていること.
+
+    旧カーブが起こした「リード14日以遠の系統的な値下げ」は、出荷設定では
+    もう起きない。ただし理由はカーブが直ったからだけではない。
+    最終稼働の見込みを実測へ下げたことで期待室数が1室に届かなくなり、
+    そのリード帯が min_expected_rooms でまるごと無効化されたためでもある。
+
+    つまり今は「遠い日付については自社の売れ行きを見ていない」状態である。
+    カーブを直した効果と、無効化した効果は別物なので、混同しないよう
+    ここで切り分けて固定する。
+    """
+
+    def setUp(self) -> None:
+        self.s = Settings.load(ROOT / "config")
+        self.day = date(2027, 3, 15)
+
+    def test_far_leads_carry_no_internal_demand_at_all(self) -> None:
+        for lead in (14, 21, 30, 45, 60, 90, 120):
+            result = pace_mod.evaluate(self.s, self.day,
+                                       self.day - timedelta(days=lead), 5)
+            with self.subTest(lead=lead):
+                self.assertTrue(result.below_min_expected)
+                self.assertEqual(result.z, 0.0)
+
+    def test_the_active_band_is_only_a_few_days(self) -> None:
+        """有効帯が3日を大きく超えたら、前提が変わっている.
+
+        広げること自体は悪くないが、min_expected_rooms と最終稼働の
+        見込みはセットで決まる。片方だけ動かすと有効帯が黙って変わる。
+        """
+        active = [lead for lead in range(0, 31)
+                  if not pace_mod.evaluate(
+                      self.s, self.day,
+                      self.day - timedelta(days=lead), 0).below_min_expected]
+        self.assertEqual(active, [0, 1, 2],
+                         f"SHOULDER の有効帯が変わった: {active}")
 
 
 if __name__ == "__main__":

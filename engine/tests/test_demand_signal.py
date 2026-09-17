@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import copy
 import sys
 import unittest
 from datetime import date, timedelta
@@ -79,13 +80,35 @@ class LeadDampingTest(unittest.TestCase):
         self.assertGreaterEqual(far, pace_mod.DEFAULT_FAR_FLOOR - 1e-9)
 
     def test_damping_is_applied_to_the_signal(self) -> None:
+        """減衰が raw_z に掛かっていること.
+
+        出荷設定のままでは測れない。遠い日付は min_expected_rooms で
+        まるごと無効化され（2026-09 に最終稼働の見込みを実測へ下げて以降、
+        有効帯はリード0〜1日しかない）、near も far も z=0 になって
+        減衰の有無が見えなくなる。減衰そのものを見るために、
+        無効化の閾値だけ外した設定で比べる。
+        """
         s = Settings.load(ROOT / "config")
-        near = pace_mod.evaluate(s, date(2026, 9, 5), date(2026, 9, 1), 5)
-        far = pace_mod.evaluate(s, date(2026, 12, 20), date(2026, 9, 1), 5)
+        probe = copy.deepcopy(s)
+        probe.property["coefficients"]["min_expected_rooms"] = 0.0
+        near = pace_mod.evaluate(probe, date(2026, 9, 5), date(2026, 9, 1), 5)
+        far = pace_mod.evaluate(probe, date(2026, 12, 20), date(2026, 9, 1), 5)
         self.assertEqual(near.damping, 1.0)
         self.assertLess(far.damping, 1.0)
         self.assertLess(abs(far.z), abs(near.z),
                         "遠い日付の予約1件が、直近と同じ強さで効いている")
+
+    def test_the_shipped_config_switches_far_dates_off_entirely(self) -> None:
+        """出荷設定では、減衰より前に無効化が効いていること.
+
+        減衰（0.35まで弱める）ではなく無効化（0にする）が先に効く。
+        どちらが効いているのかを取り違えると、遠い日付の挙動を
+        減衰係数で調整しようとして、何も変わらない作業になる。
+        """
+        s = Settings.load(ROOT / "config")
+        far = pace_mod.evaluate(s, date(2026, 12, 20), date(2026, 9, 1), 5)
+        self.assertTrue(far.below_min_expected)
+        self.assertEqual(far.z, 0.0)
 
 
 class OtbSweepTest(unittest.TestCase):

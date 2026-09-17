@@ -71,7 +71,10 @@ class SettingsResolutionTest(unittest.TestCase):
 
     def test_changing_the_saturation_changes_the_signal(self) -> None:
         day = date(2027, 3, 15)
-        as_of = day - timedelta(days=5)
+        # 有効帯（期待室数 >= min_expected_rooms）の中で振る。2026-09 に
+        # 最終稼働の見込みを実測へ下げたため、SHOULDER の有効帯は
+        # リード0〜1日しかない。それ以遠で振ると両方0になり何も測れない。
+        as_of = day - timedelta(days=1)
         signals = {}
         for sat in (1.0, 1.5, 3.0):
             probe = copy.deepcopy(self.s)
@@ -137,8 +140,13 @@ class MinExpectedRoomsTest(unittest.TestCase):
                              f"リード{lead}日で予約1件がシグナルを動かしている")
 
     def test_the_signal_survives_where_the_data_is(self) -> None:
-        """無効化しすぎて、直近まで効かなくなっていないこと."""
-        near = self._at(3, 5)
+        """無効化しすぎて、直近まで効かなくなっていないこと.
+
+        有効帯はリード0〜1日しか残っていない（2026-09 に最終稼働の見込みを
+        経営目標から実測へ下げ、期待室数が2.7分の1になったため）。
+        ここが0日になったら、内部需要シグナルは完全に死んでいる。
+        """
+        near = self._at(0, 5)
         self.assertGreaterEqual(near.expected_rooms, self.threshold)
         self.assertFalse(near.below_min_expected)
         self.assertNotEqual(near.z, 0.0)

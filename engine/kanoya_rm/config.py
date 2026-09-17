@@ -104,6 +104,46 @@ def _migrate_closed_days(calendar: dict[str, Any], *, source: str = "") -> None:
             cfg[current] = cfg[legacy]
 
 
+def expected_occupancy_provenance_warning(prop: dict[str, Any]) -> str | None:
+    """最終稼働の見込みの出所が不明なら警告文を返す（問題なければ None）.
+
+    pace_benchmark と同じ扱いにする。この値は
+    expected_rooms = 客室数 × この値 × 進捗率 として「あるべきOTB」を作るので、
+    実測か願望かで内部需要シグナルの符号ごと変わる。しかも値そのものは
+    どちらでも妥当に見えるため、内部からは区別がつかない。
+
+    実際にこれで事故が起きている: 経営目標（PEAK 0.95 など）が予測値の
+    位置に直書きされており、実績（PEAK 0.49 など）から全シーズンで
+    40〜59ポイント上振れしていた。実勢どおりに埋まった日でも常に
+    進捗不足と判定され、価格を約20%押し下げていた。
+    """
+    table = prop.get("expected_final_occupancy")
+    if not isinstance(table, dict):
+        return ("expected_final_occupancy がありません。"
+                "最終稼働の見込みが既定値に落ちています。")
+    seasons = [k for k in table if not k.startswith("_")]
+    if not seasons:
+        return "expected_final_occupancy にシーズンの値がありません。"
+    if not str(table.get("_source") or "").strip():
+        return (
+            "expected_final_occupancy に _source がありません（出所不明の稼働見込み）。\n"
+            "  経営目標と実測値が区別できない状態です。\n"
+            "  実績から算出した値であれば、期間・営業日数・室夜数を _source に書いてください。\n"
+            "  例: \"実予約明細から算出（2026-02-06〜09-17）。営業168日 × 5室 = 840室夜。\"\n"
+            "  目標値をここに置くと、実勢どおりに埋まった日でも進捗不足と判定され、\n"
+            "  全日が値下げ方向へ押されます（scripts/build_expected_occupancy.py で再算出できます）。"
+        )
+    return None
+
+
+def warn_if_expected_occupancy_provenance_unknown(prop: dict[str, Any], *,
+                                                  source: str = "") -> None:
+    message = expected_occupancy_provenance_warning(prop)
+    if message:
+        where = f"（{source}）" if source else ""
+        print(f"⚠️  出所不明の稼働見込み{where}\n  {message}", file=sys.stderr)
+
+
 def _warn_about_product_pricing(settings) -> None:
     """商品形態別フロアと部屋代アンカーの整合を起動時に確認する.
 
@@ -168,6 +208,8 @@ class Settings:
         calendar = _load_json(root / "calendar.json")
         warn_if_benchmark_provenance_unknown(calendar, source=str(root / "calendar.json"))
         _migrate_closed_days(calendar, source=str(root / "calendar.json"))
+        warn_if_expected_occupancy_provenance_unknown(
+            prop, source=str(root / "property.json"))
         competitors = {
             c["id"]: Competitor(
                 id=c["id"],

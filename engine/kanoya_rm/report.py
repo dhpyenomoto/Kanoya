@@ -119,6 +119,36 @@ def capacity_summary(settings, start: date, days: int, *,
     return "\n".join(lines)
 
 
+def demand_coverage(paces: dict) -> str:
+    """内部需要シグナルが実際に効いている日数.
+
+    min_expected_rooms は期待室数が1室に届かないリード帯を「無効化」する。
+    無効化された日は z_demand = 0 となり、価格は競合・イベント・曜日季節
+    だけで決まる。これは設計どおりだが、**出力を見ても分からない**。
+    寄与が0円と表示されるだけで、「進捗が想定どおりだった」のか
+    「そもそも見ていない」のかが区別できない。
+
+    2026-09 に最終稼働の見込みを経営目標から実測へ下げた結果、期待室数が
+    2.7分の1になり、有効帯がリード0〜9日から0〜2日へ縮んだ。
+    90日先まで出すと、ほとんどの日で内部需要を見ていないことになる。
+    その事実を毎回の出力に出す。
+    """
+    if not paces:
+        return ""
+    total = len(paces)
+    off = sum(1 for p in paces.values() if p.below_min_expected)
+    if not off:
+        return ""
+    active = sorted(d for d, p in paces.items() if not p.below_min_expected)
+    where = (f"{active[0]} 〜 {active[-1]}" if active else "なし")
+    return (
+        f"内部需要の有効日数    : {total - off} / {total} 日"
+        f"（{off}日は期待室数が min_expected_rooms 未満のため不使用）\n"
+        f"　　　　　　　　　　    有効なのは {where}。"
+        f"それ以外の日は競合・イベント・曜日季節だけで価格を決めている"
+    )
+
+
 def summary(recs: dict[date, Recommendation]) -> str:
     if not recs:
         return "（推奨なし）"
