@@ -138,7 +138,10 @@ def recommend(
     z_lead = max(-1.0, min(1.0, z_lead))
 
     terms = [
-        ("demand", z_demand, float(coef["b_demand"]), "内部需要（予約ペース×残室希少性）"),
+        ("demand", z_demand, float(coef["b_demand"]),
+         "内部需要（予約ペース×残室希少性）"
+         + ("：期待室数が小さく判断材料にならないため不使用"
+            if pace.below_min_expected else "")),
         ("comp",   z_comp,   float(coef["b_comp"]),   "競合ポジション（NAR中央値比）"),
         ("event",  z_event,  float(coef["b_event"]),  "需要イベント"),
         ("lead",   z_lead,   float(coef["b_lead"]),   "リードタイム"),

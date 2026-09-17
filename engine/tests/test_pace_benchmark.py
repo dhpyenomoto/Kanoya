@@ -165,11 +165,17 @@ class RealisticOtbTest(unittest.TestCase):
                   if self._evaluate(self.new, lead).raw_z <= -0.9999]
         self.assertEqual(pinned, [], f"raw_z が下限に張り付くリード: {pinned}")
 
-    def test_the_legacy_curve_did_pin_it(self) -> None:
-        """比較対象が実際に壊れていたことを残す（直った証拠になる）."""
-        pinned = [lead for lead in MEASURED
-                  if self._evaluate(self.old, lead).raw_z <= -0.9999]
-        self.assertTrue(pinned, "旧カーブで張り付きが再現しない。前提が変わった")
+    def test_the_legacy_curve_drove_the_signal_to_the_floor(self) -> None:
+        """比較対象が実際に壊れていたことを残す（直った証拠になる）.
+
+        写像を tanh にしたのでハードクリップは起きない（±1 に漸近するだけで、
+        実測では -0.87 止まり）。「下限に張り付く」ではなく
+        「複数のリード帯で強い遅れ側へ押し込まれる」ことを見る。
+        """
+        strong = [lead for lead in MEASURED
+                  if self._evaluate(self.old, lead).raw_z <= -0.8]
+        self.assertGreaterEqual(len(strong), 3,
+                                f"旧カーブで強い遅れ判定が再現しない（{strong}）。前提が変わった")
 
     def test_far_leads_are_no_longer_a_systematic_discount(self) -> None:
         """実測どおりに埋まっているのに値下げ方向へ働くのは、自動値下げ機."""

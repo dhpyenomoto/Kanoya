@@ -159,8 +159,24 @@ class PaceTest(unittest.TestCase):
         self.assertLessEqual(r.z, 0.0)
 
     def test_ahead_of_pace_gives_positive_z(self) -> None:
-        r = pace.evaluate(self.s, date(2026, 11, 15), date(2026, 8, 15), otb_rooms=5)
+        # 期待室数が min_expected_rooms 以上ある帯で評価する。
+        # それ未満の帯は意図的に無効化される（下のテスト参照）。
+        r = pace.evaluate(self.s, date(2026, 8, 20), date(2026, 8, 15), otb_rooms=5)
+        self.assertFalse(r.below_min_expected)
         self.assertGreater(r.z, 0.0)
+
+    def test_thin_lead_bands_are_switched_off(self) -> None:
+        """期待室数が1室未満の帯では、満室でも内部需要を使わない.
+
+        実OTBは整数しか取れないため、期待0.05室の帯では予約1件が
+        シグナルを支配してしまう（5室規模の1件は偶然の範囲）。
+
+        代償として、遠い日付が本当に売り切れていても内部需要では
+        値上げできない。競合・イベント項では動く。
+        """
+        r = pace.evaluate(self.s, date(2026, 11, 15), date(2026, 8, 15), otb_rooms=5)
+        self.assertTrue(r.below_min_expected)
+        self.assertEqual(r.z, 0.0)
 
 
 class ChannelTest(unittest.TestCase):
