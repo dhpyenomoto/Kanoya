@@ -115,7 +115,8 @@ class GuardrailTest(unittest.TestCase):
 
     def test_never_below_contribution_floor(self) -> None:
         rec = self._rec(otb=0, comp_rate=3000, current=59000)
-        floor = self.s.property["guardrails"]["floor_room_rate"]
+        from kanoya_rm.products import load as load_products
+        floor = load_products(self.s).room_floor()[0]
         self.assertGreaterEqual(rec.recommended_rate, floor)
 
     def test_never_above_ceiling(self) -> None:

@@ -22,6 +22,7 @@ from kanoya_rm import compset, pace as pace_mod  # noqa: E402
 from kanoya_rm.cli import build_context  # noqa: E402
 from kanoya_rm.config import Settings  # noqa: E402
 from kanoya_rm.pricing import base_rate, recommend  # noqa: E402
+from kanoya_rm.products import load as load_products  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -98,7 +99,7 @@ class OtbSweepTest(unittest.TestCase):
         cls.ctx = build_context(ROOT, None, 180)
         cls.s = cls.ctx.settings
         cls.rooms = int(cls.s.property["property"]["rooms"])
-        floor = float(cls.s.property["guardrails"]["floor_room_rate"])
+        floor = load_products(cls.s).room_floor()[0]
 
         # 基準価格そのものがフロアを下回る日は P11 で別途扱う（除外）
         cls.excluded = [d for d in sorted(cls.ctx.recommendations)

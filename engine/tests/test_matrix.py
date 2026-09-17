@@ -290,8 +290,10 @@ class MatrixTest(unittest.TestCase):
     def test_component_total_matches_the_calibrated_anchor(self) -> None:
         """内訳の合計が基準価格とずれると、自社行と推奨が別基準になる."""
         p = matrix.self_pricing_of(self.ctx.settings)
-        anchor = float(self.ctx.settings.property["base"]["anchor_room_rate"])
-        self.assertAlmostEqual(p.total, anchor, delta=1.0)
+        # 2026-09 に最適化単位を部屋代へ移行した。マトリクスの単位は
+        # 競合と揃えた「1室2名2食」のままなので、比較対象は移行前の総額アンカー。
+        legacy = float(self.ctx.settings.property["base"]["legacy_two_meal_anchor"])
+        self.assertAlmostEqual(p.total, legacy, delta=1.0)
 
     def test_room_rate_is_backed_out_of_the_recommended_total(self) -> None:
         """食事は原価に固定される。動かせるのは宿泊単価だけ."""
@@ -315,6 +317,7 @@ class MatrixTest(unittest.TestCase):
         settings = copy.deepcopy(self.ctx.settings)
         settings.property.pop("rate_components", None)
         p = matrix.self_pricing_of(settings)
+        # rate_components が無ければ部屋代アンカーから復元する（食事は0扱い）
         anchor = float(settings.property["base"]["anchor_room_rate"])
         self.assertAlmostEqual(p.total, anchor, delta=1.0)
         self.assertGreaterEqual(p.room, 0.0)

@@ -38,6 +38,7 @@ from datetime import date
 from .compset import CompSnapshot, detect_market_event
 from .config import Settings
 from .pace import PaceResult
+from .products import LABELS as PRODUCT_LABELS, load as load_products
 
 
 @dataclass
@@ -72,6 +73,12 @@ class Recommendation:
     event_score: float = 0.0
     mlos: int = 1
     gap_night: bool = False
+    # recommended_rate は **部屋代**（1室2名1泊・食事を含まない）。
+    # 実際にOTAへ出すのは下記の形態別価格。
+    product_prices: dict[str, float] = field(default_factory=dict)
+    floor_form: str = ""            # 部屋代下限を決めた商品形態
+    floor_provisional: bool = False  # その下限が暫定値か
+    two_meal_total: float = 0.0     # 競合NARと突き合わせるための2食付き換算
 
 
 # ---- 基準価格 ----------------------------------------------------------
@@ -110,6 +117,7 @@ def recommend(
     coef = settings.property["coefficients"]
     guard = settings.property["guardrails"]
     clip = float(coef["term_clip"])
+    products = load_products(settings)
 
     p_base, season, season_label, dow = base_rate(settings, day)
 
@@ -129,7 +137,13 @@ def recommend(
     comp_median = snap.weighted_median_nar if snap else 0.0
     if comp_median > 0:
         # 競合中央値に対する基準価格の位置。競合が高ければ上げ余地、安ければ下げ圧力。
-        z_comp = max(-1.0, min(1.0, math.log(comp_median / p_base) / 0.30))
+        #
+        # 競合価格は「1室2名1泊2食・税サ込」へ正規化されている（NAR）。
+        # 自社の基準価格は部屋代なので、**必ず2食付き相当へ戻してから**比べる。
+        # 素の部屋代とNARを直接比べると食事2名分(44,000円)のぶん自社が安く見え、
+        # z_comp が +1 に張り付いたまま動かなくなる。
+        own_two_meal = products.two_meal_total(p_base)
+        z_comp = max(-1.0, min(1.0, math.log(comp_median / own_two_meal) / 0.30))
         if snap is not None:
             z_comp += 0.5 * snap.pressure          # 市場逼迫は上方バイアス
             z_comp = max(-1.0, min(1.0, z_comp))
@@ -162,7 +176,9 @@ def recommend(
     # 適用順序が重要: 変動幅 → 丸め → 絶対境界。
     # 絶対境界（貢献利益フロア／天井）は最後に効かせ、他のルールが越えられないようにする。
     notes: list[str] = []
-    floor = float(guard["floor_room_rate"])
+    # 形態ごとにフロアがあるが、最適化するのは部屋代1本。
+    # 「どの形態でもフロアを割らない」部屋代を下限とする。
+    floor, floor_form, floor_provisional = products.room_floor()
     ceiling = float(guard["ceiling_room_rate"])
     unit = float(guard["rounding_unit"])
 
@@ -195,8 +211,12 @@ def recommend(
         # その場合は最近接のまま（丸め単位のほうが粗すぎるという設定の問題で、
         # ここで無理に寄せても意味のある値にならない）。
 
-    if price < floor:
-        notes.append(f"貢献利益フロア {floor:,.0f}円で下限クリップ")
+    floor_hit = price < floor
+    if floor_hit:
+        label = PRODUCT_LABELS.get(floor_form, floor_form)
+        mark = "【暫定フロア適用】" if floor_provisional else ""
+        notes.append(f"{mark}貢献利益フロア {floor:,.0f}円で下限クリップ"
+                     f"（{label}のフロアが拘束）")
         price = floor
     if price > ceiling:
         notes.append(f"天井 {ceiling:,.0f}円で上限クリップ")
@@ -228,9 +248,14 @@ def recommend(
         guardrail_notes=notes,
         contributions=contributions,
         comp_median=comp_median,
-        comp_position=(price / comp_median) if comp_median else 0.0,
+        # 競合は2食基準なので、こちらも2食付き換算で比べる
+        comp_position=(products.two_meal_total(price) / comp_median) if comp_median else 0.0,
         remaining=pace.remaining,
         lead_days=pace.lead_days,
         event_label=event_label,
         event_score=event_score,
+        product_prices=products.prices(price),
+        floor_form=floor_form if floor_hit else "",
+        floor_provisional=floor_provisional if floor_hit else False,
+        two_meal_total=products.two_meal_total(price),
     )

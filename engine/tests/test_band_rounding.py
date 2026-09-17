@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from kanoya_rm import compset, pace as pace_mod  # noqa: E402
 from kanoya_rm.cli import build_context  # noqa: E402
 from kanoya_rm.config import Settings  # noqa: E402
+from kanoya_rm.products import load as load_products  # noqa: E402
 from kanoya_rm.pricing import recommend  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,7 +48,7 @@ class EffectiveBandTest(unittest.TestCase):
         guard = cls.s.property["guardrails"]
         cls.band = float(guard["max_change_per_day_pct"])
         cls.unit = float(guard["rounding_unit"])
-        cls.floor = float(guard["floor_room_rate"])
+        cls.floor = load_products(cls.s).room_floor()[0]
         cls.ceiling = float(guard["ceiling_room_rate"])
 
     def _sweep(self, day):
@@ -115,10 +116,12 @@ class RoundingBehaviourTest(unittest.TestCase):
         片側へ寄せていれば、最大で丸め単位1つぶんずれる。
         """
         checked = 0
-        for current in (80000, 90000, 100000, 110000, 120000, 130000):
+        # 部屋代スケールの現行価格を使う（2026-09 に最適化単位を総額から移した）。
+        # 総額スケールの値を渡すとモデル出力と離れすぎ、常にバンドが効いてしまう。
+        for current in (30000, 34000, 38000, 42000, 46000, 50000):
             rec = self._recommend(current)
             if band_note(rec) or rec.recommended_rate in (
-                    float(self.guard["floor_room_rate"]),
+                    load_products(self.s).room_floor()[0],
                     float(self.guard["ceiling_room_rate"])):
                 continue
             self.assertLessEqual(
@@ -129,20 +132,20 @@ class RoundingBehaviourTest(unittest.TestCase):
 
     def test_lower_clamp_rounds_up_into_the_band(self) -> None:
         # モデル出力を大きく下回らせ、下方制限を確実に効かせる
-        rec = self._recommend(200000, otb=0)
+        rec = self._recommend(90000, otb=0)
         self.assertIsNotNone(band_note(rec), "下方制限が効いていない")
-        if rec.recommended_rate == float(self.guard["floor_room_rate"]):
+        if rec.recommended_rate == load_products(self.s).room_floor()[0]:
             self.skipTest("フロアが先に効いた")
-        lo = 200000 * (1 - float(self.guard["max_change_per_day_pct"]))
+        lo = 90000 * (1 - float(self.guard["max_change_per_day_pct"]))
         self.assertGreaterEqual(rec.recommended_rate, lo,
                                 "バンド下限より外側へ丸められている")
 
     def test_upper_clamp_rounds_down_into_the_band(self) -> None:
-        rec = self._recommend(62000, otb=5)
+        rec = self._recommend(20000, otb=5)
         self.assertIsNotNone(band_note(rec), "上方制限が効いていない")
         if rec.recommended_rate == float(self.guard["ceiling_room_rate"]):
             self.skipTest("天井が先に効いた")
-        hi = 62000 * (1 + float(self.guard["max_change_per_day_pct"]))
+        hi = 20000 * (1 + float(self.guard["max_change_per_day_pct"]))
         self.assertLessEqual(rec.recommended_rate, hi,
                              "バンド上限より外側へ丸められている")
 
@@ -152,19 +155,20 @@ class RoundingBehaviourTest(unittest.TestCase):
         フロアはバンド下限（現行の85%）より上に置く。下ではバンドに
         持ち上げられた時点でフロアを超えてしまい、何も検証できない。
         """
-        original_floor = float(self.guard["floor_room_rate"])
-        current = 200000.0
+        original_floor = load_products(self.s).room_floor()[0]
+        current = 90000.0
         band_lo = current * (1 - float(self.guard["max_change_per_day_pct"]))
 
         probe = copy.deepcopy(self.s)
-        probe.property["guardrails"]["floor_room_rate"] = band_lo + 10000
+        probe.property["guardrails"]["floors"] = {
+            "room_only": {"value": band_lo + 10000, "provisional": False}}
         p = pace_mod.evaluate(probe, self.day,
                               self.day - timedelta(days=5), 0)
         rec = recommend(probe, self.day, p, None, 0.0, current)
         self.assertEqual(rec.recommended_rate, band_lo + 10000,
                          "フロアがバンドより先に負けている")
-        self.assertEqual(original_floor, 58000,
-                         "テストの前提（元のフロア）が変わった")
+        self.assertEqual(original_floor, 14000,
+                         "テストの前提（部屋代フロア）が変わった")
 
 
 if __name__ == "__main__":

@@ -21,9 +21,10 @@ def write_recommendations_csv(recs: dict[date, Recommendation], path: Path) -> N
         writer = csv.writer(fh)
         writer.writerow([
             "宿泊日", "曜日", "日カテゴリ", "シーズン", "リードタイム",
-            "現行価格", "推奨価格", "変動率", "判定", "残室", "MLOS",
+            "現行価格", "推奨部屋代", "変動率", "判定", "残室", "MLOS",
             "競合中央値(NAR)", "対競合ポジション", "イベント", "イベントスコア",
             "基準価格", "内部需要寄与", "競合寄与", "イベント寄与", "リード寄与",
+            "素泊まり", "朝食のみ", "夕食のみ", "2食付き", "暫定フロア適用",
             "ガードレール",
         ])
         for day in sorted(recs):
@@ -38,8 +39,31 @@ def write_recommendations_csv(recs: dict[date, Recommendation], path: Path) -> N
                 round(r.base_rate),
                 round(c.get("demand", 0)), round(c.get("comp", 0)), round(c.get("event", 0)),
                 round(c.get("lead", 0)),
+                *[round(r.product_prices.get(f, 0)) for f in
+                  ("room_only", "breakfast", "dinner", "two_meals")],
+                1 if r.floor_provisional else 0,
                 " / ".join(r.guardrail_notes),
             ])
+
+
+def product_lines(rec: Recommendation) -> list[str]:
+    """部屋代から導いた4形態の販売価格.
+
+    OTAの管理画面に打ち込むのはこちら。recommended_rate は部屋代で、
+    そのまま掲出する値ではない。
+    """
+    from .products import FORMS, LABELS
+    if not rec.product_prices:
+        return []
+    out = ["  商品形態別の販売価格（1室2名1泊・税サ込）"]
+    for form in FORMS:
+        if form not in rec.product_prices:
+            continue
+        mark = " ←フロア" if rec.floor_form == form else ""
+        out.append(f"    {LABELS[form]:<10}{rec.product_prices[form]:>10,.0f} 円{mark}")
+    if rec.floor_provisional:
+        out.append("    ※ 暫定フロアが適用されています。変動費から再算出するまで本番配信に使わないこと。")
+    return out
 
 
 def explain(rec: Recommendation) -> str:
@@ -48,7 +72,7 @@ def explain(rec: Recommendation) -> str:
         f"■ {rec.stay_date.isoformat()}（{rec.dow}）{rec.season_label} / {rec.day_class}",
         f"  リードタイム {rec.lead_days}日 ／ 残室 {rec.remaining}室 ／ MLOS {rec.mlos}泊"
         + ("  ※gap night" if rec.gap_night else ""),
-        f"  基準価格                          {rec.base_rate:>10,.0f} 円",
+        f"  基準価格（部屋代）                 {rec.base_rate:>10,.0f} 円",
     ]
     running = rec.base_rate
     for c in rec.contributions:
@@ -59,11 +83,15 @@ def explain(rec: Recommendation) -> str:
     lines.append(f"  モデル出力                        {rec.raw_price:>10,.0f} 円")
     for note in rec.guardrail_notes:
         lines.append(f"   ガードレール: {note}")
-    lines.append(f"  ▶ 推奨価格                        {rec.recommended_rate:>10,.0f} 円"
+    lines.append(f"  ▶ 推奨 部屋代                     {rec.recommended_rate:>10,.0f} 円"
                  f"（現行 {rec.current_rate:,.0f} 円 / {rec.delta_pct:+.1%} / {ACTION_LABEL[rec.action]}）")
+    lines.extend(product_lines(rec))
     if rec.comp_median:
         lines.append(f"  競合NAR中央値 {rec.comp_median:,.0f} 円 に対し {rec.comp_position:.2f} 倍"
                      + (f" ／ {rec.event_label}" if rec.event_label else ""))
+        lines.append("  ※ 競合は『1室2名2食』基準のため、2食付き換算 "
+                     f"{rec.two_meal_total:,.0f} 円 との比較。"
+                     "競合の食事条件は未実測のため、この倍率は目安にとどめること。")
     return "\n".join(lines)
 
 
