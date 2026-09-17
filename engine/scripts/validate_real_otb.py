@@ -63,6 +63,32 @@ def _quantiles(values: list[float]) -> tuple[float, float, float]:
     return q1, statistics.median(ordered), q3
 
 
+def actual_by_stay_date(path: Path, settings: Settings
+                        ) -> dict[date, list[float]]:
+    """宿泊日ごとの実売室夜単価（部屋代・税込）.
+
+    推奨と実績を同じ重みで比べるために使う。推奨は全営業日に1つずつ出るが、
+    実績は**売れた室夜にしか存在しない**。単純に両者の中央値を並べると、
+    売れなかった平日を推奨側だけが数えることになり、推奨が安く見える。
+    """
+    out: dict[date, list[float]] = collections.defaultdict(list)
+    for row in csv.DictReader(path.open(encoding="utf-8")):
+        if FORM_OF_MIX.get(row["product_mix"]) is None:
+            continue
+        nights, rooms = int(row["nights"]), int(row["rooms"])
+        room_nights = nights * rooms
+        accommodation = float(row["accommodation"] or 0)
+        if room_nights <= 0 or accommodation <= 0:
+            continue
+        per_room_night = accommodation / room_nights * TAX
+        checkin = date(*(int(p) for p in row["checkin"].split("/")))
+        for offset in range(nights):
+            stay = checkin + timedelta(days=offset)
+            if settings.is_open(stay):
+                out[stay].extend([per_room_night] * rooms)
+    return dict(out)
+
+
 def actual_room_rates(path: Path, settings: Settings) -> dict[str, list[float]]:
     """実績の室夜単価（部屋代・税込・1室あたり）を商品形態ごとに集める.
 
@@ -192,6 +218,30 @@ def main() -> None:
     print("     実績側の差は、どの形態がどの日に売れたかの違いによる。")
     print()
 
+    # 実売室夜で重み付けした比較。これが本来の突き合わせになる。
+    by_stay = actual_by_stay_date(res_path, settings)
+    weighted_rec: list[float] = []
+    weighted_act: list[float] = []
+    for stay, values in sorted(by_stay.items()):
+        rec = recs.get(stay)
+        if rec is None:
+            continue
+        weighted_rec.extend([rec.recommended_rate] * len(values))
+        weighted_act.extend(values)
+    if weighted_rec:
+        rq1, rmed, rq3 = _quantiles(weighted_rec)
+        aq1, amed, aq3 = _quantiles(weighted_act)
+        print("【同じ重みで比べる — 実売室夜で重み付けした分布】")
+        print("  推奨は全営業日に1つずつ出るが、実績は売れた室夜にしかない。")
+        print("  素の中央値を並べると、売れなかった平日を推奨側だけが数えるため")
+        print("  推奨が安く見える。売れた室夜の重みで揃えて比べる。")
+        print()
+        print(f"  推奨  中央値 {rmed:>9,.0f}円  四分位 {rq1:,.0f}–{rq3:,.0f}")
+        print(f"  実績  中央値 {amed:>9,.0f}円  四分位 {aq1:,.0f}–{aq3:,.0f}"
+              f"  （{len(weighted_act)}室夜）")
+        print(f"  差    {rmed / amed - 1:+.1%}")
+        print()
+
     every = [v for values in actual.values() for v in values]
     anchor = products.anchor_room_rate
     print("【アンカーそのものの位置】")
@@ -200,10 +250,11 @@ def main() -> None:
     print(f"  実績の部屋代 中央値（全形態） {statistics.median(every):>9,.0f}円"
           f"（{len(every)}室夜）")
     print(f"  ずれ {anchor / statistics.median(every) - 1:+.0%}")
-    print("  ※ 18,500円/名 は実測の部屋代ではなく、従来の2食付きアンカー")
-    print("     81,000円から実測の食事単価を差し引いて逆算した値である。")
-    print("     実勢の部屋代を測って置いた値ではないので、アンカー自体の")
-    print("     較正は別途必要（P15の範囲外）。")
+    print("  ※ ここでの実績中央値は『売れた室夜』の中央値であり、"
+          "週末・繁忙日に偏る。")
+    print("     アンカーは全営業日の基準なので、この2つを直接引き算しない。")
+    print("     季節係数・曜日係数・祝前日補正を割り戻した逆算アンカーの")
+    print("     中央値と突き合わせること（2026-09 時点で 39,591円）。")
     print()
 
     print("【販売価格（部屋代＋食事加算）の推奨分布】")
