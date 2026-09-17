@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import sys
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -24,6 +25,43 @@ def load_csv(path: Path) -> list[dict[str, str]]:
 
 def parse_date(value: str) -> date:
     return datetime.strptime(value.strip(), "%Y-%m-%d").date()
+
+
+def benchmark_provenance_warning(calendar: dict[str, Any]) -> str | None:
+    """ブッキングカーブの出所が不明なら警告文を返す（問題なければ None）.
+
+    擬似データ由来の想定値と実測値が、設定ファイル上で区別できなかった。
+    実際にこれで事故が起きている: 擬似データの想定カーブ（120日前に8%が
+    入っている前提）を実運用の値と取り違えたまま動かしており、
+    実測（0.5%）とかけ離れていたため進捗が常に「大幅な遅れ」と判定され、
+    リード14日以遠のほぼ全日で価格を押し下げていた。
+    値が妥当に見えるぶん、内部からは気づけない種類の誤りである。
+
+    そのため出所（_source）の記載を必須とし、無ければ起動時に警告する。
+    エラーにはしない。出所不明でも検証や試作は回せるべきで、
+    ここで止めるとブートストラップができなくなる。
+    """
+    bench = calendar.get("pace_benchmark")
+    if not isinstance(bench, dict):
+        return "pace_benchmark がありません。予約進捗の評価ができません。"
+    source = str(bench.get("_source") or "").strip()
+    if not source:
+        return (
+            "pace_benchmark に _source がありません（出所不明のベンチマーク）。\n"
+            "  擬似データ由来の想定値と実測値が区別できない状態です。\n"
+            "  実測から復元した値であれば、期間・母数・除外条件を _source に書いてください。\n"
+            "  例: \"実予約明細から復元（2026-02〜09）。火曜・水曜は閉館日のため除外。\"\n"
+            "  出所不明のカーブは、進捗判定を系統的に狂わせたまま正常値に見えます。"
+        )
+    return None
+
+
+def warn_if_benchmark_provenance_unknown(calendar: dict[str, Any], *,
+                                         source: str = "") -> None:
+    message = benchmark_provenance_warning(calendar)
+    if message:
+        where = f"（{source}）" if source else ""
+        print(f"⚠️  出所不明のベンチマーク{where}\n  {message}", file=sys.stderr)
 
 
 @dataclass
@@ -73,6 +111,7 @@ class Settings:
             # ここで落とすとブートストラップができなくなるため、空で続行する。
             compset = {"competitors": [], "tiers": {}, "_missing": str(compset_path)}
         calendar = _load_json(root / "calendar.json")
+        warn_if_benchmark_provenance_unknown(calendar, source=str(root / "calendar.json"))
         competitors = {
             c["id"]: Competitor(
                 id=c["id"],
