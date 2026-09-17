@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>9. 判断の記録 — 奈良春日 鹿のや レベニューマネジメント基盤</title>
+<style>
+:root{--ground:#F5F6F2;--surface:#FFFFFF;--alt:#EDEFE9;--ink:#1A211C;--ink2:#414B44;
+ --muted:#6B746D;--line:#D8DCD3;--accent:#14584A;--accent-soft:#E2EBE6;--warn:#B8452B}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;--ink2:#C0C7BF;
+ --muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}}
+:root[data-theme="dark"]{--ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;
+ --ink2:#C0C7BF;--muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-size:16px;line-height:1.85;
+ font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif}
+.wrap{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto;gap:34px;
+ padding:0 22px 80px}
+nav{position:sticky;top:0;flex:0 0 232px;padding:30px 0;max-height:100vh;overflow:auto}
+nav .brand{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-size:17px;font-weight:600;line-height:1.5;margin-bottom:18px;display:block;
+ color:var(--ink);text-decoration:none}
+nav a.item{display:block;padding:7px 11px;border-radius:3px;color:var(--ink2);
+ text-decoration:none;font-size:13.5px;border-left:2px solid transparent}
+nav a.item:hover{background:var(--alt);color:var(--ink)}
+nav a.item.on{background:var(--accent-soft);color:var(--accent);font-weight:700;
+ border-left-color:var(--accent)}
+main{flex:1;min-width:0;padding:30px 0}
+h1,h2,h3,h4{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-weight:600;line-height:1.45;text-wrap:balance}
+h1{font-size:29px;margin:0 0 22px;padding-bottom:14px;border-bottom:2px solid var(--accent)}
+h2{font-size:22px;margin:44px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:15px;margin:22px 0 8px}
+p,li{max-width:74ch}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+code{background:var(--alt);padding:2px 5px;border-radius:3px;font-size:.88em;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--alt);border:1px solid var(--line);padding:15px 17px;overflow-x:auto;
+ border-radius:3px;line-height:1.7}
+pre code{background:none;padding:0;font-size:12.5px}
+blockquote{margin:18px 0;padding:14px 18px;background:var(--accent-soft);
+ border-left:3px solid var(--accent);color:var(--ink2)}
+blockquote p{margin:6px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--alt);font-size:12px;letter-spacing:.06em;color:var(--ink2);
+ font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+ font-size:13px;color:var(--muted)}
+@media (max-width:860px){.wrap{flex-direction:column;gap:0}
+ nav{position:static;flex:none;width:100%;max-height:none;
+  border-bottom:1px solid var(--line);padding-bottom:14px}
+ nav .items{display:flex;flex-wrap:wrap;gap:4px}
+ nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
+</style></head>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="06-survey-server.html">6. 調査サーバー構築</a><a class="item" href="07-open-issues.html">7. 未解決の不整合</a><a class="item" href="08-demand-signal.html">8. 内部需要シグナル</a><a class="item on" href="09-decisions.html">9. 判断の記録</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>判断の記録</h1>
+<p>「なぜそうしなかったか」は、コードにも設定にも残らない。あとから見た人が
+善意で同じ検討をやり直し、同じ結論に辿り着けないまま逆の変更を入れる。
+ここはそのための文書である。</p>
+<hr />
+<h2>1. <code>min_expected_rooms = 1.0</code> を維持する</h2>
+<h3>決定</h3>
+<p>内部需要シグナルの無効化しきい値 <code>min_expected_rooms</code> を <strong>1.0室のまま
+維持する</strong>。下げない。</p>
+<h3>根拠</h3>
+<p>閾値を 0.2 / 0.3 / 0.5 / 0.7 / 1.0 と振って測った（<code>docs/08</code> に全表）。
+決め手は「閾値を下げて動いた日が、実績に近づいたのか離れたのか」である。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>閾値</th>
+<th>動いた日</th>
+<th>近づいた</th>
+<th>離れた</th>
+<th>誤差の平均変化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.2</td>
+<td>77日</td>
+<td>39日</td>
+<td>38日</td>
+<td><strong>+156円</strong></td>
+</tr>
+<tr>
+<td>0.3</td>
+<td>77日</td>
+<td>39日</td>
+<td>38日</td>
+<td><strong>+156円</strong></td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>45日</td>
+<td>22日</td>
+<td>23日</td>
+<td><strong>+204円</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>近づく日と離れる日がほぼ半々で、誤差の平均はむしろ広がっている。</strong>
+これは情報が増えていないことの直接の証拠である。閾値を下げると有効帯は
+広がるが、広がった帯が運んでいるのはノイズであって需要ではない。</p>
+<h3>集計値では判定できない — 見直すときの注意</h3>
+<p>推奨部屋代の中央値（実売室夜で重み付け）は、</p>
+<pre><code>閾値 0.5 → 42,000円（実績比 -2.3%）
+閾値 1.0 → 42,000円（実績比 -2.3%）
+</code></pre>
+<p>で<strong>まったく差が出ない</strong>。集計値だけを見ていたら「0.5でも問題ない」と
+判断してしまう。実際には45日分の推奨が平均6,200円動いており、その動きは
+改善22日・悪化23日とほぼ相殺されているだけである。</p>
+<blockquote>
+<p><strong>将来この閾値を見直すときは、集計値ではなく日ごとの改善率で判定すること。</strong>
+集計値では「ノイズを足しているだけの状態」と「正しく効いている状態」を
+区別できない。</p>
+</blockquote>
+<p>再現は <code>python3 scripts/sweep_min_expected.py</code>（測定専用・設定は変更しない）。</p>
+<hr />
+<h2>2. 検証方法そのものの限界</h2>
+<h3>「実績価格との一致は、正しさの証明ではない」</h3>
+<p>推奨部屋代（実売室夜で重み付け）42,000円が実績43,001円の <strong>-2.3%</strong> に
+収まっている。これを<strong>精度が高いと読んではいけない。</strong></p>
+<p>比較対象の「実績」は、<strong>過去の値付け判断の結果</strong>である。そこには</p>
+<ul>
+<li>2026年6〜7月の失敗した値上げ実験
+  （早期54,910円で2ヶ月9件 → 31%下げた37,824円で20件成約）</li>
+<li>満室の土曜を38,071円で売った日（2026-03-28・PEAK）</li>
+<li>季節係数と逆転した実勢（PEAK 47,001円 &lt; HIGH 51,685円。<code>docs/07</code>）</li>
+</ul>
+<p>が含まれている。</p>
+<p><strong>実績を再現できたということは、過去の判断を再現できたということであって、
+最適な価格に近づいたことの証明ではない。</strong> 仮に過去の値付けが systematically
+安すぎたなら、それに一致するエンジンもまた安すぎる。</p>
+<h3>いま何が判定不能か</h3>
+<p>外部の基準がない。競合レート（<code>comp_rates_collected.csv</code>）は今もフィクスチャで、
+実データなのはOTBだけである。したがって</p>
+<ul>
+<li>自社の価格が市場に対して高いのか安いのか</li>
+<li>稼働28%が値付けの結果なのか、需要の上限なのか</li>
+</ul>
+<p>のどちらも判定できない。<strong>競合の実勢価格が接続されるまで、エンジン出力の
+良否は原理的に判定不能である。</strong></p>
+<blockquote>
+<p>現在の -2.3% は「エンジンが過去の自社の値付けと同じ土俵に乗った」ことを
+示すに留まる。それ以上でも以下でもない。</p>
+</blockquote>
+<p>次の一歩は P16（コンペセットの再ティア化）ではなく、その前提となる
+<strong>競合実勢価格の取得</strong>である（SerpApi 月$25〜75）。</p>
+<hr />
+<h2>3. git 履歴は書き換えない</h2>
+<h3>決定</h3>
+<p>競合施設の実名は HEAD から除去した（<code>docs</code> / <code>site</code> / <code>tests</code> / 設定を含む
+追跡ファイル89件で<strong>ヒット0件</strong>）。ただし<strong>過去のコミットには残っている。</strong></p>
+<p>これに対し、<strong><code>git filter-repo</code> 等による履歴の書き換えは行わない。</strong></p>
+<h3>理由</h3>
+<ol>
+<li><strong>全コミットのハッシュが変わる。</strong> 既存のPR・ブランチ・セッションログ・
+   コミットへの参照がすべて壊れる。本リポジトリは変更の経緯そのものが
+   資産であり、それを切り離す代償が大きい</li>
+<li><strong>Private 化すれば履歴ごと非公開になる。</strong> 目的（社外から読めない状態）は
+   Private 化だけで達成される。履歴書き換えはその上に追加の破壊を加えるだけで、
+   達成される状態は同じ</li>
+<li>書き換えても、すでにクローン・フォーク・キャッシュされたものには届かない</li>
+</ol>
+<h3>対応方針</h3>
+<blockquote>
+<p><strong>対応方針は「Private 化」であり「履歴書き換え」ではない。</strong></p>
+</blockquote>
+<p>HEAD からの除去は、Private 化までの間の露出を減らすためと、Private 化後も
+「実名は1か所（Kanoya-data）にしか無い」という構造を保つためである。
+分離した情報の戻しかたは README の「匿名化を解除する」に書いてある。</p>
+<footer>社内資料。競合施設の実名・価格ポジション・収益前提を含みます。
+取り扱いにご注意ください。</footer>
+</main></div></body></html>
