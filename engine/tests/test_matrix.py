@@ -288,12 +288,19 @@ class MatrixTest(unittest.TestCase):
             self.assertIn(f'"kind": "{kind}"', out)
 
     def test_component_total_matches_the_calibrated_anchor(self) -> None:
-        """内訳の合計が基準価格とずれると、自社行と推奨が別基準になる."""
+        """内訳の合計が基準価格とずれると、自社行と推奨が別基準になる.
+
+        突き合わせるのは現行の部屋代アンカーであって、移行前の総額
+        アンカー（81,000円）ではない。後者は固定の参照値で、アンカーを
+        実勢へ合わせるたびに差が開く（2026-09 に 37,000 → 39,000 円へ
+        動かした時点で +2.5% ずれた）。そちらに固定すると、アンカーを
+        動かすたびにこのテストが落ちる。
+        """
         p = matrix.self_pricing_of(self.ctx.settings)
-        # 2026-09 に最適化単位を部屋代へ移行した。マトリクスの単位は
-        # 競合と揃えた「1室2名2食」のままなので、比較対象は移行前の総額アンカー。
-        legacy = float(self.ctx.settings.property["base"]["legacy_two_meal_anchor"])
-        self.assertAlmostEqual(p.total, legacy, delta=1.0)
+        anchor = float(self.ctx.settings.property["base"]["anchor_room_rate"])
+        meals = (p.dinner + p.breakfast) * p.occupancy
+        self.assertAlmostEqual(p.total, anchor + meals, delta=1.0)
+        self.assertAlmostEqual(p.room * p.occupancy, anchor, delta=1.0)
 
     def test_room_rate_is_backed_out_of_the_recommended_total(self) -> None:
         """食事は原価に固定される。動かせるのは宿泊単価だけ."""
