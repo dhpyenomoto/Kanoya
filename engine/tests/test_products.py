@@ -57,10 +57,17 @@ class DerivedPriceTest(unittest.TestCase):
         self.assertLess(prices["dinner"], prices["two_meals"])
 
     def test_room_anchor_reproduces_the_legacy_two_meal_total(self) -> None:
-        """部屋代アンカーから、移行前の総額アンカーが再現できること."""
+        """部屋代アンカーから、移行前の総額アンカーが概ね再現できること.
+
+        完全一致は求めない。移行時点では 37,000 + 44,000 = 81,000 で
+        ぴったり一致していたが、2026-09 にアンカーを実勢へ合わせて
+        39,000円にしたため +2.5% ずれた。ここで見たいのは
+        「単位の取り違えで桁やスケールが飛んでいないか」であって、
+        アンカーを動かせなくすることではない。許容は ±5%。
+        """
         ok, converted, legacy = self.p.anchor_consistency()
         self.assertTrue(ok, f"{converted:,.0f} vs {legacy:,.0f}")
-        self.assertAlmostEqual(converted, legacy, delta=1.0)
+        self.assertLessEqual(abs(converted / legacy - 1), 0.05)
 
     def test_anchor_matches_the_room_component(self) -> None:
         self.assertAlmostEqual(
