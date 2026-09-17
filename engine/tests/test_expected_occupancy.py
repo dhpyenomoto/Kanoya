@@ -20,6 +20,7 @@ from __future__ import annotations
 import copy
 import io
 import json
+import math
 import subprocess
 import sys
 import unittest
@@ -29,7 +30,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from kanoya_rm import pace as pace_mod  # noqa: E402
+from kanoya_rm import pace as pace_mod, report  # noqa: E402
+from kanoya_rm.cli import build_context  # noqa: E402
 from kanoya_rm.config import (  # noqa: E402
     Settings, expected_occupancy_provenance_warning,
 )
@@ -222,6 +224,122 @@ class BuildScriptTest(unittest.TestCase):
         result = self._run("--reservations", "../../kanoya-data/reservations.csv")
         self.assertIn("予約明細から補完しました", result.stderr)
         self.assertIn("営業168日", result.stdout)
+
+
+class ThresholdIsNotTheLeverTest(unittest.TestCase):
+    """min_expected_rooms を下げて無理に効かせない、という判断を固定する.
+
+    スイープで測った結果（docs/08）:
+      閾値1.0（現行） 有効19/160日  推奨中央値42,000円  実績比 -2.3%
+      閾値0.3        有効160/160日 推奨中央値46,000円  実績比 +7.0%
+      閾値0.3で動いた77日のうち、実績に近づいたのは39日・離れたのは38日、
+      誤差の平均は +156円（むしろ広がる）
+
+    つまり閾値を下げても精度は上がらず、ノイズが増えるだけである。
+    善意で下げられるのを防ぐため、値をテストで留める。
+    """
+
+    def setUp(self) -> None:
+        self.s = Settings.load(ROOT / "config")
+
+    def test_the_shipped_threshold_is_unchanged(self) -> None:
+        self.assertEqual(
+            float(self.s.property["coefficients"]["min_expected_rooms"]), 1.0,
+            "min_expected_rooms を変えるなら、先に docs/08 のスイープを"
+            "回して精度が上がることを示すこと")
+
+    def test_lowering_the_threshold_widens_the_band(self) -> None:
+        """下げれば帯は広がる（広がること自体は起きる）."""
+        probe = copy.deepcopy(self.s)
+        probe.property["coefficients"]["min_expected_rooms"] = 0.3
+        self.assertGreater(report.max_active_lead(probe, "SHOULDER"),
+                           report.max_active_lead(self.s, "SHOULDER"))
+
+    def test_a_single_booking_moves_more_in_the_thin_bands(self) -> None:
+        """広がった帯ほど、予約1件の影響が大きい（ノイズであることの根拠）."""
+        probe = copy.deepcopy(self.s)
+        probe.property["coefficients"]["min_expected_rooms"] = 0.2
+        coef = probe.property["coefficients"]
+        b_demand, clip = float(coef["b_demand"]), float(coef["term_clip"])
+        day = date(2027, 3, 15)
+
+        def swing(lead: int) -> float:
+            def effect(otb: int) -> float:
+                z = pace_mod.evaluate(probe, day,
+                                      day - timedelta(days=lead), otb).z
+                return math.exp(max(-clip, min(clip, b_demand * z)))
+            return abs(effect(1) - effect(0))
+
+        self.assertGreater(swing(14), swing(0),
+                           "薄い帯のほうが1件の影響が小さい。前提が変わった")
+        self.assertGreater(swing(14), 0.15,
+                           "リード14日で予約1件の影響が15%を下回る。前提が変わった")
+
+
+class CoverageOutputTest(unittest.TestCase):
+    """シグナルが効かない理由が出力に書かれていること.
+
+    日数だけを出すと故障と誤解される。理由まで書く。
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        if not (ROOT / "data" / "otb.csv").exists():
+            raise unittest.SkipTest("収集済みデータ未生成（scripts/run_pipeline.sh）")
+        cls.ctx = build_context(ROOT, None, 90)
+        cls.text = report.demand_coverage(cls.ctx.settings, cls.ctx.paces)
+
+    def test_it_says_how_many_days_are_active(self) -> None:
+        self.assertIn("内部需要の有効日数", self.text)
+
+    def test_it_shows_the_expected_occupancy_and_room_count(self) -> None:
+        settings = self.ctx.settings
+        occupancy = pace_mod.expected_final_occupancy(settings, "SHOULDER")
+        rooms = int(settings.property["property"]["rooms"])
+        self.assertIn(f"{occupancy:.2f}", self.text)
+        self.assertIn(f"{occupancy * rooms:.2f}室", self.text)
+
+    def test_it_shows_the_max_lead_that_reaches_the_threshold(self) -> None:
+        best = report.max_active_lead(self.ctx.settings, "SHOULDER")
+        self.assertIn(f"リード0〜{best}日", self.text)
+
+    def test_it_says_the_band_widens_on_its_own(self) -> None:
+        """将来の担当者が閾値を下げるのを防ぐ一文."""
+        self.assertIn("自動的に広がります", self.text)
+        self.assertIn("閾値を下げて無理に効かせないこと", self.text)
+
+    def test_it_does_not_read_as_a_fault(self) -> None:
+        self.assertIn("故障ではありません", self.text)
+
+
+class SweepScriptTest(unittest.TestCase):
+    """スイープが測定専用であること（設定も価格も変えない）."""
+
+    SCRIPT = ROOT / "scripts" / "sweep_min_expected.py"
+    OTB = ROOT / ".." / ".." / "kanoya-data" / "otb.csv"
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        if not cls.OTB.resolve().exists():
+            raise unittest.SkipTest("実データ未取得（kanoya-data をクローンしてください）")
+        cls.before = (ROOT / "config" / "property.json").read_text(encoding="utf-8")
+        cls.result = subprocess.run(
+            [sys.executable, str(cls.SCRIPT)],
+            cwd=str(ROOT), capture_output=True, text=True, check=True)
+
+    def test_the_config_is_untouched(self) -> None:
+        after = (ROOT / "config" / "property.json").read_text(encoding="utf-8")
+        self.assertEqual(self.before, after, "スイープが設定ファイルを書き換えている")
+
+    def test_all_four_measurements_are_reported(self) -> None:
+        out = self.result.stdout
+        self.assertIn("有効な最大リード", out)
+        self.assertIn("有効日数", out)
+        self.assertIn("価格寄与の変化量", out)
+        self.assertIn("実績との差", out)
+
+    def test_the_shipped_value_is_marked(self) -> None:
+        self.assertIn("←現行", self.result.stdout)
 
 
 if __name__ == "__main__":

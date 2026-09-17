@@ -156,7 +156,7 @@ def main() -> None:
     print(report.capacity_summary(settings, ctx.snapshot, args.days,
                                   sold_room_nights=sold, as_of=ctx.snapshot))
     print(report.summary(recs))  # type: ignore[arg-type]
-    coverage = report.demand_coverage(ctx.paces)
+    coverage = report.demand_coverage(settings, ctx.paces)
     if coverage:
         print(coverage)
 
