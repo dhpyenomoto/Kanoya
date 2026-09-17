@@ -102,6 +102,71 @@ footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
 </tbody>
 </table></div>
 <hr />
+<h2>運用モデル：定休日は固定ではない</h2>
+<p><strong>定休日は固定ではなく、需要に応じた例外営業が通年で発生する。稼働率の分母は
+事後的に変わりうるため、稼働率・RevPAR には必ず分母を併記すること。</strong></p>
+<p>鹿のやは従業員数の都合で火曜・水曜を閉館日としていますが、需要があれば
+その日を開けます。繁忙期に限った話ではありません。</p>
+<pre><code>2026-02-06 〜 2026-09-17（暦日224日）
+  閉館日（火・水）          64日
+  うち例外営業              8日  = 12.5%
+  営業日                  168日  （160日 + 8日）
+</code></pre>
+<p>これが効いてくるのは、<strong>同じ期間の稼働率が後から変わる</strong>ためです。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>分母</th>
+<th>室夜</th>
+<th>稼働率</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>暦日 224日 × 5室</td>
+<td>1,120</td>
+<td>21.2%</td>
+</tr>
+<tr>
+<td>曜日ルール 160日 × 5室</td>
+<td>800</td>
+<td>29.6%</td>
+</tr>
+<tr>
+<td>実績 168日 × 5室</td>
+<td>840</td>
+<td><strong>28.2%</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>同じ実売237室夜を指しているのに3つの数字が出ます。どれが正しいかではなく、
+<strong>どの分母で割ったかを書かなければ意味が定まらない</strong>、というのが要点です。
+<code>kanoya_rm/capacity.py</code> がこの分母を数え、出力に必ず <code>営業168日 × 5室 =
+840室夜</code> の形で添えます。</p>
+<p>将来期間は例外営業がまだ決まっていないため、営業日数は<strong>下限</strong>です。
+そのため稼働率を単一値ではなく幅で出します（上限は
+<code>closed_days.exception_rate</code>・既定0.125＝実績由来）。</p>
+<h3>設定のしかた（他施設へ展開する場合）</h3>
+<p><code>engine/config/calendar.json</code> の <code>closed_days</code> に置きます。火曜・水曜は
+コード側の既定値ではなく、この設定ファイルの値です。</p>
+<pre><code class="language-jsonc">&quot;closed_days&quot;: {
+  &quot;closed_weekdays&quot;: [&quot;TUE&quot;, &quot;WED&quot;],        // 定休日なしなら []、週1定休なら1つ
+  &quot;extra_open&quot;:  [{&quot;date&quot;: &quot;2026-08-11&quot;, &quot;source&quot;: &quot;actual&quot;,  &quot;note&quot;: &quot;火・お盆&quot;}],
+  &quot;extra_closed&quot;: [{&quot;date&quot;: &quot;2027-01-15&quot;, &quot;source&quot;: &quot;planned&quot;, &quot;note&quot;: &quot;改装&quot;}],
+  &quot;exception_rate&quot;: 0.125                   // 将来の例外営業の発生率
+}
+</code></pre>
+<ul>
+<li>優先順位は <strong>日付指定 &gt; 曜日指定</strong>。両方に書かれた日は営業（休むほうを
+  既定にすると売り逃す）</li>
+<li><code>source</code> は必須。<code>actual</code> は実績から確認した日、<code>planned</code> は人が入れた予定。
+  混ざると稼働率の分母を後から検証できなくなります。書き忘れは <code>planned</code> 扱い</li>
+<li><strong>連泊のまたぎは <code>extra_open</code> に入れない</strong>。在館者はいても販売していない日は
+  営業日ではありません（例: 2026-02-18(水) は 2/17 チェックイン2泊の2泊目）。
+  該当日は「閉館日に在館者がいます」として起動時に知らせます</li>
+<li>季節休業がある施設は <code>extra_closed</code> に期間を並べます</li>
+</ul>
+<hr />
 <h2>ドキュメント</h2>
 <div class="tablewrap"><table>
 <thead>

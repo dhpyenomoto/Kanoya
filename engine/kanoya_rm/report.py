@@ -6,6 +6,7 @@ import csv
 from datetime import date
 from pathlib import Path
 
+from . import capacity
 from .pricing import Recommendation
 
 ACTION_LABEL = {
@@ -92,6 +93,29 @@ def explain(rec: Recommendation) -> str:
         lines.append("  ※ 競合は『1室2名2食』基準のため、2食付き換算 "
                      f"{rec.two_meal_total:,.0f} 円 との比較。"
                      "競合の食事条件は未実測のため、この倍率は目安にとどめること。")
+    return "\n".join(lines)
+
+
+def capacity_summary(settings, start: date, days: int, *,
+                     sold_room_nights: float | None = None,
+                     as_of: date | None = None) -> str:
+    """稼働率の前提となる営業日数を、分母つきで示す.
+
+    例外営業で営業日数が後から変わるため、分母を書かない稼働率は
+    前回の数字とも他施設の数字とも比較できない（capacity.py 参照）。
+    """
+    cap = capacity.measure(settings, start, days, as_of=as_of)
+    lines = [
+        f"対象期間の暦日       : {cap.calendar_days} 日"
+        f"（{cap.start} 〜 {cap.end}）",
+        f"稼働率の分母         : {cap.denominator()}",
+    ]
+    if not cap.settled:
+        lines.append(
+            f"　　　　　　　　　　   将来の閉館日 {cap.future_closed_days} 日は"
+            f"例外営業が未確定のため、発生率 {cap.exception_rate:.1%} で上限側を見込む")
+    if sold_room_nights is not None:
+        lines.append(f"稼働率               : {cap.occupancy_text(sold_room_nights)}")
     return "\n".join(lines)
 
 
