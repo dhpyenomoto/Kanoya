@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>8. 内部需要シグナル — 奈良春日 鹿のや レベニューマネジメント基盤</title>
+<style>
+:root{--ground:#F5F6F2;--surface:#FFFFFF;--alt:#EDEFE9;--ink:#1A211C;--ink2:#414B44;
+ --muted:#6B746D;--line:#D8DCD3;--accent:#14584A;--accent-soft:#E2EBE6;--warn:#B8452B}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;--ink2:#C0C7BF;
+ --muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}}
+:root[data-theme="dark"]{--ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;
+ --ink2:#C0C7BF;--muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-size:16px;line-height:1.85;
+ font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif}
+.wrap{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto;gap:34px;
+ padding:0 22px 80px}
+nav{position:sticky;top:0;flex:0 0 232px;padding:30px 0;max-height:100vh;overflow:auto}
+nav .brand{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-size:17px;font-weight:600;line-height:1.5;margin-bottom:18px;display:block;
+ color:var(--ink);text-decoration:none}
+nav a.item{display:block;padding:7px 11px;border-radius:3px;color:var(--ink2);
+ text-decoration:none;font-size:13.5px;border-left:2px solid transparent}
+nav a.item:hover{background:var(--alt);color:var(--ink)}
+nav a.item.on{background:var(--accent-soft);color:var(--accent);font-weight:700;
+ border-left-color:var(--accent)}
+main{flex:1;min-width:0;padding:30px 0}
+h1,h2,h3,h4{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-weight:600;line-height:1.45;text-wrap:balance}
+h1{font-size:29px;margin:0 0 22px;padding-bottom:14px;border-bottom:2px solid var(--accent)}
+h2{font-size:22px;margin:44px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:15px;margin:22px 0 8px}
+p,li{max-width:74ch}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+code{background:var(--alt);padding:2px 5px;border-radius:3px;font-size:.88em;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--alt);border:1px solid var(--line);padding:15px 17px;overflow-x:auto;
+ border-radius:3px;line-height:1.7}
+pre code{background:none;padding:0;font-size:12.5px}
+blockquote{margin:18px 0;padding:14px 18px;background:var(--accent-soft);
+ border-left:3px solid var(--accent);color:var(--ink2)}
+blockquote p{margin:6px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--alt);font-size:12px;letter-spacing:.06em;color:var(--ink2);
+ font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+ font-size:13px;color:var(--muted)}
+@media (max-width:860px){.wrap{flex-direction:column;gap:0}
+ nav{position:static;flex:none;width:100%;max-height:none;
+  border-bottom:1px solid var(--line);padding-bottom:14px}
+ nav .items{display:flex;flex-wrap:wrap;gap:4px}
+ nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
+</style></head>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="06-survey-server.html">6. 調査サーバー構築</a><a class="item" href="07-open-issues.html">7. 未解決の不整合</a><a class="item on" href="08-demand-signal.html">8. 内部需要シグナル</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>内部需要シグナルが効く条件</h1>
+<p>エンジンは「予約進捗が想定よりどれだけ遅れ／先行しているか」を内部需要
+シグナル <code>z_demand</code> にして価格へ反映する。2026年9月現在、このシグナルが
+効いているのは<strong>実データで 19 / 160 日</strong>でしかない。</p>
+<p>この文書は、それが<strong>実装の欠陥ではなく稼働水準の帰結である</strong>ことと、
+<strong>閾値を下げて無理に効かせてはいけない</strong>ことを記録する。</p>
+<p>再現手順:</p>
+<pre><code class="language-bash">cd engine
+python3 scripts/sweep_min_expected.py \
+    --otb ../../kanoya-data/otb.csv \
+    --reservations ../../kanoya-data/reservations.csv
+</code></pre>
+<p>このスクリプトは測定専用で、設定も価格も変更しない。</p>
+<hr />
+<h2>仕組み</h2>
+<pre><code>期待室数 = 客室数 × expected_final_occupancy(シーズン) × 進捗率(リード)
+gap      = 実OTB − 期待室数
+z_demand = tanh(gap / pace_saturation_rooms) × リード減衰
+</code></pre>
+<p>期待室数が <code>min_expected_rooms</code>（現行1.0室）に届かないリード帯では、
+シグナルを<strong>無効化</strong>する（<code>z_demand = 0</code>）。</p>
+<p>SHOULDER の場合:</p>
+<pre><code>0.28 × 5室 = 最終期待 1.40室
+  リード 0日  進捗率 0.995 → 1.39室  ← 有効
+  リード 2日  進捗率 0.746 → 1.05室  ← 有効
+  リード 3日  進捗率 0.638 → 0.89室  ← 無効
+  リード 7日  進捗率 0.452 → 0.63室  ← 無効
+  リード14日  進捗率 0.285 → 0.40室  ← 無効
+</code></pre>
+<p>シーズン別の有効帯（現行の閾値1.0）:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>シーズン</th>
+<th>見込み</th>
+<th>最終期待室数</th>
+<th>有効な最大リード</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PEAK</td>
+<td>0.49</td>
+<td>2.45室</td>
+<td>リード0〜8日</td>
+</tr>
+<tr>
+<td>HIGH</td>
+<td>0.29</td>
+<td>1.45室</td>
+<td>リード0〜2日</td>
+</tr>
+<tr>
+<td>SHOULDER</td>
+<td>0.28</td>
+<td>1.40室</td>
+<td>リード0〜2日</td>
+</tr>
+<tr>
+<td>LOW</td>
+<td>0.22</td>
+<td>1.10室</td>
+<td>リード0〜0日</td>
+</tr>
+<tr>
+<td>DEEP_LOW</td>
+<td>0.22</td>
+<td>1.10室</td>
+<td>リード0〜0日</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2>閾値を下げるとどうなるか（測定結果）</h2>
+<p><code>min_expected_rooms</code> を 0.2 / 0.3 / 0.5 / 0.7 / 1.0 と振って測った。
+推奨部屋代は実売215室夜で重み付けし、実績の中央値43,001円と比べている。</p>
+<h3>表1：有効帯・カバレッジ・価格水準</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>閾値</th>
+<th>有効な最大リード</th>
+<th>有効日数</th>
+<th>推奨中央値</th>
+<th>実績との差</th>
+<th>現行から動く日</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.2</td>
+<td>リード0〜21日</td>
+<td>160 / 160</td>
+<td>46,000円</td>
+<td><strong>+7.0%</strong></td>
+<td>77日 平均5,597円</td>
+</tr>
+<tr>
+<td>0.3</td>
+<td>リード0〜17日</td>
+<td>160 / 160</td>
+<td>46,000円</td>
+<td><strong>+7.0%</strong></td>
+<td>77日 平均5,597円</td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>リード0〜9日</td>
+<td>98 / 160</td>
+<td>42,000円</td>
+<td>-2.3%</td>
+<td>45日 平均6,200円</td>
+</tr>
+<tr>
+<td>0.7</td>
+<td>リード0〜5日</td>
+<td>19 / 160</td>
+<td>42,000円</td>
+<td>-2.3%</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>1.0</strong>（現行）</td>
+<td>リード0〜2日</td>
+<td>19 / 160</td>
+<td>42,000円</td>
+<td><strong>-2.3%</strong></td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>閾値を 0.2〜0.3 まで下げると全日が「有効」になるが、<strong>実績との差は
+-2.3% から +7.0% へ広がる</strong>。つまり当たらなくなる。</p>
+<h3>表1b：動いた日は実績に近づいたのか、離れたのか</h3>
+<p>日ごとに「推奨 − その日の実売室夜単価の中央値」の絶対値を取り、
+現行の閾値のときと比べた。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>閾値</th>
+<th>動いた日</th>
+<th>近づいた</th>
+<th>離れた</th>
+<th>誤差の平均変化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.2</td>
+<td>77日</td>
+<td>39日</td>
+<td>38日</td>
+<td><strong>+156円</strong></td>
+</tr>
+<tr>
+<td>0.3</td>
+<td>77日</td>
+<td>39日</td>
+<td>38日</td>
+<td><strong>+156円</strong></td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>45日</td>
+<td>22日</td>
+<td>23日</td>
+<td><strong>+204円</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>近づく日と離れる日がほぼ半々で、誤差の平均はむしろ広がっている。</strong>
+これは情報が増えていない、つまりノイズであることの直接の証拠である。</p>
+<h3>表2：予約が0室→1室になったときの価格寄与の変化量</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>閾値</th>
+<th>0日</th>
+<th>1日</th>
+<th>2日</th>
+<th>3日</th>
+<th>5日</th>
+<th>7日</th>
+<th>14日</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.2</td>
+<td>12.3%</td>
+<td>14.2%</td>
+<td>15.6%</td>
+<td>17.0%</td>
+<td>18.0%</td>
+<td>18.7%</td>
+<td><strong>19.6%</strong></td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>12.3%</td>
+<td>14.2%</td>
+<td>15.6%</td>
+<td>17.0%</td>
+<td>18.0%</td>
+<td>18.7%</td>
+<td>—</td>
+</tr>
+<tr>
+<td>1.0（現行）</td>
+<td>12.3%</td>
+<td>14.2%</td>
+<td>15.6%</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>リードが遠いほど1件の影響が大きい。</strong> 期待0.40室の帯で予約が1件入ると、
+それだけで価格が 19.6% 動く。需要が強いのではなく、期待値が小さいので
+1件が相対的に大きく見えているだけである。</p>
+<h3>結論</h3>
+<p>閾値を下げても精度は上がらない。ノイズが増えるだけである。</p>
+<p>根本にあるのは<strong>離散化</strong>で、閾値では解決しない。実OTBは整数しか取れない
+ため、期待0.4室の帯で観測できるのは実質0室か1室しかない。この2値から
+「進捗」を読み取ることはできない。</p>
+<hr />
+<h2>自己回復：稼働が上がれば有効帯は自動的に広がる</h2>
+<p><code>expected_final_occupancy</code> を実績から再算出する運用にしてあるため
+（<code>scripts/build_expected_occupancy.py</code>）、稼働が上がれば期待室数が増え、
+閾値に届くリードが自動的に伸びる。<strong>設定を触る必要はない。</strong></p>
+<p>実測のブッキングカーブでの対応関係:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>最終稼働</th>
+<th>最終期待室数</th>
+<th>有効帯</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>22%</td>
+<td>1.10室</td>
+<td>リード0〜0日</td>
+</tr>
+<tr>
+<td><strong>28%（現在）</strong></td>
+<td><strong>1.40室</strong></td>
+<td><strong>リード0〜2日</strong></td>
+</tr>
+<tr>
+<td>40%</td>
+<td>2.00室</td>
+<td>リード0〜5日</td>
+</tr>
+<tr>
+<td>50%</td>
+<td>2.50室</td>
+<td>リード0〜8日</td>
+</tr>
+<tr>
+<td>60%</td>
+<td>3.00室</td>
+<td>リード0〜10日</td>
+</tr>
+<tr>
+<td>80%</td>
+<td>4.00室</td>
+<td>リード0〜15日</td>
+</tr>
+</tbody>
+</table></div>
+<p>伸び方が緩やかなのは、鹿のやのブッキングカーブが極端に直前型だからである
+（リード14日時点で入っているのは全体の28.5%）。稼働が3倍近くになっても
+有効帯が14日に届かないのはそのためで、閾値の問題ではない。</p>
+<blockquote>
+<p><strong>いま内部需要が効かないのは実装の欠陥ではなく、稼働水準の帰結である。</strong>
+<strong>閾値を下げて無理に効かせないこと。</strong></p>
+<p>有効帯を広げたいなら、閾値ではなく稼働を上げるか、ブッキングカーブを
+前倒しにする（早期予約の獲得）。どちらも実績が動けば自動的に反映される。</p>
+</blockquote>
+<hr />
+<h2>前提条件：いまの価格精度は「進捗を見ていない状態」での結果</h2>
+<p>推奨部屋代（実売室夜で重み付け）42,000円が実績43,001円の <strong>-2.3%</strong> に
+収まっているが、<strong>これは内部需要シグナルがほぼ無効な状態での結果である。</strong></p>
+<p>価格を決めているのは</p>
+<ul>
+<li><code>base.anchor_room_rate</code>（39,000円）</li>
+<li><code>base.season_factor</code>（PEAK 1.38 〜 DEEP_LOW 0.76）</li>
+<li><code>base.dow_factor</code>（SAT 1.22 〜 TUE 0.86）</li>
+<li><code>base.holiday_eve_bonus</code>（+18%）</li>
+</ul>
+<p>であり、<strong>予約進捗ではない</strong>。実データ・リード7日時点で内部需要項の寄与は
+中央値 ±0円、z_demand の中央値は ±0.00 である。競合項も 0（競合レートは
+今もフィクスチャのため、実データ検証では使っていない）。</p>
+<p>したがって次のいずれかが変われば、この一致は崩れる。</p>
+<ul>
+<li><code>min_expected_rooms</code> を下げる（表1のとおり +7.0% へ振れる）</li>
+<li><code>expected_final_occupancy</code> を変える（有効帯が広がり、進捗が価格に入り始める）</li>
+<li>実際の稼働が上がる（同上・自動的に起こる）</li>
+<li>競合レートの実データを接続する（<code>z_comp</code> が0でなくなる）</li>
+</ul>
+<p><strong>-2.3% を「較正が完了した」と読まないこと。</strong> いま合っているのは
+季節係数・曜日係数とアンカーであって、需要予測ではない。
+上記のいずれかを動かしたら、<code>scripts/validate_real_otb.py</code> で
+測り直すこと。</p>
+<footer>社内資料。競合施設の実名・価格ポジション・収益前提を含みます。
+取り扱いにご注意ください。</footer>
+</main></div></body></html>

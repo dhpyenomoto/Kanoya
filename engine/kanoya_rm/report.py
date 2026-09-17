@@ -119,8 +119,23 @@ def capacity_summary(settings, start: date, days: int, *,
     return "\n".join(lines)
 
 
-def demand_coverage(paces: dict) -> str:
-    """内部需要シグナルが実際に効いている日数.
+def max_active_lead(settings, season: str, limit: int = 121) -> int:
+    """そのシーズンで内部需要が有効になる最大リード日数（無ければ -1）."""
+    from . import pace as pace_mod          # 遅延importで循環を避ける
+    rooms = int(settings.property["property"]["rooms"])
+    occupancy = pace_mod.expected_final_occupancy(settings, season)
+    threshold = pace_mod._demand_config(settings)["min_expected"]
+    probe = date(2027, 3, 15)               # 進捗率はシーズンに依存しない
+    best = -1
+    for lead in range(limit):
+        ratio = pace_mod.expected_ratio(settings, probe, lead)
+        if rooms * occupancy * ratio >= threshold:
+            best = lead
+    return best
+
+
+def demand_coverage(settings, paces: dict) -> str:
+    """内部需要シグナルが効いている日数と、**効かない理由**.
 
     min_expected_rooms は期待室数が1室に届かないリード帯を「無効化」する。
     無効化された日は z_demand = 0 となり、価格は競合・イベント・曜日季節
@@ -128,10 +143,13 @@ def demand_coverage(paces: dict) -> str:
     寄与が0円と表示されるだけで、「進捗が想定どおりだった」のか
     「そもそも見ていない」のかが区別できない。
 
-    2026-09 に最終稼働の見込みを経営目標から実測へ下げた結果、期待室数が
-    2.7分の1になり、有効帯がリード0〜9日から0〜2日へ縮んだ。
-    90日先まで出すと、ほとんどの日で内部需要を見ていないことになる。
-    その事実を毎回の出力に出す。
+    日数だけを出すと今度は故障と誤解される。そこで理由まで書く。
+    効かないのは実装の欠陥ではなく、5室 × 稼働28% という規模の帰結である。
+    最終的に見込む予約が1.4室しかない日の「進捗」は統計的に読み取れない。
+
+    稼働が上がれば expected_final_occupancy が上がり、期待室数が増え、
+    有効帯は**自動的に広がる**。閾値を下げて無理に効かせないこと
+    （docs/08 のスイープ結果を参照）。
     """
     if not paces:
         return ""
@@ -139,14 +157,44 @@ def demand_coverage(paces: dict) -> str:
     off = sum(1 for p in paces.values() if p.below_min_expected)
     if not off:
         return ""
+    from . import pace as pace_mod          # 遅延importで循環を避ける
     active = sorted(d for d, p in paces.items() if not p.below_min_expected)
     where = (f"{active[0]} 〜 {active[-1]}" if active else "なし")
-    return (
+    rooms = int(settings.property["property"]["rooms"])
+    threshold = pace_mod._demand_config(settings)["min_expected"]
+
+    seasons: dict[str, int] = {}
+    for day in paces:
+        season, _label = settings.season_of(day)
+        seasons[season] = seasons.get(season, 0) + 1
+    lines = [
         f"内部需要の有効日数    : {total - off} / {total} 日"
-        f"（{off}日は期待室数が min_expected_rooms 未満のため不使用）\n"
+        f"（{off}日は期待室数が min_expected_rooms={threshold:g}室 未満のため不使用）",
         f"　　　　　　　　　　    有効なのは {where}。"
-        f"それ以外の日は競合・イベント・曜日季節だけで価格を決めている"
-    )
+        f"それ以外の日は競合・イベント・曜日季節だけで価格を決めている",
+        "　　　　　　　　　　    ── 効かない理由（故障ではありません） ──",
+    ]
+    for season, days in sorted(seasons.items(), key=lambda kv: -kv[1]):
+        occupancy = pace_mod.expected_final_occupancy(settings, season)
+        best = max_active_lead(settings, season)
+        band = f"リード0〜{best}日" if best >= 0 else "なし"
+        lines.append(
+            f"　　　　　　　　　　    {season:<9}最終稼働の見込み {occupancy:.2f}"
+            f" × {rooms}室 = 最終期待 {occupancy * rooms:.2f}室"
+            f" → {threshold:g}室に届くのは {band}（対象{days}日）")
+    lines.append(
+        "　　　　　　　　　　    最終的に見込む予約が数室しかない日の『進捗』は、"
+        "実OTBが整数しか取れないため読み取れません。")
+    lines.append(
+        "　　　　　　　　　　    **稼働が上がれば有効帯は自動的に広がります。** "
+        "実績から expected_final_occupancy を再算出すると、")
+    lines.append(
+        "　　　　　　　　　　    期待室数が増えて閾値に届くリードが伸びます"
+        "（実測カーブでは稼働40%で0〜5日、60%で0〜10日、80%で0〜15日）。")
+    lines.append(
+        "　　　　　　　　　　    閾値を下げて無理に効かせないこと。"
+        "docs/08 のスイープ結果を参照。")
+    return "\n".join(lines)
 
 
 def summary(recs: dict[date, Recommendation]) -> str:
