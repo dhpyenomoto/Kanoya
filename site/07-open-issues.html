@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>7. 未解決の不整合 — 奈良春日 鹿のや レベニューマネジメント基盤</title>
+<style>
+:root{--ground:#F5F6F2;--surface:#FFFFFF;--alt:#EDEFE9;--ink:#1A211C;--ink2:#414B44;
+ --muted:#6B746D;--line:#D8DCD3;--accent:#14584A;--accent-soft:#E2EBE6;--warn:#B8452B}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;--ink2:#C0C7BF;
+ --muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}}
+:root[data-theme="dark"]{--ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;
+ --ink2:#C0C7BF;--muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-size:16px;line-height:1.85;
+ font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif}
+.wrap{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto;gap:34px;
+ padding:0 22px 80px}
+nav{position:sticky;top:0;flex:0 0 232px;padding:30px 0;max-height:100vh;overflow:auto}
+nav .brand{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-size:17px;font-weight:600;line-height:1.5;margin-bottom:18px;display:block;
+ color:var(--ink);text-decoration:none}
+nav a.item{display:block;padding:7px 11px;border-radius:3px;color:var(--ink2);
+ text-decoration:none;font-size:13.5px;border-left:2px solid transparent}
+nav a.item:hover{background:var(--alt);color:var(--ink)}
+nav a.item.on{background:var(--accent-soft);color:var(--accent);font-weight:700;
+ border-left-color:var(--accent)}
+main{flex:1;min-width:0;padding:30px 0}
+h1,h2,h3,h4{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-weight:600;line-height:1.45;text-wrap:balance}
+h1{font-size:29px;margin:0 0 22px;padding-bottom:14px;border-bottom:2px solid var(--accent)}
+h2{font-size:22px;margin:44px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:15px;margin:22px 0 8px}
+p,li{max-width:74ch}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+code{background:var(--alt);padding:2px 5px;border-radius:3px;font-size:.88em;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--alt);border:1px solid var(--line);padding:15px 17px;overflow-x:auto;
+ border-radius:3px;line-height:1.7}
+pre code{background:none;padding:0;font-size:12.5px}
+blockquote{margin:18px 0;padding:14px 18px;background:var(--accent-soft);
+ border-left:3px solid var(--accent);color:var(--ink2)}
+blockquote p{margin:6px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--alt);font-size:12px;letter-spacing:.06em;color:var(--ink2);
+ font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+ font-size:13px;color:var(--muted)}
+@media (max-width:860px){.wrap{flex-direction:column;gap:0}
+ nav{position:static;flex:none;width:100%;max-height:none;
+  border-bottom:1px solid var(--line);padding-bottom:14px}
+ nav .items{display:flex;flex-wrap:wrap;gap:4px}
+ nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
+</style></head>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="06-survey-server.html">6. 調査サーバー構築</a><a class="item on" href="07-open-issues.html">7. 未解決の不整合</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>実データで見つかった未解決の不整合</h1>
+<p>2026年2〜9月の実績（営業168日・実売237室夜）をエンジンに突き合わせた際に
+見つかった不整合のうち、<strong>サンプルが小さいため今回は修正しないもの</strong>を記録する。</p>
+<p>修正しない理由は共通している。5室規模では1室夜で稼働率が4ポイント動き、
+月あたり数十室夜しか出ない。数十件の偏りを「構造」と読んで係数を動かすと、
+翌年の実績で逆向きに動かし直すことになる。<strong>1年分の実績が貯まってから
+再評価する。</strong></p>
+<p>再現手順:</p>
+<pre><code class="language-bash">cd engine
+python3 scripts/validate_real_otb.py \
+    --otb ../../kanoya-data/otb.csv \
+    --reservations ../../kanoya-data/reservations.csv
+</code></pre>
+<p>数値はすべて「部屋代（1室2名1泊・税サ込）」基準。食事は差し引いてある。
+営業日の判定は <code>calendar.json</code> の <code>closed_days</code>（例外営業8日を含む）に従う。</p>
+<hr />
+<h2>不整合1：季節係数と実勢が逆転している</h2>
+<p><code>property.json</code> の <code>season_factor</code> は PEAK 1.38 &gt; HIGH 1.18 だが、実勢の
+室夜単価は逆になっている。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>シーズン</th>
+<th>実勢の室夜単価（中央値）</th>
+<th>室夜</th>
+<th>season_factor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PEAK</td>
+<td><strong>47,001円</strong></td>
+<td>53</td>
+<td>1.38</td>
+</tr>
+<tr>
+<td>HIGH</td>
+<td><strong>51,685円</strong></td>
+<td>32</td>
+<td>1.18</td>
+</tr>
+<tr>
+<td>SHOULDER</td>
+<td>41,800円</td>
+<td>83</td>
+<td>1.00</td>
+</tr>
+<tr>
+<td>LOW</td>
+<td>36,145円</td>
+<td>62</td>
+<td>0.86</td>
+</tr>
+<tr>
+<td>DEEP_LOW</td>
+<td>18,000円</td>
+<td>1</td>
+<td>0.76</td>
+</tr>
+</tbody>
+</table></div>
+<p>PEAK のほうが HIGH より安く売れている。係数どおりなら PEAK は HIGH の
+1.17倍で売れているはずで、実勢はその逆である。</p>
+<h3>満室日に値下げしている形跡がある</h3>
+<p>実売5室（満室）の日を並べると、繁忙日ほど高いという関係になっていない。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>宿泊日</th>
+<th>曜日</th>
+<th>シーズン</th>
+<th>平均室夜単価</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-03-28</td>
+<td>SAT</td>
+<td>PEAK</td>
+<td><strong>37,995円</strong></td>
+</tr>
+<tr>
+<td>2026-03-29</td>
+<td>SUN</td>
+<td>PEAK</td>
+<td>36,319円</td>
+</tr>
+<tr>
+<td>2026-05-03</td>
+<td>SUN</td>
+<td>PEAK</td>
+<td>51,281円</td>
+</tr>
+<tr>
+<td>2026-05-04</td>
+<td>MON</td>
+<td>PEAK</td>
+<td>62,759円</td>
+</tr>
+<tr>
+<td>2026-08-10</td>
+<td>MON</td>
+<td>HIGH</td>
+<td>63,643円</td>
+</tr>
+<tr>
+<td>2026-08-13</td>
+<td>THU</td>
+<td>HIGH</td>
+<td>70,460円</td>
+</tr>
+<tr>
+<td>2026-08-22</td>
+<td>SAT</td>
+<td>LOW</td>
+<td>34,921円</td>
+</tr>
+</tbody>
+</table></div>
+<p>PEAK の土曜に満室を作りながら 37,995円で売っている。同じ PEAK でも
+GW（5/3・5/4）は5万〜6万円台であり、シーズン区分の中でばらつきが大きい。
+<strong>繁忙日に埋めるため値下げしていた可能性がある。</strong></p>
+<h3>修正しない理由</h3>
+<ul>
+<li>HIGH は32室夜しかない。8月の数日の偏りで中央値が動く</li>
+<li>春（3月下旬の桜）と夏（お盆）を同じ PEAK に入れている区分自体が
+  正しいかどうか、この母数では判定できない</li>
+<li>提示価格の記録が無いため、「安く売った」のか「安くしか売れなかった」のかを
+  区別できない（提示価格の日次記録＝P17 が先に要る）</li>
+</ul>
+<h3>見直すときの手順</h3>
+<ol>
+<li>提示価格の日次記録を貯める（P17）</li>
+<li>1年分の実績でシーズン区分そのものを引き直す</li>
+<li>そのうえで season_factor を再算出する</li>
+</ol>
+<p>係数だけを先に触らないこと。区分が間違っているなら、係数を直しても
+別の日にずれが移るだけになる。</p>
+<hr />
+<h2>不整合2：2食付きの部屋代が素泊まりより安い</h2>
+<p>食事の売価を差し引いた部屋代を商品形態ごとに見ると、2食付きが最も安い。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>商品形態</th>
+<th>部屋代（中央値）</th>
+<th>室夜</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>素泊まり</td>
+<td>43,326円</td>
+<td>126</td>
+</tr>
+<tr>
+<td>朝食のみ</td>
+<td>47,001円</td>
+<td>73</td>
+</tr>
+<tr>
+<td>夕食のみ</td>
+<td>43,219円</td>
+<td>4</td>
+</tr>
+<tr>
+<td><strong>2食付き</strong></td>
+<td><strong>35,773円</strong></td>
+<td>28</td>
+</tr>
+</tbody>
+</table></div>
+<p>同じ部屋を同じ日に売っているのだから、部屋代は形態によらず同じはずである。
+実勢では2食付きが素泊まりより 17% 安い。</p>
+<p>考えられる説明は2つある。</p>
+<ol>
+<li><strong>パッケージで部屋を実質値引きしている。</strong> 2食付きプランの総額を
+   抑えるために、部屋代側を削っている</li>
+<li><strong>食事単価での分解が実態と合っていない。</strong> 実測の夕食16,500円・
+   朝食5,500円（税込・1名）は明細の平均であり、プランによっては
+   これと違う配分で計上されている</li>
+</ol>
+<p>どちらであっても、エンジンの前提（部屋代は形態によらず同一、食事は固定加算）
+とは食い違う。</p>
+<h3>影響</h3>
+<p>いまのエンジンは部屋代を1つ出し、4形態の販売価格を「部屋代＋食事加算」で
+導く。実勢がこのとおりでないなら、2食付きの推奨価格は実勢より高く出る。</p>
+<p>ただし2食付きは実売の12%（28/237室夜）であり、主力ではない。
+主力の素泊まり（53%）と朝食のみ（31%）については、部屋代の差は
+43,326円 vs 47,001円 と 8% に収まっており、前提は概ね成り立っている。</p>
+<h3>修正しない理由</h3>
+<ul>
+<li>28室夜しかない。プラン設計を変えるには母数が足りない</li>
+<li>明細の内訳がどう作られているか（値引きをどの科目に寄せているか）が
+  社内の運用に依存しており、データだけでは判別できない</li>
+</ul>
+<h3>見直すときの手順</h3>
+<ol>
+<li>2食付きプランの値引きを、部屋代と食事のどちらに寄せているかを確認する</li>
+<li>寄せ方が決まっているなら、形態ごとの部屋代係数として明示する</li>
+<li>決まっていないなら、まず計上ルールを決める（データの問題であって、
+   価格モデルの問題ではない）</li>
+</ol>
+<hr />
+<h2>あわせて記録：内部需要シグナルの有効帯が狭い</h2>
+<p>不整合ではないが、実データで判明した設計上の制約として記録する。</p>
+<p>最終稼働の見込みを実測へ下げた結果（<code>expected_final_occupancy</code>）、
+期待室数が <code>min_expected_rooms</code>（1.0室）に届くリード帯が
+<strong>リード0〜2日まで縮んだ</strong>。実データ・リード7日時点では
+内部需要が有効なのは 19 / 160 日である。</p>
+<p>つまり遠い日付については、自社の売れ行きを価格に反映していない。
+価格は競合・イベント・曜日季節だけで決まっている。推奨出力に
+「内部需要の有効日数」を毎回表示しているのはこのためで、
+寄与0円が「想定どおりだった」のか「そもそも見ていない」のかを
+区別できるようにしている。</p>
+<p><code>min_expected_rooms</code> を下げれば有効帯は広がるが、価格が動く変更になる。
+5室規模で期待0.5室に対して実測が0室か1室しか取れない、という離散化の
+問題は残るため、閾値を下げる前に「予約1件でどれだけ価格が跳ねるか」を
+測ること。</p>
+<footer>社内資料。競合施設の実名・価格ポジション・収益前提を含みます。
+取り扱いにご注意ください。</footer>
+</main></div></body></html>
