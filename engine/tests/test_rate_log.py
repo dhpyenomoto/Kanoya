@@ -26,7 +26,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from kanoya_rm import rate_log  # noqa: E402
+from kanoya_rm import rate_log, report  # noqa: E402
 from kanoya_rm.cli import build_context  # noqa: E402
 from kanoya_rm.config import Settings  # noqa: E402
 from kanoya_rm.products import load as load_products  # noqa: E402
@@ -94,23 +94,30 @@ class ChangeLogTest(unittest.TestCase):
 
 
 class RoomRateConversionTest(unittest.TestCase):
-    """エンジンが比べるのは部屋代。食事付きの記録は食事加算を引いて戻す."""
+    """エンジンが比べるのは部屋代。食事付きの記録は食事加算を引いて戻す.
+
+    ここで見たいのは換算だけなので、実行記録の裏付け（max_unconfirmed_days）は
+    外して呼ぶ。裏付けの側は ConfirmationTest で見る。
+    """
 
     def setUp(self) -> None:
         self.settings = Settings.load(ROOT / "config")
         self.products = load_products(self.settings)
 
+    def _room_rate(self, entries, stay, as_of, **kwargs) -> float:
+        return rate_log.room_rate_as_of(entries, stay, as_of, self.products,
+                                        max_unconfirmed_days=-1, **kwargs)
+
     def test_room_only_is_used_as_is(self) -> None:
-        got = rate_log.room_rate_as_of(
-            [entry("2026-11-21", "2026-11-01", 60000)],
-            date(2026, 11, 21), date(2026, 11, 10), self.products)
+        got = self._room_rate([entry("2026-11-21", "2026-11-01", 60000)],
+                              date(2026, 11, 21), date(2026, 11, 10))
         self.assertEqual(got, 60000)
 
     def test_a_two_meal_record_is_converted_back(self) -> None:
         total = 60000 + self.products.meal_add("two_meals")
-        got = rate_log.room_rate_as_of(
+        got = self._room_rate(
             [entry("2026-11-21", "2026-11-01", total, form="two_meals")],
-            date(2026, 11, 21), date(2026, 11, 10), self.products)
+            date(2026, 11, 21), date(2026, 11, 10))
         self.assertAlmostEqual(got, 60000)
 
     def test_room_only_wins_when_both_are_recorded(self) -> None:
@@ -121,23 +128,22 @@ class RoomRateConversionTest(unittest.TestCase):
                   60000 + self.products.meal_add("two_meals"), form="two_meals"),
         ]
         self.assertEqual(
-            rate_log.room_rate_as_of(entries, date(2026, 11, 21),
-                                     date(2026, 11, 10), self.products), 61000)
+            self._room_rate(entries, date(2026, 11, 21), date(2026, 11, 10)),
+            61000)
 
     def test_an_unknown_form_is_not_guessed_at(self) -> None:
         """勝手に食事分を引くと部屋代が安く見え、値下げ方向へ働く."""
-        got = rate_log.room_rate_as_of(
+        got = self._room_rate(
             [entry("2026-11-21", "2026-11-01", 55000, form="謎のプラン")],
-            date(2026, 11, 21), date(2026, 11, 10), self.products)
+            date(2026, 11, 21), date(2026, 11, 10))
         self.assertEqual(got, 55000)
 
     def test_a_channel_filter_selects_one_source(self) -> None:
         entries = [entry("2026-11-21", "2026-11-01", 60000, channel="direct"),
                    entry("2026-11-21", "2026-11-02", 70000, channel="ota")]
         self.assertEqual(
-            rate_log.room_rate_as_of(entries, date(2026, 11, 21),
-                                     date(2026, 11, 10), self.products,
-                                     channel="direct"), 60000)
+            self._room_rate(entries, date(2026, 11, 21), date(2026, 11, 10),
+                            channel="direct"), 60000)
 
 
 class EngineIntegrationTest(unittest.TestCase):
@@ -148,7 +154,8 @@ class EngineIntegrationTest(unittest.TestCase):
         if not (ROOT / "data" / "otb.csv").exists():
             raise unittest.SkipTest("収集済みデータ未生成（scripts/run_pipeline.sh）")
 
-    def _context_with(self, entries: list[rate_log.Entry]):
+    def _context_with(self, entries: list[rate_log.Entry],
+                      runs: list[rate_log.Run] | None = None):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         root = Path(tmp.name) / "engine"
@@ -160,6 +167,7 @@ class EngineIntegrationTest(unittest.TestCase):
                 shutil.copy(source, root / "data" / name)
         log = root / "rate_log.csv"
         rate_log.write(log, entries)
+        rate_log.write_runs(rate_log.runs_path_for(log), runs or [])
         sources = json.loads(
             (root / "config" / "sources.json").read_text(encoding="utf-8"))
         sources["rate_log"]["path"] = str(log)
@@ -177,18 +185,22 @@ class EngineIntegrationTest(unittest.TestCase):
         marker = 47_000.0
         self.assertNotEqual(baseline.recommendations[day].current_rate, marker)
 
-        ctx, _err = self._context_with([
-            rate_log.Entry(stay_date=day, snapshot_date=baseline.snapshot,
-                           product_type="room_only", posted_rate=marker)])
+        ctx, _err = self._context_with(
+            [rate_log.Entry(stay_date=day, snapshot_date=baseline.snapshot,
+                            product_type="room_only", posted_rate=marker)],
+            [rate_log.Run(run_date=baseline.snapshot, stay_from=day,
+                          stay_to=day, product_type="room_only")])
         self.assertEqual(ctx.recommendations[day].current_rate, marker)
         self.assertEqual(ctx.posted[day], marker)
 
     def test_days_without_a_record_fall_back_to_the_otb_column(self) -> None:
         baseline, _err = self._context_with([])
         days = sorted(baseline.recommendations)
-        ctx, _err = self._context_with([
-            rate_log.Entry(stay_date=days[0], snapshot_date=baseline.snapshot,
-                           product_type="room_only", posted_rate=47_000.0)])
+        ctx, _err = self._context_with(
+            [rate_log.Entry(stay_date=days[0], snapshot_date=baseline.snapshot,
+                            product_type="room_only", posted_rate=47_000.0)],
+            [rate_log.Run(run_date=baseline.snapshot, stay_from=days[0],
+                          stay_to=days[0], product_type="room_only")])
         self.assertEqual(ctx.recommendations[days[1]].current_rate,
                          baseline.recommendations[days[1]].current_rate)
 
@@ -203,7 +215,7 @@ class EngineIntegrationTest(unittest.TestCase):
     def test_a_missing_period_warns_without_stopping(self) -> None:
         ctx, err = self._context_with([])
         self.assertTrue(ctx.recommendations, "警告を出すために処理を止めている")
-        self.assertIn("提示価格の記録", err)
+        self.assertIn("提示価格", err)
         self.assertGreater(ctx.rate_log_coverage.missing, 0)
 
     def test_the_warning_explains_what_cannot_be_judged(self) -> None:
@@ -212,15 +224,263 @@ class EngineIntegrationTest(unittest.TestCase):
         self.assertIn("承認区分", err)
         self.assertIn("日次変動幅", err)
 
-    def test_a_stale_log_is_flagged(self) -> None:
-        """変更履歴なので、止まっているのか変わっていないのかは日付でしか分からない."""
+    def test_a_long_gap_since_the_last_run_is_flagged(self) -> None:
+        """『変わっていない』のか『誰も見ていない』のかは実行記録でしか分からない."""
         baseline, _err = self._context_with([])
         old = baseline.snapshot - timedelta(days=30)
-        _ctx, err = self._context_with([
-            rate_log.Entry(stay_date=day, snapshot_date=old,
+        days = sorted(baseline.recommendations)
+        _ctx, err = self._context_with(
+            [rate_log.Entry(stay_date=day, snapshot_date=old,
+                            product_type="room_only", posted_rate=47_000.0)
+             for day in days],
+            [rate_log.Run(run_date=old, stay_from=days[0], stay_to=days[-1],
+                          product_type="room_only")])
+        self.assertIn("未実行です", err)
+
+
+class ConfirmationTest(unittest.TestCase):
+    """「確認して変わっていない」と「誰も見ていない」を区別する.
+
+    変更履歴だけを持つと、行が無い日が両方を意味してしまう。後者を前者と
+    読むと、**確認していない日に「価格を据え置いた」という事実でない記録**が
+    残る。しかもその誤りは、あとから区別する手がかりが無い。
+
+    そこで実行そのものを別ファイルに残し、裏付けのある値だけを使う。
+    """
+
+    def setUp(self) -> None:
+        self.settings = Settings.load(ROOT / "config")
+        self.products = load_products(self.settings)
+        self.stay = date(2026, 11, 21)
+        self.entries = [entry("2026-11-21", "2026-11-01", 60000)]
+
+    def _rate(self, runs, as_of, limit=3) -> float:
+        return rate_log.room_rate_as_of(self.entries, self.stay, as_of,
+                                        self.products, runs=runs,
+                                        max_unconfirmed_days=limit)
+
+    def _run(self, on: str) -> rate_log.Run:
+        return rate_log.Run(run_date=date.fromisoformat(on),
+                            stay_from=date(2026, 11, 1),
+                            stay_to=date(2026, 12, 31))
+
+    # ---- 未実行と変更なしの区別 ------------------------------------
+    def test_a_confirmed_day_resolves(self) -> None:
+        """人が確認していれば、値が変わっていなくても使える."""
+        self.assertEqual(self._rate([self._run("2026-11-10")],
+                                    date(2026, 11, 10)), 60000)
+
+    def test_confirmation_carries_for_a_few_days(self) -> None:
+        """毎日実行できないことはある。数日は裏付けとして認める（設定値）."""
+        self.assertEqual(self._rate([self._run("2026-11-10")],
+                                    date(2026, 11, 13)), 60000)
+
+    def test_an_unrun_period_does_not_resolve(self) -> None:
+        """据え置きを仮定しない。ここが仮定に変わると、事実でない記録が残る."""
+        self.assertEqual(self._rate([self._run("2026-11-10")],
+                                    date(2026, 11, 20)), 0.0)
+
+    def test_never_run_does_not_resolve(self) -> None:
+        self.assertEqual(self._rate([], date(2026, 11, 20)), 0.0)
+
+    def test_a_run_outside_the_stay_range_does_not_confirm_it(self) -> None:
+        """別の期間を見ただけでは、この宿泊日を確認したことにならない."""
+        elsewhere = rate_log.Run(run_date=date(2026, 11, 20),
+                                 stay_from=date(2027, 1, 1),
+                                 stay_to=date(2027, 1, 31))
+        self.assertEqual(self._rate([elsewhere], date(2026, 11, 20)), 0.0)
+
+    def test_a_later_run_revives_an_old_entry(self) -> None:
+        """値は変わっていないが、確認し直したので使える."""
+        runs = [self._run("2026-11-10"), self._run("2026-11-20")]
+        self.assertEqual(self._rate(runs, date(2026, 11, 20)), 60000)
+
+    def test_a_run_does_not_confirm_a_future_price_change(self) -> None:
+        """実行日より後の変更を、その実行が裏付けたことにはできない."""
+        entries = self.entries + [entry("2026-11-21", "2026-11-15", 70000)]
+        got = rate_log.room_rate_as_of(entries, self.stay, date(2026, 11, 16),
+                                       self.products,
+                                       runs=[self._run("2026-11-14")],
+                                       max_unconfirmed_days=3)
+        self.assertEqual(got, 60000, "実行日より後の記録を裏付け済みにしている")
+
+    def test_the_migration_escape_hatch_still_works(self) -> None:
+        """-1 は裏付けを問わない（導入前データ用・常用しない）."""
+        self.assertEqual(self._rate([], date(2026, 11, 20), limit=-1), 60000)
+
+    # ---- 集計 ------------------------------------------------------
+    def test_coverage_separates_unconfirmed_from_never_recorded(self) -> None:
+        days = [date(2026, 11, 21), date(2026, 11, 22)]
+        got = rate_log.coverage(self.entries, days, date(2026, 11, 20),
+                                self.products, runs=[self._run("2026-11-10")],
+                                max_unconfirmed_days=3)
+        self.assertEqual(got.covered, 0)
+        self.assertEqual(got.unconfirmed, 1, "記録はあるが未確認の日")
+        self.assertEqual(got.never_recorded, 1, "一度も記録の無い日")
+        self.assertEqual(got.missing, got.unconfirmed + got.never_recorded)
+
+    def test_coverage_reports_the_gap_since_the_last_run(self) -> None:
+        got = rate_log.coverage(self.entries, [self.stay], date(2026, 11, 20),
+                                self.products, runs=[self._run("2026-11-10")])
+        self.assertEqual(got.last_run, date(2026, 11, 10))
+        self.assertEqual(got.days_since_run, 10)
+
+    def test_unconfirmed_days_is_none_when_never_run(self) -> None:
+        self.assertIsNone(rate_log.unconfirmed_days([], date(2026, 11, 20)))
+
+    # ---- 保存形式 --------------------------------------------------
+    def test_runs_round_trip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "rate_log_runs.csv"
+            rate_log.write_runs(path, [self._run("2026-11-10")])
+            self.assertEqual(rate_log.read_runs(path),
+                             [self._run("2026-11-10")])
+
+    def test_the_runs_file_sits_next_to_the_price_log(self) -> None:
+        self.assertEqual(
+            rate_log.runs_path_for(Path("/x/rate_log.csv")).name,
+            "rate_log_runs.csv")
+
+    def test_a_missing_runs_file_reads_as_empty(self) -> None:
+        self.assertEqual(rate_log.read_runs(Path("/nonexistent/r.csv")), [])
+
+
+class EngineConfirmationTest(unittest.TestCase):
+    """未実行期間の current_public_rate が解決されないこと（エンジン側）."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        if not (ROOT / "data" / "otb.csv").exists():
+            raise unittest.SkipTest("収集済みデータ未生成（scripts/run_pipeline.sh）")
+
+    def _context(self, runs):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name) / "engine"
+        (root / "data").mkdir(parents=True)
+        shutil.copytree(ROOT / "config", root / "config")
+        for name in ("otb.csv", "comp_rates_collected.csv"):
+            source = ROOT / "data" / name
+            if source.exists():
+                shutil.copy(source, root / "data" / name)
+        probe = build_context(ROOT, None, 30)
+        snapshot = probe.snapshot
+        days = sorted(probe.recommendations)
+        log = root / "rate_log.csv"
+        rate_log.write(log, [
+            rate_log.Entry(stay_date=day, snapshot_date=snapshot - timedelta(days=20),
                            product_type="room_only", posted_rate=47_000.0)
-            for day in sorted(baseline.recommendations)])
-        self.assertIn("止まっています", err)
+            for day in days])
+        rate_log.write_runs(rate_log.runs_path_for(log),
+                            [r(snapshot, days) for r in runs])
+        sources = json.loads(
+            (root / "config" / "sources.json").read_text(encoding="utf-8"))
+        sources["rate_log"]["path"] = str(log)
+        sources["rate_log"]["fallback_paths"] = []
+        (root / "config" / "sources.json").write_text(
+            json.dumps(sources, ensure_ascii=False), encoding="utf-8")
+        err = io.StringIO()
+        with redirect_stderr(err):
+            ctx = build_context(root, None, 30)
+        return ctx, err.getvalue(), days
+
+    @staticmethod
+    def _recent(snapshot, days):
+        return rate_log.Run(run_date=snapshot, stay_from=days[0],
+                            stay_to=days[-1], product_type="room_only")
+
+    @staticmethod
+    def _old(snapshot, days):
+        return rate_log.Run(run_date=snapshot - timedelta(days=20),
+                            stay_from=days[0], stay_to=days[-1],
+                            product_type="room_only")
+
+    def test_a_recent_run_resolves_the_posted_rate(self) -> None:
+        ctx, _err, days = self._context([self._recent])
+        self.assertEqual(ctx.recommendations[days[0]].current_rate, 47_000.0)
+
+    def test_an_unrun_period_leaves_it_unresolved(self) -> None:
+        """据え置きを仮定しない。otb.csv 側の値へ落ちる."""
+        ctx, err, days = self._context([self._old])
+        self.assertNotEqual(ctx.recommendations[days[0]].current_rate, 47_000.0)
+        self.assertEqual(ctx.posted, {})
+        self.assertIn("未実行です", err)
+
+    def test_the_unresolved_days_are_counted_as_unconfirmed(self) -> None:
+        ctx, _err, _days = self._context([self._old])
+        coverage = ctx.rate_log_coverage
+        self.assertEqual(coverage.covered, 0)
+        self.assertEqual(coverage.never_recorded, 0,
+                         "記録はあるのに『一度も記録なし』に数えている")
+        self.assertEqual(coverage.unconfirmed, coverage.total)
+
+    def test_the_summary_line_separates_the_two_states(self) -> None:
+        ctx, _err, _days = self._context([self._old])
+        line = report.rate_log_line(ctx.rate_log_coverage)
+        self.assertIn("記録はあるが未確認", line)
+        self.assertNotIn("一度も記録なし", line)
+
+
+class ConfirmedRangeTest(unittest.TestCase):
+    """「どこを確認したか」を、入力の仕方より広く言い切らないこと.
+
+    広く言い切ると、見ていない宿泊日まで「確認済み」になり、まさに
+    避けたかった『事実でない記録』が実行記録の側にできあがる。
+    """
+
+    SCRIPT = ROOT / "scripts" / "log_rates.py"
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.dir = Path(tmp.name)
+        self.log = self.dir / "rate_log.csv"
+
+    def _run(self, *args, stdin: str = "") -> subprocess.CompletedProcess:
+        return subprocess.run([sys.executable, str(self.SCRIPT),
+                               "--log", str(self.log), *args],
+                              cwd=str(ROOT), input=stdin,
+                              capture_output=True, text=True)
+
+    def _runs(self) -> list[rate_log.Run]:
+        return rate_log.read_runs(rate_log.runs_path_for(self.log))
+
+    def test_set_confirms_only_the_named_spans(self) -> None:
+        self._run("--as-of", "2026-08-15", "--from", "2026-08-15",
+                  "--days", "120", "--set", "9/1-9/10=59000")
+        run = self._runs()[-1]
+        self.assertEqual(run.stay_from, date(2026, 9, 3))   # 9/1,9/2 は閉館日
+        self.assertEqual(run.stay_to, date(2026, 9, 10))
+
+    def test_import_confirms_only_the_dates_in_the_file(self) -> None:
+        source = self.dir / "export.csv"
+        source.write_text("stay_date,posted_rate\n2026-08-20,71000\n",
+                          encoding="utf-8")
+        self._run("--as-of", "2026-08-15", "--from", "2026-08-15",
+                  "--days", "120", "--import", str(source))
+        run = self._runs()[-1]
+        self.assertEqual((run.stay_from, run.stay_to),
+                         (date(2026, 8, 20), date(2026, 8, 20)))
+
+    def test_an_interactive_session_confirms_the_whole_window(self) -> None:
+        """画面に出した期間は人が見ている。そこは確認済みでよい."""
+        self._run("--as-of", "2026-08-15", "--from", "2026-08-15",
+                  "--days", "30", stdin="\n")
+        run = self._runs()[-1]
+        self.assertEqual(run.stay_from, date(2026, 8, 15))
+        self.assertGreater(run.stay_to, date(2026, 9, 1))
+
+    def test_show_confirms_nothing(self) -> None:
+        """読むだけの画面で確認済みにしない."""
+        self._run("--as-of", "2026-08-15", "--from", "2026-08-15",
+                  "--days", "30", "--show")
+        self.assertEqual(self._runs(), [])
+
+    def test_dry_run_confirms_nothing(self) -> None:
+        self._run("--as-of", "2026-08-15", "--from", "2026-08-15",
+                  "--days", "30", "--set", "8/15-8/31=64000", "--dry-run")
+        self.assertEqual(self._runs(), [])
+        self.assertFalse(self.log.exists())
 
 
 class NoNetworkTest(unittest.TestCase):
@@ -304,13 +564,23 @@ class InputHelperTest(unittest.TestCase):
             day = date.fromisoformat(row["stay_date"])
             self.assertTrue(settings.is_open(day), f"{day} は閉館日")
 
-    def test_an_unchanged_day_writes_nothing(self) -> None:
+    def test_an_unchanged_day_writes_no_price_row(self) -> None:
         self._run(*self.base, "--set", "8/15-8/31=64000")
         before = self.log.read_text(encoding="utf-8")
         result = self._run("--log", str(self.log), "--as-of", "2026-08-16",
                            "--from", "2026-08-16", "--days", "60", stdin="\n")
-        self.assertIn("変更なし", result.stdout)
+        self.assertIn("価格の変更はありません", result.stdout)
         self.assertEqual(self.log.read_text(encoding="utf-8"), before)
+
+    def test_an_unchanged_day_still_records_the_run(self) -> None:
+        """『確認して変わっていない』を残さないと、未実行と区別できない."""
+        self._run(*self.base, "--set", "8/15-8/31=64000")
+        self._run("--log", str(self.log), "--as-of", "2026-08-16",
+                  "--from", "2026-08-16", "--days", "60", stdin="\n")
+        runs = rate_log.read_runs(rate_log.runs_path_for(self.log))
+        self.assertEqual([r.run_date for r in runs],
+                         [date(2026, 8, 15), date(2026, 8, 16)])
+        self.assertIn("変更なしを確認", runs[-1].note)
 
     def test_the_display_collapses_into_spans(self) -> None:
         """120日を120行出したら読まれない。区間にまとめる."""

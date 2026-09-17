@@ -127,19 +127,75 @@ python3 scripts/log_rates.py --import export.csv   # サイトコントローラ
 </code></pre>
 <p>実体は <code>Kanoya-data/rate_log.csv</code>（顧客の予約に紐づく情報のため Private 側）。
 場所は <code>engine/config/sources.json</code> の <code>rate_log</code> で設定します。</p>
-<h3>記録は「変更履歴」です</h3>
+<h3>記録は「変更履歴」＋「実行記録」です</h3>
 <p>5室 × 4形態 × 120日を毎日書き写す運用は続きません。続かない記録は無いのと
 同じです。そこで<strong>値が変わった日だけ行を足す</strong>形にしてあります。ある行は、
 より新しい行に上書きされるまで有効であり続けます。</p>
 <ul>
-<li>変更が無い日は <strong>Enter だけ</strong>で終わります（1行も書き込みません）</li>
+<li>変更が無い日は <strong>Enter だけ</strong>で終わります（価格の行は1行も増えません）</li>
 <li>表示は同じ値が続く区間にまとめます（42日分が5行になります）</li>
 <li>入力は区間指定（<code>11/14-11/30=62000</code>）。変えたところだけ書きます</li>
 <li>閉館日は自動で飛ばします</li>
 <li><strong>ネットワークへは一切アクセスしません</strong></li>
 </ul>
-<p>代償として「記録していない」と「変わっていない」が区別できません。これは
-最終記録日で見ます。3日以上空くと警告が出ます（<code>stale_warning_days</code>）。</p>
+<h3>なぜ「実行記録」が別に要るのか</h3>
+<p>変更履歴だけだと、<strong>行が無い日が2つのことを同時に意味します</strong>。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(a)</td>
+<td>人が確認したうえで「変わっていない」</td>
+</tr>
+<tr>
+<td>(b)</td>
+<td>誰も見ていない（実行していない）</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>(b) を (a) と読むと、確認していない日に「価格を据え置いた」という事実でない
+記録が残ります。</strong> しかもその誤りは、あとから区別する手がかりがありません。</p>
+<p>そこで実行そのものを <code>rate_log_runs.csv</code> に残します。1行は「この日に、この
+宿泊日範囲を確認した」という意味で、<strong>価格が変わらなくても1行増えます</strong>。</p>
+<pre><code class="language-csv">run_date,stay_from,stay_to,product_type,channel,note
+2026-09-18,2026-09-18,2027-01-15,room_only,,変更なしを確認
+</code></pre>
+<p><code>current_public_rate</code> を解決するときは、<strong>実行記録に裏付けられた値だけ</strong>を
+使います。最後の確認から <code>max_unconfirmed_days</code>（既定3日）を超えた宿泊日は、
+記録があっても使いません（<strong>据え置きを仮定しません</strong>）。分からないことを
+分かっているように見せるほうが、値が無いことより危ないためです。</p>
+<p>確認した範囲は、入力の仕方より広く言い切りません。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>入力</th>
+<th>確認済みとして記録する範囲</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>対話（Enter だけを含む）</td>
+<td>画面に出した期間ぜんぶ（人が見ている）</td>
+</tr>
+<tr>
+<td><code>--set</code></td>
+<td>名指しした区間だけ</td>
+</tr>
+<tr>
+<td><code>--import</code></td>
+<td>ファイルに入っていた宿泊日だけ</td>
+</tr>
+<tr>
+<td><code>--show</code> / <code>--dry-run</code></td>
+<td>記録しない</td>
+</tr>
+</tbody>
+</table></div>
 <h3>⚠️ 記録開始前の期間は復元できません</h3>
 <p><strong>2026年2月〜9月の提示価格は失われています。遡って埋めないでください。</strong></p>
 <p>推定値を実測と混ぜると、あとから区別できなくなります。当時の提示価格は

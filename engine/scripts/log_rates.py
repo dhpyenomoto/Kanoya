@@ -13,7 +13,10 @@
 無いのと同じである。そこで次の形にしてある。
 
   1. 記録は**変更履歴**。値が変わった日だけ行が増える。
-     変更が無い日は入力なしで終わる（Enter だけ）
+     変更が無い日は入力なしで終わる（Enter だけ）。
+     ただし「確認した」こと自体は rate_log_runs.csv に必ず1行残す
+     （行が無い日が「確認して変わっていない」と「誰も見ていない」の
+     両方を意味してしまうため）
   2. 表示は**同じ値が続く区間**にまとめる。120行ではなく数行になる
   3. 入力は区間指定。`11/14-11/30=62000` のように、変えたところだけ書く
 
@@ -56,7 +59,7 @@ def resolve_log_path(settings: Settings) -> Path:
     return ROOT / "data" / "rate_log.csv"
 
 
-def runs(values: dict[date, float], days: list[date]) -> list[tuple[date, date, float]]:
+def spans(values: dict[date, float], days: list[date]) -> list[tuple[date, date, float]]:
     """同じ値が続く区間へまとめる（120行を数行にするため）.
 
     隣接判定は days の並び順で行い、暦日の連続では見ない。
@@ -121,11 +124,19 @@ def apply_set(entries: list[rate_log.Entry], spec: str, *, as_of: date,
 
 
 def show(settings: Settings, entries: list[rate_log.Entry], days: list[date],
-         as_of: date, channel: str) -> None:
+         as_of: date, channel: str, runs: list[rate_log.Run],
+         max_unconfirmed: int) -> None:
     products = load_products(settings)
+    since = rate_log.unconfirmed_days(runs, as_of)
     print(f"  基準日 {as_of} 時点の提示価格（1室2名1泊・税サ込）")
     print(f"  記録件数 {len(entries)} 行"
           f"／最終記録 {rate_log.latest_entry_date(entries) or '—'}")
+    if since is None:
+        print("  実行記録 なし（まだ一度も確認していません）")
+    else:
+        last = max(r.run_date for r in runs if r.run_date <= as_of)
+        state = "未実行" if since > max_unconfirmed else "確認済み"
+        print(f"  実行記録 最後の実行 {last}（{since}日前・{state}）")
     print()
     for form in FORMS:
         values = {}
@@ -135,19 +146,36 @@ def show(settings: Settings, entries: list[rate_log.Entry], days: list[date],
         if not any(values.values()):
             continue
         print(f"  【{LABELS[form]}】")
-        for start, end, rate in runs(values, days):
+        for start, end, rate in spans(values, days):
             if rate <= 0:
                 continue
             span = (f"{start:%m/%d}" if start == end
                     else f"{start:%m/%d}-{end:%m/%d}")
-            print(f"    {span:<14} {rate:>9,.0f}円")
-    missing = [d for d in days
-               if not rate_log.posted_as_of(entries, d, as_of, channel=channel)]
-    if missing:
+            # 裏付けの無い値をそのまま並べると、現在の掲出価格に見える。
+            # 表示はするが、使っていないことが分かるようにする。
+            backed = rate_log.room_rate_as_of(
+                entries, start, as_of, products, channel=channel, runs=runs,
+                max_unconfirmed_days=max_unconfirmed) > 0
+            mark = "" if backed else "  ← 未確認（使っていません）"
+            print(f"    {span:<14} {rate:>9,.0f}円{mark}")
+    never = [d for d in days
+             if not rate_log.posted_as_of(entries, d, as_of, channel=channel)]
+    unconfirmed = [
+        d for d in days
+        if d not in never
+        and rate_log.room_rate_as_of(entries, d, as_of, products,
+                                     channel=channel, runs=runs,
+                                     max_unconfirmed_days=max_unconfirmed) <= 0]
+    if never or unconfirmed:
         print()
-        print(f"  記録なし: {len(missing)} / {len(days)} 日"
-              f"（最初の日 {missing[0]}）")
-        print("    その日は日次変動幅ガードがかからず、承認区分も判定できません。")
+        if never:
+            print(f"  一度も記録なし: {len(never)} / {len(days)} 日"
+                  f"（最初の日 {never[0]}）")
+        if unconfirmed:
+            print(f"  記録はあるが未確認: {len(unconfirmed)} / {len(days)} 日"
+                  f"（最初の日 {unconfirmed[0]}）")
+            print("    実行記録に裏付けが無いため、据え置きを仮定しません。")
+        print("    どちらも日次変動幅ガードがかからず、承認区分も判定できません。")
     print()
     print(f"  ※ 部屋代換算（current_public_rate）は、素泊まりがあればその値、"
           f"無ければ食事加算を引いて戻します。")
@@ -246,7 +274,11 @@ def main() -> None:
         (settings.sources.get("rate_log") or {}).get("channel") or "")
 
     path = Path(args.log).expanduser() if args.log else resolve_log_path(settings)
+    runs_path = rate_log.runs_path_for(path)
     entries = rate_log.read(path)
+    runs = rate_log.read_runs(runs_path)
+    max_unconfirmed = int((settings.sources.get("rate_log") or {}).get(
+        "max_unconfirmed_days", rate_log.DEFAULT_MAX_UNCONFIRMED_DAYS))
 
     print("=" * 70)
     print("  提示価格の記録 — 変更分だけ入力する")
@@ -255,14 +287,19 @@ def main() -> None:
     print(f"  形態   {LABELS.get(args.product, args.product)}"
           f"／販路 {channel or '（指定なし）'}")
     print()
-    show(settings, entries, days, as_of, channel)
+    show(settings, entries, days, as_of, channel, runs, max_unconfirmed)
 
     if args.show:
         return
 
+    # 「どこを確認したか」は入力の仕方で変わる。広く言い切らないこと。
+    #   対話          画面に出した期間ぜんぶを人が見ている
+    #   --set        その区間だけを名指しした（残りを見たとは限らない）
+    #   --import     ファイルに入っていた宿泊日だけ
     if args.import_path:
         added = import_csv((ROOT / args.import_path).resolve(),
                            as_of=as_of, channel=channel)
+        confirmed = [e.stay_date for e in added]
     elif args.set:
         added = []
         for spec in args.set:
@@ -270,17 +307,30 @@ def main() -> None:
                                    form=args.product, channel=channel,
                                    note=args.note, base_year=start.year,
                                    settings=settings))
+        confirmed = [e.stay_date for e in added]
     else:
         added = interactive(settings, entries, days, as_of, args.product, channel)
-
-    if not added:
-        print("  変更なし。何も書き込みませんでした。")
-        print("  ※ 記録は変更履歴なので、これで正しい状態です"
-              "（前回の値がそのまま有効です）。")
-        return
+        confirmed = list(days)
 
     if args.dry_run:
-        print(f"  --dry-run のため書き込みません（{len(added)}行）。")
+        print(f"  --dry-run のため書き込みません（変更 {len(added)}行）。")
+        return
+
+    # 確認したこと自体を必ず残す。ここを残さないと、行が無い日が
+    # 「確認して変わっていない」と「誰も見ていない」の両方を意味してしまい、
+    # 後者を前者と読んだ時点で、確認していない日に「据え置いた」という
+    # 事実でない記録ができあがる。
+    if confirmed:
+        first, last = min(confirmed), max(confirmed)
+        rate_log.append_run(runs_path, rate_log.Run(
+            run_date=as_of, stay_from=first, stay_to=last,
+            product_type=args.product, channel=channel,
+            note=args.note or ("変更なしを確認" if not added else "")))
+        print(f"  確認した範囲を記録しました: {first} 〜 {last} → {runs_path}")
+
+    if not added:
+        print("  価格の変更はありませんでした（変更履歴には書き込みません）。")
+        print("  ※ 『確認して変わっていない』ことは上の実行記録で残ります。")
         return
 
     rate_log.append(path, added)
