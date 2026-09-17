@@ -49,6 +49,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from kanoya_rm.config import Settings  # noqa: E402
+from kanoya_rm.products import load as load_products  # noqa: E402
 
 RUN_DATE = date(2026, 8, 15)
 HORIZON = 121
@@ -284,6 +285,8 @@ def _build_otb(settings, *,
         local = random.Random(f"{seed}:{stay.toordinal()}")
         demand[stay] = local.uniform(0.55, 1.35) * (1 + 0.5 * event)
 
+    meals = load_products(settings).all_meals
+
     rows: list[dict] = []
     for back in range(BACKFILL, -1, -1):
         snapshot = RUN_DATE - timedelta(days=back)
@@ -303,11 +306,17 @@ def _build_otb(settings, *,
                     else "LOW" if season in ("LOW", "DEEP_LOW") else "MID")
             weekend = (settings.dow_of(stay) in ("FRI", "SAT")
                        or settings.is_holiday_eve(stay))
-            current = {
+            posted_total = {
                 ("PEAK", True): 132000, ("PEAK", False): 118000,
                 ("MID", True): 98000,   ("MID", False): 88000,
                 ("LOW", True): 82000,   ("LOW", False): 72000,
             }[(tier, weekend)]
+            # 料金表は「1室2名1泊2食」の総額で貼られている。2026-09 に
+            # 最適化単位を部屋代へ移したので、current_public_rate も部屋代で
+            # 持つ。総額のまま置くと、日次変動幅ガードが部屋代の推奨を
+            # 総額のスケールへ引き上げてしまい（推奨が食事2名分だけ高くなる）、
+            # delta_pct も別単位どうしの比になって意味を失う。
+            current = max(0.0, posted_total - meals)
 
             rows.append({
                 "stay_date": stay.isoformat(),
