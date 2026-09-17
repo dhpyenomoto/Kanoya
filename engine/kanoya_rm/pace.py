@@ -35,14 +35,29 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import date
 
-# 設定に無いときの既定値。従来の挙動と同じ飽和点・減衰開始点にしてある。
+# 設定に無いときの既定値。
 DEFAULT_SATURATION_ROOMS = 1.5
+DEFAULT_MIN_EXPECTED_ROOMS = 0.5   # これ未満の期待室数では内部需要を使わない
 DEFAULT_FULL_EFFECT_DAYS = 21      # ここまでは減衰なし
 DEFAULT_HALF_LIFE_DAYS = 30        # 以降、この日数ごとに半減
 DEFAULT_FAR_FLOOR = 0.35           # 遠い日付でも残す最低限の効き
+
+
+def _resolve_rooms(coef: dict, abs_key: str, ratio_key: str,
+                   rooms: int, default: float) -> float:
+    """室数の設定を『絶対室数』または『客室数比』で受け取る.
+
+    5室と50室で同じ設定ファイルを使えるようにするため、比率指定を併せ持つ。
+    比率が書かれていればそちらを優先する（施設をまたいで使う意図が明確なため）。
+    """
+    ratio = coef.get(ratio_key)
+    if ratio is not None:
+        return float(ratio) * rooms
+    return float(coef.get(abs_key, default))
 
 
 @dataclass
@@ -57,13 +72,45 @@ class PaceResult:
     damping: float         # 適用したリードタイム減衰（0..1）
     z: float               # 統合内部需要シグナル（−1..+1）= raw_z × damping
     remaining: int
+    below_min_expected: bool = False   # 期待室数が小さすぎて無効化したか
+
+
+def demand_shape(gap_rooms: float, saturation_rooms: float) -> float:
+    """gap（室）を −1..+1 のシグナルへ写す.
+
+    **tanh を使う理由**
+
+    以前は gap/飽和点 を ±1 でハードクリップしていた。5室規模では
+    飽和点1.5室にすぐ到達し、実測で78セル中49セル(63%)がクリップに
+    張り付いていた。張り付くとOTBが何室でも同じ価格になり、
+    満室に近づいても値上げできない（繁忙日の取りこぼしに直結する）。
+
+    tanh を選んだ理由:
+      ・奇関数。進みと遅れを同じ強さで扱う（値上げ側だけ鈍らせない）
+      ・±1 に漸近するので term_clip の意味が保たれる
+      ・微分が連続。クリップのように「ここから先は何をしても同じ」という
+        不連続点を作らない
+      ・atan より速く飽和する。極端な外れ値が価格を押し続けないほうが、
+        安全装置としては望ましい
+
+    飽和点では tanh(1)=0.762。以前のクリップ(1.0)より弱いが、
+    そこから先も上がり続ける。
+    """
+    if saturation_rooms <= 0:
+        return 0.0
+    return math.tanh(gap_rooms / saturation_rooms)
 
 
 def _demand_config(settings) -> dict:
     coef = settings.property.get("coefficients", {})
+    rooms = int(settings.property["property"]["rooms"])
     return {
-        "saturation": float(coef.get("pace_saturation_rooms",
-                                     DEFAULT_SATURATION_ROOMS)),
+        "saturation": _resolve_rooms(coef, "pace_saturation_rooms",
+                                     "pace_saturation_rooms_ratio",
+                                     rooms, DEFAULT_SATURATION_ROOMS),
+        "min_expected": _resolve_rooms(coef, "min_expected_rooms",
+                                       "min_expected_rooms_ratio",
+                                       rooms, DEFAULT_MIN_EXPECTED_ROOMS),
         "full_days": float(coef.get("demand_lead_full_effect_days",
                                     DEFAULT_FULL_EFFECT_DAYS)),
         "half_life": float(coef.get("demand_lead_half_life_days",
@@ -125,8 +172,20 @@ def evaluate(settings, day: date, snapshot_date: date, otb_rooms: int) -> PaceRe
     expected_rooms = rooms * target_occ * ratio
     gap = otb_rooms - expected_rooms
 
-    # 5室では 1室=20pt。gap を室数で割らず、飽和点（既定1.5室）で標準化する。
-    raw = max(-1.0, min(1.0, gap / max(1e-9, cfg["saturation"])))
+    # 期待室数が小さすぎるリード帯では、内部需要を使わない。
+    #
+    # 実測カーブではリード60日の期待室数が 0.05室しかない。実OTBは整数しか
+    # 取れないので、観測できるのは 0室か1室である。予約1件入っただけで
+    # 価格寄与が +13% 跳ねるが、5室規模の1件は偶然の範囲であり、
+    # これは需要の反映ではなくノイズの増幅にすぎない。
+    #
+    # 減衰では解決しない。期待値0.05室という連続量に対して実測が整数しか
+    # 取れないという離散化の問題なので、減衰係数を掛けても跳ね自体は残る。
+    # そのため減衰ではなく無効化する。長いリードでは競合とイベントで
+    # 価格を決めることになるが、実測でその帯のOTBはほぼ0であり、
+    # 「自社の売れ行きには情報が無い」というのが実態に即している。
+    below_min = expected_rooms < cfg["min_expected"]
+    raw = 0.0 if below_min else demand_shape(gap, cfg["saturation"])
     damp = lead_damping(lead, full_days=cfg["full_days"],
                         half_life=cfg["half_life"], far_floor=cfg["far_floor"])
 
@@ -141,4 +200,5 @@ def evaluate(settings, day: date, snapshot_date: date, otb_rooms: int) -> PaceRe
         damping=damp,
         z=max(-1.0, min(1.0, raw * damp)),
         remaining=max(0, rooms - otb_rooms),
+        below_min_expected=below_min,
     )

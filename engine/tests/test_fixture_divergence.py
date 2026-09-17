@@ -191,15 +191,21 @@ class DefaultScenarioTest(unittest.TestCase):
                 self.assertLess(abs(p.raw_z), 0.9999,
                                 f"{day}（{name}）で z がクリップに張り付いている")
 
-    def test_an_extreme_divergence_does_pin_it(self) -> None:
-        """張り付き自体は検知できる状態であること（テストが無力でないことの確認）."""
+    def test_an_extreme_divergence_saturates_the_signal(self) -> None:
+        """張り付き相当の状態を作れること（テストが無力でないことの確認）.
+
+        写像を tanh にしたのでハードクリップはもう起きない（±1 に漸近する
+        だけで到達しない）。代わりに「飽和の端に寄る」ことを確認する。
+        """
         run = self.gen.RUN_DATE
         rows = self.gen._build_otb(self.settings, divergence=0.0, scenarios=())
         otb = {r["stay_date"]: r["rooms_otb"] for r in rows
                if r["snapshot_date"] == run.isoformat()}
         stay = run + timedelta(days=1)          # 期待室数が大きい短リード
         p = pace_mod.evaluate(self.settings, stay, run, otb[stay.isoformat()])
-        self.assertLessEqual(p.raw_z, -0.9999)
+        self.assertFalse(p.below_min_expected)
+        self.assertLess(p.raw_z, -0.95)
+        self.assertGreater(p.raw_z, -1.0, "tanh なので ±1 には到達しないはず")
 
     def test_guardrails_hold_on_scenario_days(self) -> None:
         """乖離を入れても、ガードレールの不変条件は破れないこと."""
