@@ -1,8 +1,12 @@
 """閉館日（定休日）の回帰テスト.
 
-鹿のやは従業員数の都合で火曜・水曜を閉館日として運用している。
+鹿のやは従業員数の都合で火曜・水曜を閉館日として運用しているが、
+定休日は固定ではない。需要に応じた例外営業が通年で発生する
+（2026年2〜9月の実績で閉館日64日のうち8日・12.5%）。
+
 エンジンにこの概念が無いと、販売していない日の価格を毎日計算し、
 月曜を毎週「1泊の空隙」と誤検知し、稼働率を実態より低く出す。
+さらに例外営業を数えないと、稼働率の分母が実態と食い違う。
 """
 
 from __future__ import annotations
@@ -38,29 +42,61 @@ class ClosedDayResolutionTest(unittest.TestCase):
                     date(2026, 9, 5), date(2026, 9, 6)):
             self.assertTrue(self.s.is_open(day), f"{day} が閉館扱い")
 
-    def test_dated_exception_overrides_the_weekday_rule(self) -> None:
-        """繁忙期は定休日でも営業する（実績でGW・お盆の火水に17室夜ある）."""
+    def test_extra_open_overrides_the_weekday_rule(self) -> None:
+        """例外営業は繁忙期に限らない。曜日ルールだけでは表現できない."""
         obon_tuesday = date(2026, 8, 11)
         self.assertEqual(self.s.dow_of(obon_tuesday), "TUE")
-        self.assertIn(obon_tuesday.isoformat(),
-                      self.s.calendar["closed_days"]["open_dates"])
+        self.assertIn(obon_tuesday, self.s.exception_days("extra_open"))
         self.assertTrue(self.s.is_open(obon_tuesday),
                         "日付指定の営業日が曜日指定に負けている")
 
-    def test_dated_closure_beats_an_open_weekday(self) -> None:
+    def test_extra_closed_beats_an_open_weekday(self) -> None:
         probe = copy.deepcopy(self.s)
         friday = date(2026, 9, 4)
         self.assertTrue(probe.is_open(friday))
-        probe.calendar["closed_days"]["closed_dates"] = [friday.isoformat()]
+        probe.calendar["closed_days"]["extra_closed"] = [
+            {"date": friday.isoformat(), "source": "planned", "note": "改装"}]
         self.assertTrue(probe.is_closed(friday), "臨時休館が効いていない")
 
-    def test_open_date_wins_over_closed_date(self) -> None:
+    def test_extra_open_wins_over_extra_closed(self) -> None:
         """両方に書かれたら営業。休むほうを既定にすると売り逃す."""
         probe = copy.deepcopy(self.s)
         day = date(2026, 9, 1)          # 火曜（曜日では閉館）
-        probe.calendar["closed_days"]["open_dates"] = [day.isoformat()]
-        probe.calendar["closed_days"]["closed_dates"] = [day.isoformat()]
+        probe.calendar["closed_days"]["extra_open"] = [
+            {"date": day.isoformat(), "source": "planned"}]
+        probe.calendar["closed_days"]["extra_closed"] = [
+            {"date": day.isoformat(), "source": "planned"}]
         self.assertTrue(probe.is_open(day))
+
+    def test_a_property_with_no_closed_weekdays_still_works(self) -> None:
+        """定休日なしの施設。曜日リストが空でも例外指定は効くこと."""
+        probe = copy.deepcopy(self.s)
+        probe.calendar["closed_days"]["closed_weekdays"] = []
+        probe.calendar["closed_days"]["extra_open"] = []
+        for offset in range(14):
+            day = date(2026, 9, 1) + timedelta(days=offset)
+            self.assertTrue(probe.is_open(day), f"{day} が閉館扱い")
+        shutdown = date(2026, 9, 10)
+        probe.calendar["closed_days"]["extra_closed"] = [
+            {"date": shutdown.isoformat(), "source": "planned", "note": "貸切"}]
+        self.assertTrue(probe.is_closed(shutdown))
+
+    def test_a_property_with_one_closed_weekday_works(self) -> None:
+        """週1定休の施設。曜日を1つ書くだけで済むこと."""
+        probe = copy.deepcopy(self.s)
+        probe.calendar["closed_days"]["closed_weekdays"] = ["WED"]
+        probe.calendar["closed_days"]["extra_open"] = []
+        self.assertTrue(probe.is_open(date(2026, 9, 1)))    # 火
+        self.assertTrue(probe.is_closed(date(2026, 9, 2)))  # 水
+
+    def test_closed_weekdays_are_not_hardcoded(self) -> None:
+        """火・水はコードの既定値ではなく設定値であること."""
+        probe = copy.deepcopy(self.s)
+        probe.calendar["closed_days"]["closed_weekdays"] = ["MON"]
+        probe.calendar["closed_days"]["extra_open"] = []
+        self.assertTrue(probe.is_closed(date(2026, 9, 7)))   # 月
+        self.assertTrue(probe.is_open(date(2026, 9, 1)))     # 火
+        self.assertTrue(probe.is_open(date(2026, 9, 2)))     # 水
 
     def test_property_without_closed_days_is_always_open(self) -> None:
         """エンジンは施設非依存。定休日を持たない宿にもそのまま適用できること."""
@@ -174,18 +210,21 @@ class OccupancyDenominatorTest(unittest.TestCase):
                                   msg="閉館日が分母から外れていない")
 
     def test_business_day_count_matches_the_ratio(self) -> None:
+        """将来期間は曜日ルールどおり。例外営業はまだ登録されていない.
+
+        登録済みの例外営業は実績（source: actual）だけなので、
+        将来だけを見る期間では 5/7 ちょうどになる。ここが 5/7 を
+        上回っていたら、予定を実績と混ぜて数えている。
+        """
         days = self.s.open_days(self.start, 364)
-        # 火・水が定休。GW・お盆の例外があるぶんだけ 5/7 をわずかに上回る
-        ratio = len(days) / 364
-        self.assertGreater(ratio, 5 / 7)
-        self.assertLess(ratio, 5 / 7 + 0.02)
+        self.assertAlmostEqual(len(days) / 364, 5 / 7, places=2)
 
     def test_a_property_with_no_open_days_fails_loudly(self) -> None:
         """全日閉館の設定で黙って0除算するより、その場で止めるほうがよい."""
         probe = copy.deepcopy(self.s)
-        probe.calendar["closed_days"]["weekdays"] = [
+        probe.calendar["closed_days"]["closed_weekdays"] = [
             "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
-        probe.calendar["closed_days"]["open_dates"] = []
+        probe.calendar["closed_days"]["extra_open"] = []
         with self.assertRaises(ValueError):
             budget_anchor(probe, 62000, 0.72, self.start, days=7)
 

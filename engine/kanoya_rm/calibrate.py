@@ -64,7 +64,11 @@ def budget_anchor(settings: Settings, target_revpar: float,
 
     プロファイルの平均は**営業日のみ**で取る。閉館日は販売しないので
     RevPARの分母に入れてはいけない。暦日で割ると稼働率が実態より低く出て
-    （実績: 暦日基準 21.2% / 営業日基準 27.8%）、必要ADRが過大に算出される。
+    （実績 2026-02-06〜09-17: 暦日224日基準 21.2% / 営業168日基準 28.2%）、
+    必要ADRが過大に算出される。
+
+    営業日数は例外営業で後から変わるため、分母は capacity.measure() で
+    数えて明記すること（capacity.py 参照）。
     """
     anchor = float(settings.property["base"]["anchor_room_rate"])
     open_days = settings.open_days(start, days)

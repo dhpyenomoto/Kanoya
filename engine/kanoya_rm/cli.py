@@ -92,8 +92,10 @@ def build_context(root: Path, snapshot: date | None, days: int, *,
             continue
         if settings.is_closed(stay):
             # 販売していない日の推奨価格を出しても使い道がない。
-            # ただし連泊がまたぐ等で既存予約が乗ることはある（実績で17室夜）。
-            # 正常系なので止めず、気づけるように控える。
+            # ただし連泊がまたぐ等で在館者が乗ることはある
+            # （実績: 2026-02-18(水) は 2/17 チェックイン2泊の2泊目）。
+            # 「販売した日」ではないので extra_open には入れず、
+            # 稼働率の分母にも入れない。正常系なので止めず、気づけるように控える。
             booked = int(otb["rooms_otb"])
             if booked > 0:
                 closed_with_bookings.append((stay, booked))
@@ -111,9 +113,12 @@ def build_context(root: Path, snapshot: date | None, days: int, *,
         nights = sum(rooms for _day, rooms in closed_with_bookings)
         head = ", ".join(f"{d}({r}室)" for d, r in closed_with_bookings[:5])
         more = f" 他{len(closed_with_bookings) - 5}日" if len(closed_with_bookings) > 5 else ""
-        print(f"ℹ️  閉館日に予約があります（{len(closed_with_bookings)}日・{nights}室夜）: "
+        print(f"ℹ️  閉館日に在館者がいます（{len(closed_with_bookings)}日・{nights}室夜）: "
               f"{head}{more}\n"
-              f"   連泊がまたぐ場合などに起こり得ます。価格推奨の対象からは外しています。",
+              f"   連泊がまたぐ場合などに起こり得ます。販売した日ではないので、\n"
+              f"   価格推奨の対象からも稼働率の分母からも外しています。\n"
+              f"   その日を実際に販売したのであれば、closed_days.extra_open へ\n"
+              f"   source: \"actual\" で登録してください。",
               file=sys.stderr)
 
     apply_mlos(settings, recs)          # type: ignore[arg-type]
@@ -138,11 +143,18 @@ def main() -> None:
     args = parser.parse_args()
 
     snapshot = parse_date(args.snapshot) if args.snapshot else None
-    settings, recs = build(root, snapshot, args.days)
+    ctx = build_context(root, snapshot, args.days)
+    settings, recs = ctx.settings, ctx.recommendations
 
     print("=" * 78)
     print(f"  {settings.property['property']['name']} — 価格推奨（全{settings.property['property']['rooms']}室）")
     print("=" * 78)
+    # 営業日数は例外営業で後から変わる。稼働率の分母を先に示しておく。
+    sold = sum(int(row["rooms_otb"]) for day, row in ctx.otb.items()
+               if settings.is_open(day)
+               and ctx.snapshot <= day < ctx.snapshot + timedelta(days=args.days))
+    print(report.capacity_summary(settings, ctx.snapshot, args.days,
+                                  sold_room_nights=sold, as_of=ctx.snapshot))
     print(report.summary(recs))  # type: ignore[arg-type]
 
     queue = [r for r in recs.values() if r.action == "APPROVAL_REQUIRED"]  # type: ignore[attr-defined]

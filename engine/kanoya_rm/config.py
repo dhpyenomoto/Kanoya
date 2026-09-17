@@ -64,6 +64,46 @@ def warn_if_benchmark_provenance_unknown(calendar: dict[str, Any], *,
         print(f"⚠️  出所不明のベンチマーク{where}\n  {message}", file=sys.stderr)
 
 
+# 旧構造 → 新構造。旧キーのまま読むと閉館日が静かに消え、販売していない日に
+# 価格が出て稼働率の分母も狂う。黙って落とさず、移行先を名指しで知らせる。
+LEGACY_CLOSED_DAY_KEYS = {"weekdays": "closed_weekdays",
+                          "open_dates": "extra_open",
+                          "closed_dates": "extra_closed"}
+
+
+def closed_days_migration_warning(calendar: dict[str, Any]) -> str | None:
+    """閉館日の設定が旧構造のままなら、移行先を示す警告文を返す."""
+    cfg = calendar.get("closed_days")
+    if not isinstance(cfg, dict):
+        return None
+    stale = [k for k in LEGACY_CLOSED_DAY_KEYS if cfg.get(k)]
+    if not stale:
+        return None
+    moves = "、".join(f"{k} → {LEGACY_CLOSED_DAY_KEYS[k]}" for k in stale)
+    return (
+        f"closed_days が旧構造のままです（{moves}）。\n"
+        "  例外営業の出所（actual / planned）を持てないため、稼働率の分母を\n"
+        "  あとから検証できません。今回は旧キーを読んで動かしますが、移行してください。"
+    )
+
+
+def _migrate_closed_days(calendar: dict[str, Any], *, source: str = "") -> None:
+    """旧キーを新キーへ読み替える（警告つき）.
+
+    エラーにはしない。設定ファイルが旧構造のまま残っている施設でも
+    価格計算は回るべきで、ここで止めると移行の途中で何も動かせなくなる。
+    """
+    message = closed_days_migration_warning(calendar)
+    if not message:
+        return
+    where = f"（{source}）" if source else ""
+    print(f"⚠️  閉館日の設定が旧構造です{where}\n  {message}", file=sys.stderr)
+    cfg = calendar["closed_days"]
+    for legacy, current in LEGACY_CLOSED_DAY_KEYS.items():
+        if cfg.get(legacy) and not cfg.get(current):
+            cfg[current] = cfg[legacy]
+
+
 def _warn_about_product_pricing(settings) -> None:
     """商品形態別フロアと部屋代アンカーの整合を起動時に確認する.
 
@@ -127,6 +167,7 @@ class Settings:
             compset = {"competitors": [], "tiers": {}, "_missing": str(compset_path)}
         calendar = _load_json(root / "calendar.json")
         warn_if_benchmark_provenance_unknown(calendar, source=str(root / "calendar.json"))
+        _migrate_closed_days(calendar, source=str(root / "calendar.json"))
         competitors = {
             c["id"]: Competitor(
                 id=c["id"],
@@ -187,28 +228,71 @@ class Settings:
 
     # ---- 閉館日（定休日） -----------------------------------------------
 
+    def closed_day_config(self) -> dict:
+        """閉館日の設定。無い施設でも動くよう、常に辞書を返す."""
+        cfg = self.calendar.get("closed_days")
+        return cfg if isinstance(cfg, dict) else {}
+
+    def closed_weekdays(self) -> set[str]:
+        return set(self.closed_day_config().get("closed_weekdays") or [])
+
+    def exception_days(self, key: str, source: str | None = None) -> set[date]:
+        """extra_open / extra_closed の日付を集める.
+
+        source を指定すると "actual"（実績で確認した日）か
+        "planned"（人が入れた予定）で絞り込める。両者が混ざったまま
+        稼働率を出すと、あとから分母を検証できなくなるため分けている。
+
+        source を書き忘れたエントリは "planned" として扱う。実績だと
+        言い切れないものを実績側へ入れるほうが危ないため、安全側へ倒す。
+        """
+        out: set[date] = set()
+        for entry in self.closed_day_config().get(key) or []:
+            if isinstance(entry, str):          # 日付だけの簡易記法
+                value, entry_source = entry, "planned"
+            else:
+                value = entry.get("date", "")
+                entry_source = (entry.get("source") or "planned").lower()
+            if not value:
+                continue
+            if source is not None and entry_source != source:
+                continue
+            out.add(parse_date(value))
+        return out
+
+    def exception_rate(self) -> float:
+        """閉館日のうち例外営業になる割合（将来期間の営業日数の上振れ分）."""
+        try:
+            rate = float(self.closed_day_config().get("exception_rate", 0.0))
+        except (TypeError, ValueError):
+            return 0.0
+        return min(1.0, max(0.0, rate))
+
     def is_closed(self, day: date) -> bool:
         """当日が閉館日（販売しない日）か.
 
         曜日指定と日付単位の指定を併用でき、**日付指定が曜日指定を上書きする**。
-        繁忙期は定休日でも営業するため（実績でGW・お盆の火水に17室夜の宿泊がある）、
-        曜日だけでは表現できない。
+        定休日は固定ではなく、需要に応じた例外営業が通年で発生するため
+        （2026年2〜9月の実績で閉館日64日のうち8日）、曜日だけでは表現できない。
 
-        closed_days が無い設定では常に False を返す。定休日を持たない施設にも
-        エンジンをそのまま適用できるようにするため（施設非依存の方針）。
+        closed_days が無い設定、あるいは closed_weekdays が空の設定でも動く。
+        定休日を持たない施設にもエンジンをそのまま適用できるようにするため。
         """
-        cfg = self.calendar.get("closed_days")
-        if not isinstance(cfg, dict):
+        cfg = self.closed_day_config()
+        if not cfg:
             return False
-        key = day.isoformat()
-        if key in set(cfg.get("open_dates") or []):
+        if day in self.exception_days("extra_open"):
             return False          # 日付指定の営業日が最優先
-        if key in set(cfg.get("closed_dates") or []):
+        if day in self.exception_days("extra_closed"):
             return True
-        return self.dow_of(day) in set(cfg.get("weekdays") or [])
+        return self.dow_of(day) in self.closed_weekdays()
 
     def is_open(self, day: date) -> bool:
         return not self.is_closed(day)
+
+    def closed_by_weekday(self, day: date) -> bool:
+        """曜日ルールだけで見たときに閉館日か（例外営業の見込みを出す母数）."""
+        return self.dow_of(day) in self.closed_weekdays()
 
     def open_days(self, start: date, days: int) -> list[date]:
         """start から days 日分のうち、営業日だけを返す（稼働率の分母）."""
