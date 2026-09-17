@@ -254,8 +254,52 @@ export SERPAPI_API_KEY='...'
 <h2>プライシング単体</h2>
 <pre><code class="language-bash"># 1. 検証用データ生成（本番では レートショッパー / PMS コネクタの出力に置換）
 python3 scripts/make_fixtures.py
-
-# 2. 基準価格の校正レポート（四半期に1回）
+</code></pre>
+<h3>検証データのペース乖離</h3>
+<p>OTBはブッキングカーブ<strong>から</strong>生成されるため、実OTBと期待OTBの乖離は
+構造的にゼロ近辺に留まります。<strong>そのためペース関連の不具合は、
+素のフィクスチャでは原理的に再現しません。</strong></p>
+<p>実際にこれで取り逃しています。出所不明のブッキングカーブが進捗を常に
+「大幅な遅れ」と判定していた件は、フィクスチャ上では症状が一切出ず、
+実測相当のOTBを組み立てて初めて見えました。</p>
+<p>そこで意図的な乖離を注入できます。</p>
+<pre><code class="language-bash">python3 scripts/make_fixtures.py --pace-divergence 0.3   # 想定の3割しか埋まらない
+python3 scripts/make_fixtures.py --pace-divergence 2.5   # 想定の2.5倍で埋まる
+python3 scripts/make_fixtures.py --no-scenarios          # 既定の乖離日を入れない
+</code></pre>
+<p>既定の生成にも乖離シナリオを2つ含めます。宿泊日を明示指定してあり、
+実行のたびに変わりません（乱数で散らすとテストから名指しできず、
+再現したい状況を狙って作れないため）。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>シナリオ</th>
+<th>宿泊日</th>
+<th>ベンチマーク比</th>
+<th>raw_z</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lagging</code> 想定より大きく遅れている</td>
+<td>2026-08-22 〜 08-28</td>
+<td>0.30倍</td>
+<td>−0.93 〜 −0.62</td>
+</tr>
+<tr>
+<td><code>leading</code> 想定より大きく先行している</td>
+<td>2026-08-29 〜 09-04</td>
+<td>2.50倍</td>
+<td>+0.28 〜 +0.91</td>
+</tr>
+</tbody>
+</table></div>
+<p>窓と倍率は「強く出るが、クリップに張り付かない」ところを総当たりで選んでいます。
+張り付くとOTBが何室でも同じ値になり、進捗を見ていないのと同じになるためです。
+張り付いて当然の極端な乖離は既定に入れず、<code>--pace-divergence</code> で明示的に作ります。</p>
+<p><strong>リード45日以遠には乖離を置けません。</strong> 実測カーブでは期待室数が0.1室未満になり、
+倍率を掛けても四捨五入で消えるためです（0.05室 × 3.0 = 0.15室 → 0室）。</p>
+<pre><code class="language-bash"># 2. 基準価格の校正レポート（四半期に1回）
 python3 scripts/calibrate_base.py --position 1.15 --revpar 62000 --occ 0.72
 
 # 3. 推奨価格の算出（日次）
