@@ -8,8 +8,10 @@
 from __future__ import annotations
 
 import copy
+import csv
 import io
 import json
+import statistics
 import sys
 import unittest
 from contextlib import redirect_stderr
@@ -19,8 +21,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from kanoya_rm import pace as pace_mod, products  # noqa: E402
+from kanoya_rm.cli import build_context  # noqa: E402
 from kanoya_rm.config import Settings  # noqa: E402
 from kanoya_rm.pricing import recommend  # noqa: E402
+from kanoya_rm.products import load as load_products  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -209,6 +213,64 @@ class RecommendationTest(unittest.TestCase):
         z_comp = next(c.z for c in rec.contributions if c.factor == "comp")
         self.assertLess(abs(z_comp), 1.0,
                         "z_comp が飽和している。部屋代とNARを直接比べていないか")
+
+
+class PostedRateUnitTest(unittest.TestCase):
+    """otb.csv の current_public_rate が部屋代基準であること.
+
+    実際にここで事故を起こしている。2026-09 に最適化単位を部屋代へ移した際、
+    フィクスチャの現行掲出価格は「1室2名2食の総額」のままだった。
+    日次変動幅ガードは推奨と現行を直接比べるので、部屋代の推奨が総額の
+    バンド下限（現行の85%）へ持ち上げられ、2026-11 の推奨が全日ほぼ同額の
+    145,000〜157,000円（2食付き換算）に張り付いた。delta_pct も
+    別単位どうしの比になっており、承認区分の判断材料として成立していなかった。
+
+    単位の食い違いは値が大きくずれて初めて気づくため、比率で固定する。
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        path = ROOT / "data" / "otb.csv"
+        if not path.exists():
+            raise unittest.SkipTest("収集済みデータ未生成（scripts/run_pipeline.sh）")
+        cls.settings = Settings.load(ROOT / "config")
+        cls.p = load_products(cls.settings)
+        with path.open(encoding="utf-8") as fh:
+            cls.rates = sorted({float(r["current_public_rate"])
+                                for r in csv.DictReader(fh)})
+
+    def test_posted_rates_are_room_rates_not_two_meal_totals(self) -> None:
+        median = statistics.median(self.rates)
+        room = abs(median / self.p.anchor_room_rate - 1)
+        total = abs(median / self.p.two_meal_total(self.p.anchor_room_rate) - 1)
+        self.assertLess(room, total,
+                        f"現行掲出価格の中央値 {median:,.0f}円 が部屋代アンカー "
+                        f"{self.p.anchor_room_rate:,.0f}円 より2食付き総額に近い。"
+                        "単位が総額のままではないか")
+
+    def test_model_output_and_posted_rate_are_the_same_unit(self) -> None:
+        """モデル出力と現行掲出価格が同じ単位で並んでいること.
+
+        delta_pct と日次変動幅ガードは、この2つを直接比べる。単位が
+        食い違っていても値は出てしまうので、「食事を足したほうが近い」
+        状態になっていないかで見る。総額のままなら食事を足した側が近くなる。
+
+        バンドで挟んだ後の recommended_rate ではなく、挟む前の raw_price を
+        見る。バンドは必ず現行の±15%へ収めるので、挟んだ後の値では
+        単位が食い違っていても差が消えてしまう。
+        """
+        ctx = build_context(ROOT, None, 120)
+        priced = [r for r in ctx.recommendations.values() if r.current_rate > 0]
+        self.assertTrue(priced, "現行価格のある日が無く、検証できない")
+        meals = self.p.all_meals
+        as_room = statistics.median(
+            abs(r.raw_price / r.current_rate - 1) for r in priced)
+        as_total = statistics.median(
+            abs(r.raw_price / (r.current_rate + meals) - 1) for r in priced)
+        self.assertLess(as_room, as_total,
+                        f"食事{meals:,.0f}円を足したほうがモデル出力に近い"
+                        f"（部屋代基準 {as_room:.1%} / 総額基準 {as_total:.1%}）。"
+                        "current_public_rate が総額のままではないか")
 
 
 if __name__ == "__main__":

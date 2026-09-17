@@ -28,6 +28,7 @@ from datetime import date
 from pathlib import Path
 
 from .config import Settings
+from .products import load as load_products
 
 SOLD_OUT = "SOLD_OUT"
 MISSING = "MISSING"
@@ -203,11 +204,13 @@ def build(settings: Settings, ctx, window: tuple[date, date], *,
                          tier="自社", weight=1.0, rooms=0, distance_km=0.0,
                          is_self=True)
     # 表の単位は競合と揃えて「1室2名1泊2食・税サ込」（NAR）。
-    # エンジンの出力は部屋代なので、2食付き相当へ戻してから並べる。
-    # 素の部屋代を競合NARと並べると、食事2名分だけ自社が安く見える。
+    # エンジンの出力も現行の掲出価格も部屋代で持っているので、
+    # どちらも2食付き相当へ戻してから並べる。素の部屋代を競合NARと
+    # 並べると、食事2名分だけ自社が安く見える。
+    meals = load_products(settings).all_meals
     for day in dates:
         rec = ctx.recommendations[day]
-        own.cells[day] = rec.current_rate
+        own.cells[day] = (rec.current_rate + meals) if rec.current_rate else 0.0
         own_reco.cells[day] = rec.two_meal_total or rec.recommended_rate
     rows.extend([own, own_reco])
 
