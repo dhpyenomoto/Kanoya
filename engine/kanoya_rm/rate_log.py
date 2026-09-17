@@ -62,6 +62,18 @@ COLUMNS = ("stay_date", "snapshot_date", "product_type",
 RUN_COLUMNS = ("run_date", "stay_from", "stay_to", "product_type",
                "channel", "note")
 
+# rate_log_runs.csv の冒頭に必ず書き出す注記。
+# CSVを直接開いた人が最初に読む位置に置く。docs だけに書いても、
+# 表計算ソフトでファイルを開いた人には届かない。
+# append_run はファイルを書き直すので、ここで毎回書き戻している。
+RUNS_NOTE = (
+    "# 実行記録（rate_log_runs.csv）",
+    "# この記録が保証しているのは「担当者がスクリプトを実行し、変更なしと申告した」",
+    "# 事実である。OTA管理画面との突合を保証するものではない。",
+    "# サイトコントローラー連携が入るまで、この記録の信頼性は担当者の運用に依存する。",
+    "# 連携後は申告ベースから実測ベースへ移行でき、その時点でこの注記は不要になる。",
+)
+
 # 最後に確認してからこの日数を超えたら、その値はもう裏付けが無いとみなす。
 # 設定（sources.json の rate_log.max_unconfirmed_days）で上書きできる。
 DEFAULT_MAX_UNCONFIRMED_DAYS = 3
@@ -88,6 +100,17 @@ class Entry:
             "channel": self.channel,
             "note": self.note,
         }
+
+
+def _rows(path: Path):
+    """CSVを読む。先頭の # 行は注記として読み飛ばす.
+
+    注記をファイル冒頭に置くため。DictReader にそのまま渡すと、注記行を
+    ヘッダとして読んでしまい、以降の全行が静かに捨てられる。
+    """
+    with path.open(encoding="utf-8", newline="") as fh:
+        lines = [line for line in fh if not line.lstrip().startswith("#")]
+    return csv.DictReader(lines)
 
 
 @dataclass(frozen=True)
@@ -135,21 +158,20 @@ def read_runs(path: Path) -> list[Run]:
     if not path.exists():
         return []
     out: list[Run] = []
-    with path.open(encoding="utf-8", newline="") as fh:
-        for row in csv.DictReader(fh):
-            if not (row.get("run_date") or "").strip():
-                continue
-            try:
-                out.append(Run(
-                    run_date=parse_date(row["run_date"]),
-                    stay_from=parse_date(row["stay_from"]),
-                    stay_to=parse_date(row["stay_to"]),
-                    product_type=(row.get("product_type") or "").strip(),
-                    channel=(row.get("channel") or "").strip(),
-                    note=(row.get("note") or "").strip(),
-                ))
-            except (KeyError, ValueError):
-                continue        # 壊れた行で運用を止めない
+    for row in _rows(path):
+        if not (row.get("run_date") or "").strip():
+            continue
+        try:
+            out.append(Run(
+                run_date=parse_date(row["run_date"]),
+                stay_from=parse_date(row["stay_from"]),
+                stay_to=parse_date(row["stay_to"]),
+                product_type=(row.get("product_type") or "").strip(),
+                channel=(row.get("channel") or "").strip(),
+                note=(row.get("note") or "").strip(),
+            ))
+        except (KeyError, ValueError):
+            continue            # 壊れた行で運用を止めない
     return out
 
 
@@ -157,6 +179,8 @@ def write_runs(path: Path, runs: list[Run]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     ordered = sorted(runs, key=lambda r: (r.run_date, r.stay_from, r.stay_to))
     with path.open("w", encoding="utf-8", newline="") as fh:
+        for line in RUNS_NOTE:          # 注記はヘッダ行の直前に置く
+            fh.write(line + "\n")
         writer = csv.DictWriter(fh, fieldnames=list(RUN_COLUMNS))
         writer.writeheader()
         for run in ordered:
@@ -189,21 +213,20 @@ def read(path: Path) -> list[Entry]:
     if not path.exists():
         return []
     out: list[Entry] = []
-    with path.open(encoding="utf-8", newline="") as fh:
-        for row in csv.DictReader(fh):
-            if not (row.get("stay_date") or "").strip():
-                continue
-            try:
-                out.append(Entry(
-                    stay_date=parse_date(row["stay_date"]),
-                    snapshot_date=parse_date(row["snapshot_date"]),
-                    product_type=(row.get("product_type") or "").strip(),
-                    posted_rate=float(row.get("posted_rate") or 0),
-                    channel=(row.get("channel") or "").strip(),
-                    note=(row.get("note") or "").strip(),
-                ))
-            except (KeyError, ValueError):
-                continue        # 壊れた行で運用を止めない。読める行だけ使う
+    for row in _rows(path):
+        if not (row.get("stay_date") or "").strip():
+            continue
+        try:
+            out.append(Entry(
+                stay_date=parse_date(row["stay_date"]),
+                snapshot_date=parse_date(row["snapshot_date"]),
+                product_type=(row.get("product_type") or "").strip(),
+                posted_rate=float(row.get("posted_rate") or 0),
+                channel=(row.get("channel") or "").strip(),
+                note=(row.get("note") or "").strip(),
+            ))
+        except (KeyError, ValueError):
+            continue            # 壊れた行で運用を止めない。読める行だけ使う
     return out
 
 
