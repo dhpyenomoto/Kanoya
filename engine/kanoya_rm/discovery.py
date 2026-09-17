@@ -225,15 +225,36 @@ def to_compset_config(candidates: list[Candidate], origin: tuple[float, float],
     }
 
 
-def diff_against_existing(generated: dict, existing_path: Path) -> dict[str, list[str]]:
-    """既存コンペセットとの差分（新規開業・消滅の検知）."""
+def diff_against_existing(generated: dict, existing_path: Path,
+                          names: dict[str, dict] | None = None
+                          ) -> dict[str, list[str]]:
+    """既存コンペセットとの差分（新規開業・消滅の検知）.
+
+    突き合わせは place_id で行う。表示名は改名で変わるため、名前で比べると
+    同じ施設が「消滅＋新規開業」として二重に出る。
+
+    既存の compset.json には施設の識別情報が入っていない（Private 側の
+    compset_names.json にある）。names にその対応表を渡すと place_id と
+    表示名を解決する。渡されなければ comp_id で表示するに留める。
+    """
+    def identity(entry: dict, table: dict[str, dict]) -> tuple[str, str]:
+        resolved = table.get(entry.get("id", ""), {})
+        place_id = entry.get("place_id") or resolved.get("place_id") or ""
+        label = entry.get("name") or resolved.get("name") or entry.get("id", "")
+        return place_id or f"name:{label}", label
+
+    new_pairs = {identity(c, {}) for c in generated["competitors"]}
     if not existing_path.exists():
-        return {"added": [c["name"] for c in generated["competitors"]], "removed": [], "kept": []}
+        return {"added": sorted(label for _key, label in new_pairs),
+                "removed": [], "kept": []}
     existing = json.loads(existing_path.read_text(encoding="utf-8"))
-    old = {c["name"] for c in existing.get("competitors", [])}
-    new = {c["name"] for c in generated["competitors"]}
+    old_pairs = {identity(c, names or {})
+                 for c in existing.get("competitors", [])}
+    old_keys = {key for key, _label in old_pairs}
+    new_keys = {key for key, _label in new_pairs}
+    labels = {key: label for key, label in old_pairs | new_pairs}
     return {
-        "added": sorted(new - old),
-        "removed": sorted(old - new),
-        "kept": sorted(new & old),
+        "added": sorted(labels[k] for k in new_keys - old_keys),
+        "removed": sorted(labels[k] for k in old_keys - new_keys),
+        "kept": sorted(labels[k] for k in new_keys & old_keys),
     }

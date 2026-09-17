@@ -47,8 +47,8 @@ class ApiParserTest(unittest.TestCase):
     def test_places_api_new_shape(self) -> None:
         payload = {
             "id": "ChIJxxxx",
-            "displayName": {"text": "奈良ホテル", "languageCode": "ja"},
-            "formattedAddress": "日本、〒630-8301 奈良県奈良市高畑町1096",
+            "displayName": {"text": "見本ホテル", "languageCode": "ja"},
+            "formattedAddress": "日本、〒630-0000 サンプル県サンプル市見本町1-1",
             "location": {"latitude": 34.6790, "longitude": 135.8318},
             "types": ["hotel", "lodging"],
             "rating": 4.4,
@@ -56,7 +56,7 @@ class ApiParserTest(unittest.TestCase):
             "priceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
         }
         rec = parse_place(payload, "google_places")
-        self.assertEqual(rec.name, "奈良ホテル")
+        self.assertEqual(rec.name, "見本ホテル")
         self.assertEqual(rec.review_count, 2400)
         self.assertEqual(rec.price_level, "PRICE_LEVEL_VERY_EXPENSIVE")
         self.assertAlmostEqual(rec.latitude, 34.6790)
@@ -70,7 +70,7 @@ class ApiParserTest(unittest.TestCase):
 
     def test_serpapi_google_hotels_shape(self) -> None:
         payload = {
-            "name": "ANDO HOTEL 奈良若草山",
+            "name": "SAMPLE HOTEL 見本山",
             "property_token": "ChkI...",
             "gps_coordinates": {"latitude": 34.6883, "longitude": 135.8480},
             "rate_per_night": {
@@ -101,22 +101,31 @@ class ApiParserTest(unittest.TestCase):
 
 class NameMatchingTest(unittest.TestCase):
     def test_common_words_are_not_stripped(self) -> None:
-        """『奈良』『ホテル』まで落とすと奈良ホテルが空文字になり突合不能になる（実際に踏んだ不具合）."""
-        self.assertNotEqual(collect.normalize_name("奈良ホテル"), "")
+        """地名と業態語まで落とすと、名前が丸ごと消える（実際に踏んだ不具合）.
+
+        『<地名>ホテル』のように地名＋業態語だけでできた名前があり、
+        両方をノイズとして落とした結果その施設だけ空文字になって、
+        どの競合とも突合できなくなった。地名も業態語も識別に効く情報なので残す。
+
+        施設名は実在のものを使わない（本体リポジトリは Public のため）。
+        再現に必要なのは『地名＋業態語だけの名前』という形であって、
+        どの施設かではない。
+        """
+        self.assertNotEqual(collect.normalize_name("見本ホテル"), "")
         self.assertNotEqual(
-            collect.normalize_name("奈良ホテル"),
-            collect.normalize_name("春日ホテル"),
+            collect.normalize_name("見本ホテル"),
+            collect.normalize_name("参考ホテル"),
         )
 
     def test_normalization_ignores_punctuation_and_width(self) -> None:
         self.assertEqual(
-            collect.normalize_name("ＡＮＤＯ ＨＯＴＥＬ　奈良若草山"),
-            collect.normalize_name("ANDO HOTEL 奈良若草山"),
+            collect.normalize_name("ＳＡＭＰＬＥ ＨＯＴＥＬ　見本山"),
+            collect.normalize_name("SAMPLE HOTEL 見本山"),
         )
 
     def test_matches_despite_subtitle(self) -> None:
-        comps = {"c1": _comp("c1", "ANDO HOTEL 奈良若草山")}
-        rec = parse_rate({"name": "ANDO HOTEL 奈良若草山〜DLIGHT LIFE & HOTELS〜",
+        comps = {"c1": _comp("c1", "SAMPLE HOTEL 見本山")}
+        rec = parse_rate({"name": "SAMPLE HOTEL 見本山〜SAMPLE LIFE & HOTELS〜",
                           "rate_per_night": {"extracted_lowest": 60000}},
                          RUN_DATE, 2, 1, "s")
         result = collect.match_records([rec], comps)
@@ -124,7 +133,7 @@ class NameMatchingTest(unittest.TestCase):
 
     def test_unrelated_property_is_reported_not_dropped(self) -> None:
         """コンペセット外の施設は捨てず unmatched に残す（新規開業の兆候になる）."""
-        comps = {"c1": _comp("c1", "江戸三")}
+        comps = {"c1": _comp("c1", "見本旅館")}
         rec = parse_rate({"name": "全然ちがう宿泊施設XYZ",
                           "rate_per_night": {"extracted_lowest": 20000}},
                          RUN_DATE, 2, 1, "s")

@@ -8,6 +8,25 @@
     "longitude": 135.8462,
     "_coord_note": "公開されている住所（春日大社本殿バス停 徒歩3分）からの概算値。discover_compset.py は Places API のジオコーディング結果を優先し、本値はフォールバックとしてのみ使う。実運用前に必ず実測値で確定すること。"
   },
+  "compset_names": {
+    "_note": "競合施設の識別情報（実名・place_id・座標・距離・評価）の置き場所。Kanoya 本体リポジトリが Public のため、Private 側（Kanoya-data）へ分離してある。**この対応表が無くてもエンジンは動く。** 見つからなければ警告を出し、競合を comp_id（auto01 など）で表示したまま続行する。価格計算に必要な項目は compset.json 側に残っているため、推奨価格は変わらない。",
+    "path": "../../Kanoya-data/compset_names.json",
+    "fallback_paths": [
+      "../../kanoya-data/compset_names.json"
+    ],
+    "_fallback_note": "GitHub 上のリポジトリ名は Kanoya-data だが、クローン先が小文字になることがある。大文字小文字を区別するファイルシステムで両方を拾えるよう、候補を並べている。パスは engine/ からの相対、または絶対パス。",
+    "overrides_path": "../../Kanoya-data/compset_overrides.json",
+    "overrides_fallback_paths": [
+      "../../kanoya-data/compset_overrides.json",
+      "config/compset_overrides.json"
+    ],
+    "fixtures_path": "../../Kanoya-data/fixture_facilities.json",
+    "fixtures_fallback_paths": [
+      "../../kanoya-data/fixture_facilities.json",
+      "config/fixture_facilities_sample.json"
+    ],
+    "_regeneration_note": "overrides_path / fixtures_path は**再生成のとき**だけ使う（discover_compset.py と make_fixtures.py）。価格推奨の計算では読まない。見つからなければ末尾のフォールバック（config/ 内の架空サンプル）で動くが、その場合 compset.json を再生成するとコミット済みのものとは別物になる。"
+  },
   "discovery": {
     "radius_m": 5000,
     "_radius_note": "奈良公園・春日野・ならまち圏に加え、JR奈良駅周辺・高畑・紀寺まで覆う半径。広げても類似度スコアで並べ替えるため無関係な施設は下位に沈むが、Places APIのリクエスト数（＝費用）は半径の二乗で増える。discover_compset.py が実行前にリクエスト数と概算費用を表示する。",

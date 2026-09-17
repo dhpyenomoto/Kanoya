@@ -1,0 +1,248 @@
+{
+  "_note": "**完全な架空データ。** 施設名・座標・評価・レビュー数・価格のいずれも実在の施設とは対応していない。パイプラインを最後まで通せることだけが目的で、市場の再現ではない。",
+  "_why": "本体リポジトリが Public のため、実在施設の名前と座標は Kanoya-data（Private）の fixture_facilities.json に置いてある。そちらがあれば make_fixtures.py はそちらを使う。無ければこのファイルで動く。",
+  "_structure": "距離帯・価格帯・規模の構成は実データと同じ数だけ用意してある（2.5km圏・5km圏・圏外、および discovery のフィルタで落ちる対照群）。半径拡大の効果やフィルタの挙動は、このサンプルでも確認できる。",
+  "_caveat": "このサンプルから discover_compset.py を回すと、コミット済みの config/compset.json とは別のコンペセットができる。推奨価格を再現したい場合は compset.json を再生成しないこと。",
+  "facilities": [
+    {
+      "name": "サンプル旅館A",
+      "latitude": 34.6736,
+      "longitude": 135.8321,
+      "price_level": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "rating": 4.8,
+      "review_count": 517,
+      "class": 5,
+      "rate_anchor": 84000
+    },
+    {
+      "name": "サンプル旅館B",
+      "latitude": 34.6856,
+      "longitude": 135.8524,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "rating": 4.4,
+      "review_count": 233,
+      "class": 4,
+      "rate_anchor": 73000
+    },
+    {
+      "name": "サンプル旅館C",
+      "latitude": 34.6867,
+      "longitude": 135.87,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "rating": 4.3,
+      "review_count": 738,
+      "class": 4,
+      "rate_anchor": 71000
+    },
+    {
+      "name": "サンプル旅館D",
+      "latitude": 34.6996,
+      "longitude": 135.8491,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "rating": 4.6,
+      "review_count": 130,
+      "class": 4,
+      "rate_anchor": 66000
+    },
+    {
+      "name": "サンプル旅館E",
+      "latitude": 34.6938,
+      "longitude": 135.8607,
+      "price_level": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "rating": 4.5,
+      "review_count": 256,
+      "class": 4,
+      "rate_anchor": 48000
+    },
+    {
+      "name": "サンプル旅館F",
+      "latitude": 34.6833,
+      "longitude": 135.8459,
+      "price_level": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "rating": 4.4,
+      "review_count": 1913,
+      "class": 5,
+      "rate_anchor": 46000
+    },
+    {
+      "name": "サンプル旅館G",
+      "latitude": 34.6811,
+      "longitude": 135.8631,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "rating": 4.2,
+      "review_count": 147,
+      "class": 4,
+      "rate_anchor": 40000
+    },
+    {
+      "name": "サンプル旅館H",
+      "latitude": 34.682,
+      "longitude": 135.8576,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "rating": 4.1,
+      "review_count": 459,
+      "class": 4,
+      "rate_anchor": 35000
+    },
+    {
+      "name": "サンプル旅館I",
+      "latitude": 34.6908,
+      "longitude": 135.8546,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "rating": 4.5,
+      "review_count": 244,
+      "class": 4,
+      "rate_anchor": 35000
+    },
+    {
+      "name": "サンプル旅館J",
+      "latitude": 34.6694,
+      "longitude": 135.8518,
+      "price_level": "PRICE_LEVEL_EXPENSIVE",
+      "rating": 4.8,
+      "review_count": 133,
+      "class": 4,
+      "rate_anchor": 34000
+    },
+    {
+      "name": "サンプル旅館K",
+      "latitude": 34.6875,
+      "longitude": 135.8522,
+      "price_level": "PRICE_LEVEL_MODERATE",
+      "rating": 3.9,
+      "review_count": 724,
+      "class": 4,
+      "rate_anchor": 40000
+    },
+    {
+      "name": "サンプルホテルL",
+      "latitude": 34.6994,
+      "longitude": 135.8525,
+      "price_level": "PRICE_LEVEL_MODERATE",
+      "rating": 3.8,
+      "review_count": 775,
+      "class": 3,
+      "rate_anchor": 30000
+    },
+    {
+      "name": "サンプルホテルM",
+      "latitude": 34.685,
+      "longitude": 135.8402,
+      "price_level": "PRICE_LEVEL_MODERATE",
+      "rating": 4.0,
+      "review_count": 855,
+      "class": 3,
+      "rate_anchor": 32000
+    },
+    {
+      "name": "サンプルホテルN",
+      "latitude": 34.6701,
+      "longitude": 135.8414,
+      "price_level": "PRICE_LEVEL_MODERATE",
+      "rating": 4.2,
+      "review_count": 120,
+      "class": 3,
+      "rate_anchor": 28000
+    },
+    {
+      "name": "サンプル旅館O",
+      "latitude": 34.6733,
+      "longitude": 135.8544,
+      "price_level": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "rating": 4.6,
+      "review_count": 137,
+      "class": 5,
+      "rate_anchor": 66000
+    },
+    {
+      "name": "サンプルホテルP",
+      "latitude": 34.6842,
+      "longitude": 135.8416,
+      "price_level": "PRICE_LEVEL_INEXPENSIVE",
+      "rating": 4.1,
+      "review_count": 1308,
+      "class": 3,
+      "rate_anchor": 15000
+    },
+    {
+      "name": "サンプルホテルQ",
+      "latitude": 34.6904,
+      "longitude": 135.8481,
+      "price_level": "PRICE_LEVEL_INEXPENSIVE",
+      "rating": 3.8,
+      "review_count": 1985,
+      "class": 3,
+      "rate_anchor": 13000
+    },
+    {
+      "name": "サンプルホテルR",
+      "latitude": 34.6815,
+      "longitude": 135.8551,
+      "price_level": "PRICE_LEVEL_INEXPENSIVE",
+      "rating": 3.9,
+      "review_count": 2843,
+      "class": 3,
+      "rate_anchor": 13000
+    },
+    {
+      "name": "サンプル旅館S",
+      "latitude": 34.7125,
+      "longitude": 135.8203,
+      "price_level": "PRICE_LEVEL_MODERATE",
+      "rating": 4.2,
+      "review_count": 2545,
+      "class": 4,
+      "rate_anchor": 27000
+    },
+    {
+      "name": "サンプル旅館T",
+      "latitude": 34.6989,
+      "longitude": 135.8893,
+      "price_level": "PRICE_LEVEL_MODERATE",
+      "rating": 4.0,
+      "review_count": 1600,
+      "class": 4,
+      "rate_anchor": 23000
+    },
+    {
+      "name": "サンプルホテルU",
+      "latitude": 34.6322,
+      "longitude": 135.8707,
+      "price_level": "PRICE_LEVEL_MODERATE",
+      "rating": 3.8,
+      "review_count": 1064,
+      "class": 3,
+      "rate_anchor": 23000
+    },
+    {
+      "name": "サンプルホテルV",
+      "latitude": 34.6828,
+      "longitude": 135.8623,
+      "price_level": "PRICE_LEVEL_INEXPENSIVE",
+      "rating": 4.5,
+      "review_count": 248,
+      "class": 2,
+      "rate_anchor": 6000
+    },
+    {
+      "name": "サンプルホテルW",
+      "latitude": 34.6787,
+      "longitude": 135.8481,
+      "price_level": "PRICE_LEVEL_INEXPENSIVE",
+      "rating": 3.7,
+      "review_count": 44,
+      "class": 1,
+      "rate_anchor": 5000
+    },
+    {
+      "name": "サンプルホテルX",
+      "latitude": 34.6877,
+      "longitude": 135.8522,
+      "price_level": "",
+      "rating": 4.8,
+      "review_count": 4,
+      "class": 0,
+      "rate_anchor": 23000
+    }
+  ]
+}

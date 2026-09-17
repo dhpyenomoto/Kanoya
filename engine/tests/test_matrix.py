@@ -254,7 +254,10 @@ class MatrixTest(unittest.TestCase):
         self.assertEqual(labels[:3], ["競合A", "競合B", "競合C"])
         # 自社名は自分のものなので匿名化しない
         self.assertEqual(anon.rows[0].name, self.ctx.settings.property["property"]["name"])
-        self.assertNotIn("ふふ奈良", matrix.render_html(anon))
+        html_out = matrix.render_html(anon)
+        for comp in self.ctx.settings.competitors.values():
+            self.assertNotIn(comp.name, html_out,
+                             f"匿名化したのに {comp.id} の表示名が残っている")
 
     def test_anon_label_rolls_over_past_z(self) -> None:
         self.assertEqual(matrix._anon_label(0), "競合A")
