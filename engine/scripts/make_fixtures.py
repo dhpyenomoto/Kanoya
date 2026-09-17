@@ -16,13 +16,33 @@
 OTBは本番では PMS / サイトコントローラーから日次で取り込む。
 検証用にはブッキングカーブに沿った擬似値を生成する（宿泊日ごとに需要係数を
 1度だけ引くことで、取得日が宿泊日へ近づくにつれ単調増加する形にしている）。
+
+**ベンチマークからの乖離について**
+
+OTBをブッキングカーブ『から』生成する以上、実OTBと期待OTBの乖離は
+構造的にゼロ近辺に留まる。そのため、ペース関連の不具合が
+このフィクスチャでは原理的に再現しない（実際にこれで取り逃している:
+出所不明のブッキングカーブが進捗を常に「大幅な遅れ」と判定していた件は、
+フィクスチャ上では症状が一切出なかった）。
+
+そこで意図的な乖離を注入できるようにする。
+
+    python3 scripts/make_fixtures.py --pace-divergence 0.3   # 想定の3割しか埋まらない
+    python3 scripts/make_fixtures.py --pace-divergence 2.0   # 想定の2倍で埋まる
+    python3 scripts/make_fixtures.py --no-scenarios          # 既定の乖離日を入れない
+
+既定でも乖離シナリオを2つ含める（PACE_SCENARIOS）。宿泊日を明示的に
+指定しており、実行のたびに変わらない。乱数で散らすとテストから
+名指しできず、再現したい状況を狙って作れないため。
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import random
 import sys
+from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -34,6 +54,52 @@ RUN_DATE = date(2026, 8, 15)
 HORIZON = 121
 BACKFILL = 14      # 基準日より前の実行日を再現できるよう、過去分の宿泊日も生成する
 SEED = 20260815
+
+
+@dataclass(frozen=True)
+class PaceScenario:
+    """ベンチマークから意図的に外した宿泊日帯."""
+
+    name: str
+    label: str
+    start: date
+    end: date
+    divergence: float      # ベンチマーク比 何倍で埋まっているか
+
+    def covers(self, day: date) -> bool:
+        return self.start <= day <= self.end
+
+
+# 既定で必ず含める乖離シナリオ。
+#
+# 基準日から近いリード帯に置く。実測カーブでは リード45日以遠の期待室数が
+# 0.1室未満になり、倍率を掛けても四捨五入で消えてしまうため
+# （0.05室 × 3.0 = 0.15室 → 0室）。乖離を見たいなら近い日に置くしかない。
+#
+# 窓と倍率は「強く出るが、クリップには張り付かない」ところを総当たりで選んである
+# （lagging: raw_z −0.93〜−0.62 ／ leading: +0.28〜+0.91）。
+# 張り付くとOTBが何室でも同じ値になり、進捗を見ていないのと同じになる。
+# ここが目的なので、極端な乖離（張り付いて当然の水準）は既定には入れない。
+# それは --pace-divergence で明示的に作る。
+PACE_SCENARIOS: tuple[PaceScenario, ...] = (
+    PaceScenario("lagging", "想定より大きく遅れている",
+                 date(2026, 8, 22), date(2026, 8, 28), 0.30),
+    PaceScenario("leading", "想定より大きく先行している",
+                 date(2026, 8, 29), date(2026, 9, 4), 2.50),
+)
+
+
+def divergence_for(stay: date, base: float,
+                   scenarios: tuple[PaceScenario, ...] = PACE_SCENARIOS) -> float:
+    """当該宿泊日に適用する乖離倍率.
+
+    シナリオは宿泊日で決まる。乱数を使わないので、何度実行しても同じ。
+    """
+    for scenario in scenarios:
+        if scenario.covers(stay):
+            return base * scenario.divergence
+    return base
+
 
 # 公開情報に基づく近隣宿泊施設。座標は概算、価格アンカーは擬似値。
 # rate_anchor は「1室2名・素泊まりまたは掲出上の最安」を想定した擬似値（税別）。
@@ -69,13 +135,26 @@ FACILITIES = [
 ]
 
 
-def main() -> None:
+def parse_args(argv=None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="検証データ生成")
+    parser.add_argument("--pace-divergence", type=float, default=1.0,
+                        help="ベンチマーク比 何倍で埋まるか（1.0=カーブどおり、"
+                             "0.3=想定の3割しか埋まらない）")
+    parser.add_argument("--no-scenarios", action="store_true",
+                        help="既定の乖離シナリオ（遅れ・先行）を入れない")
+    parser.add_argument("--seed", type=int, default=SEED)
+    return parser.parse_args(argv)
+
+
+def main(argv=None) -> None:
+    args = parse_args(argv)
+    scenarios = () if args.no_scenarios else PACE_SCENARIOS
     root = Path(__file__).resolve().parents[1]
     settings = Settings.load(root / "config")
     data_dir = root / "data"
     fixtures = data_dir / "fixtures"
     (fixtures / "google_hotels").mkdir(parents=True, exist_ok=True)
-    rng = random.Random(SEED)
+    rng = random.Random(args.seed)
 
     # ---- Places API (New) 形式 ----
     places = {
@@ -159,7 +238,9 @@ def main() -> None:
         })
 
     # ---- 自社OTB（本番では PMS / サイトコントローラーから取り込む） ----
-    otb_rows = _build_otb(settings, rng, season_level, dow_level)
+    otb_rows = _build_otb(settings,
+                          divergence=args.pace_divergence,
+                          scenarios=scenarios, seed=args.seed)
     _write_csv(data_dir / "otb.csv", otb_rows)
 
     print(f"places_nearby.json      : {len(FACILITIES)} 施設")
@@ -167,10 +248,22 @@ def main() -> None:
     print(f"otb.csv                 : {len(otb_rows)} 行"
           f"（取得日 {BACKFILL + 1} 日分 × 宿泊日）")
     print(f"出力先                  : {fixtures.parent}")
+    if args.pace_divergence != 1.0:
+        print(f"ペース乖離（全日）      : ベンチマーク比 {args.pace_divergence:g}倍")
+    if scenarios:
+        print("ペース乖離シナリオ      :")
+        for sc in scenarios:
+            print(f"  {sc.name:<8} {sc.start}〜{sc.end}  "
+                  f"ベンチマーク比 {sc.divergence:g}倍  （{sc.label}）")
+    else:
+        print("ペース乖離シナリオ      : なし（--no-scenarios）")
     print("\n※ 施設名・所在は公開情報ベースの実在施設。価格は擬似データであり実勢価格ではない。")
 
 
-def _build_otb(settings, rng, season_level, dow_level) -> list[dict]:
+def _build_otb(settings, *,
+               divergence: float = 1.0,
+               scenarios: tuple = PACE_SCENARIOS,
+               seed: int = SEED) -> list[dict]:
     """OTBスナップショットを生成する.
 
     宿泊日ごとに需要係数を1度だけ引き、取得日はブッキングカーブの進捗のみで
@@ -182,11 +275,15 @@ def _build_otb(settings, rng, season_level, dow_level) -> list[dict]:
     rooms = int(settings.property["property"]["rooms"])
     target_occ = {"PEAK": .95, "HIGH": .88, "SHOULDER": .75, "LOW": .62, "DEEP_LOW": .50}
 
+    # 宿泊日ごとに独立したシードを使う。共有の rng から引くと、
+    # 他の箇所で乱数を1つ増やしただけで全日のOTBがずれてしまい、
+    # 「カーブだけを変えた影響」を測れなくなる。
     demand: dict[date, float] = {}
     for offset in range(-BACKFILL, HORIZON):
         stay = RUN_DATE + timedelta(days=offset)
         event, _ = settings.event_score_of(stay)
-        demand[stay] = rng.uniform(0.55, 1.35) * (1 + 0.5 * event)
+        local = random.Random(f"{seed}:{stay.toordinal()}")
+        demand[stay] = local.uniform(0.55, 1.35) * (1 + 0.5 * event)
 
     rows: list[dict] = []
     for back in range(BACKFILL, -1, -1):
@@ -197,8 +294,9 @@ def _build_otb(settings, rng, season_level, dow_level) -> list[dict]:
                 continue
             season, _ = settings.season_of(stay)
             ratio = expected_ratio(settings, stay, offset)
+            factor = divergence_for(stay, divergence, scenarios)
             otb = max(0, min(rooms, round(
-                rooms * target_occ[season] * ratio * demand[stay]
+                rooms * target_occ[season] * ratio * demand[stay] * factor
             )))
 
             # 現行の掲出価格＝手作業の「粗い料金表」（季節3区分 × 平日/週末の6階段）
