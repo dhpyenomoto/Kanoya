@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>10. 現在の状態と残タスク — 奈良春日 鹿のや レベニューマネジメント基盤</title>
+<style>
+:root{--ground:#F5F6F2;--surface:#FFFFFF;--alt:#EDEFE9;--ink:#1A211C;--ink2:#414B44;
+ --muted:#6B746D;--line:#D8DCD3;--accent:#14584A;--accent-soft:#E2EBE6;--warn:#B8452B}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;--ink2:#C0C7BF;
+ --muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}}
+:root[data-theme="dark"]{--ground:#141715;--surface:#1C201D;--alt:#232823;--ink:#E8EBE6;
+ --ink2:#C0C7BF;--muted:#949C94;--line:#2E342E;--accent:#4FB49A;--accent-soft:#1E2A26;--warn:#DD6A46}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-size:16px;line-height:1.85;
+ font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif}
+.wrap{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto;gap:34px;
+ padding:0 22px 80px}
+nav{position:sticky;top:0;flex:0 0 232px;padding:30px 0;max-height:100vh;overflow:auto}
+nav .brand{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-size:17px;font-weight:600;line-height:1.5;margin-bottom:18px;display:block;
+ color:var(--ink);text-decoration:none}
+nav a.item{display:block;padding:7px 11px;border-radius:3px;color:var(--ink2);
+ text-decoration:none;font-size:13.5px;border-left:2px solid transparent}
+nav a.item:hover{background:var(--alt);color:var(--ink)}
+nav a.item.on{background:var(--accent-soft);color:var(--accent);font-weight:700;
+ border-left-color:var(--accent)}
+main{flex:1;min-width:0;padding:30px 0}
+h1,h2,h3,h4{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+ font-weight:600;line-height:1.45;text-wrap:balance}
+h1{font-size:29px;margin:0 0 22px;padding-bottom:14px;border-bottom:2px solid var(--accent)}
+h2{font-size:22px;margin:44px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:15px;margin:22px 0 8px}
+p,li{max-width:74ch}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+code{background:var(--alt);padding:2px 5px;border-radius:3px;font-size:.88em;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--alt);border:1px solid var(--line);padding:15px 17px;overflow-x:auto;
+ border-radius:3px;line-height:1.7}
+pre code{background:none;padding:0;font-size:12.5px}
+blockquote{margin:18px 0;padding:14px 18px;background:var(--accent-soft);
+ border-left:3px solid var(--accent);color:var(--ink2)}
+blockquote p{margin:6px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--alt);font-size:12px;letter-spacing:.06em;color:var(--ink2);
+ font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+ font-size:13px;color:var(--muted)}
+@media (max-width:860px){.wrap{flex-direction:column;gap:0}
+ nav{position:static;flex:none;width:100%;max-height:none;
+  border-bottom:1px solid var(--line);padding-bottom:14px}
+ nav .items{display:flex;flex-wrap:wrap;gap:4px}
+ nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
+</style></head>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="06-survey-server.html">6. 調査サーバー構築</a><a class="item" href="07-open-issues.html">7. 未解決の不整合</a><a class="item" href="08-demand-signal.html">8. 内部需要シグナル</a><a class="item" href="09-decisions.html">9. 判断の記録</a><a class="item on" href="10-status.html">10. 現在の状態と残タスク</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>現在の状態と残タスク</h1>
+<blockquote>
+<h2>いまのエンジンの状態</h2>
+<p><strong>価格水準は実績と同じ土俵に乗ったが、競合データが未接続でフロアが
+暫定値のため、まだ本番配信には使えない。</strong></p>
+</blockquote>
+<p>3週間空けて戻ってきた人が、最初にここを読んで再開できるように書いてある。
+最終更新 2026-09-18。</p>
+<hr />
+<h2>いま何ができて、何ができないか</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>状態</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>推奨価格を出す</td>
+<td>できる。実売室夜で重み付けした中央値は実績の <strong>-2.3%</strong>（42,000円 vs 43,001円）</td>
+</tr>
+<tr>
+<td>その価格が市場に対して高いか安いか</td>
+<td><strong>判定できない。</strong> 競合レートは全部フィクスチャ</td>
+</tr>
+<tr>
+<td>いくらまで下げてよいか</td>
+<td><strong>判定できない。</strong> フロアが暫定値（食事の売価を引いただけ）</td>
+</tr>
+<tr>
+<td>自動配信していいか</td>
+<td><strong>判定できない。</strong> 提示価格の記録が無く、承認区分が機能しない（P17で記録は開始できる状態）</td>
+</tr>
+<tr>
+<td>予約進捗を価格に反映する</td>
+<td>実質できていない。有効なのは19/160日（<code>docs/08</code>。稼働水準の帰結であり、欠陥ではない）</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>-2.3% を「精度が高い」と読まないこと。</strong> 比較対象は過去の値付け判断の
+結果であり、失敗した値上げ実験を含む。詳しくは <code>docs/09</code> の
+「検証方法そのものの限界」。</p>
+<hr />
+<h2>3-1. 完了したもの</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P1</td>
+<td>感度分析（係数を振って価格への効き方を測る）</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>二重計上の解消（pace と remain を demand へ統合。5項→4項）</td>
+</tr>
+<tr>
+<td>P3改</td>
+<td>gap→z 写像の見直し（ハードクリップを tanh 化・最小期待室数）</td>
+</tr>
+<tr>
+<td>P12</td>
+<td>閉館日と例外営業（曜日ルール＋日付例外、<code>source</code> で実績と予定を区別）</td>
+</tr>
+<tr>
+<td>P14</td>
+<td><code>pace_benchmark</code> の実測化（擬似データ由来の想定カーブを差し替え）</td>
+</tr>
+<tr>
+<td>P15</td>
+<td>部屋代基準への転換（最適化単位を「2食付き総額」から「1室2名1泊の部屋代」へ）</td>
+</tr>
+<tr>
+<td>—</td>
+<td>競合実名の分離（識別情報を <code>Kanoya-data</code> へ。追跡ファイル89件でヒット0件）</td>
+</tr>
+<tr>
+<td>—</td>
+<td>日次変動幅の実効値（宣言15%が実効15.3%になっていたのを修正）</td>
+</tr>
+<tr>
+<td>—</td>
+<td>フィクスチャへの乖離注入（<code>--pace-divergence</code>。ペース不具合が再現しない問題）</td>
+</tr>
+<tr>
+<td>—</td>
+<td>目標稼働→予測値（経営目標が予測変数の位置に直書きされていた）</td>
+</tr>
+<tr>
+<td>—</td>
+<td>アンカーの実勢化（37,000 → 39,000円）</td>
+</tr>
+<tr>
+<td>P17</td>
+<td>提示価格の日次記録（<code>scripts/log_rates.py</code>。<strong>記録開始はこれから</strong>）</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2>3-2. データ待ちで止まっているもの</h2>
+<p><strong>この2つが無いと、エンジンは本番配信に使えない。</strong> コードの問題ではなく、
+入力が無いので答えが出せない。</p>
+<h3>P13. 商品形態別の貢献利益フロア</h3>
+<p><strong>要るもの：変動費の内訳（出所は社内）</strong></p>
+<ul>
+<li>食材原価（夕食・朝食それぞれ、1名1食あたり）</li>
+<li>リネン・清掃・アメニティ（1室1泊あたりの概算）</li>
+<li>OTA各社の実手数料率（契約書の値。掲出率ではなく実際に引かれる率）</li>
+</ul>
+<p><strong>無いとどうなるか</strong></p>
+<p>「いくらまで下げてよいか」が答えられない。現在は<strong>暫定フロア</strong>で動いている。</p>
+<pre><code>2食付き 58,000円（確定値）
+素泊まり 14,000円 ← 58,000 − 食事の売価 44,000 の引き算にすぎない
+</code></pre>
+<p>食事に乗っている利益を戻していないため、<strong>貢献利益フロアとしては過小</strong>。
+起動時に警告が出るようにしてあり、出力にも <code>【暫定フロア適用】</code> と表示される。
+<strong>仮値のまま本番配信に使わないこと。</strong></p>
+<p><code>scripts/</code> に「変動費を入力すれば4形態のフロアが出る」計算スクリプトを
+用意する形にする（数値の確定は人に残す）。</p>
+<h3>P16. コンペセットの再ティア化</h3>
+<p><strong>要るもの：競合の実勢価格（出所は SerpApi・月$25〜75）</strong></p>
+<p><strong>無いとどうなるか</strong></p>
+<p>現在の競合レート（<code>comp_rates_collected.csv</code>）は<strong>すべてフィクスチャ</strong>である。
+したがって</p>
+<ul>
+<li>市場ポジションの数値（「競合NAR中央値の1.10倍」など）は意味を持たない</li>
+<li><code>z_comp</code> は実データ検証では0にしてある</li>
+<li>自社の価格が市場に対して高いのか安いのかは判定不能</li>
+</ul>
+<p>P16 自体はティアの重み付けに「商品形態の整合」を足す話だが、その前に
+<strong>実勢価格の取得が要る</strong>。順序としては 実勢価格の接続 → P16。</p>
+<p>契約プランの見積もりは P6改 で扱う（リード60日に縮めれば Starter 月$25 で
+収まる可能性がある。リード60日前時点のOTB充足率は1.4%しかない）。</p>
+<hr />
+<h2>3-3. 着手可能なもの（データ待ちではない）</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P5</td>
+<td>3シグナル合議の接続（内部需要・競合・イベントの合議ロジック）</td>
+</tr>
+<tr>
+<td>P6改</td>
+<td>予算ガードの実効化（契約プラン表現・使用量カウンタ・超過時の停止）</td>
+</tr>
+<tr>
+<td>P7</td>
+<td>異常値判定の設定ファイル化（しきい値がコードに埋まっている）</td>
+</tr>
+<tr>
+<td>P8改</td>
+<td>食事uplift の単位明示（<strong>自社側は完了</strong>、競合側は未着手・未実測のまま）</td>
+</tr>
+<tr>
+<td>P9</td>
+<td>プラン改定の段差検知（プラン差し替えによる価格の不連続を拾う）</td>
+</tr>
+<tr>
+<td>P10</td>
+<td>雑務（ロシア語混入・ドキュメント整合）</td>
+</tr>
+</tbody>
+</table></div>
+<p>P5 と P6改 が優先度が高い。P5 は現在シグナルが素通しで足し算されている状態、
+P6改 は課金事故を防ぐためのもの（SerpApi は上限到達で早期更新＝再課金になる）。</p>
+<hr />
+<h2>3-4. 環境側の未対応（コードでは直せない）</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>状態</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dhpyenomoto/Kanoya</code> が <strong>Public のまま</strong></td>
+<td>2026-09-18 に Private 化予定。競合実名は HEAD から除去済みだが、<strong>過去のコミットには残っている</strong>（<code>docs/09</code> 参照。履歴書き換えはしない方針）</td>
+</tr>
+<tr>
+<td><code>revert-1-claude/...</code> ブランチの削除</td>
+<td>未実施</td>
+</tr>
+<tr>
+<td>Vercel の再デプロイ</td>
+<td>未実施。<code>site/</code> は更新済みだが配信側が古い</td>
+</tr>
+<tr>
+<td><code>otb.csv</code> に例外営業8日が欠落</td>
+<td><code>import_reservations.py</code> で対処予定。閉館日の宿泊日を機械的に除外して生成しているため、例外営業した日（PEAK 3日・HIGH 2日を含む）がOTBに現れない。<code>build_expected_occupancy.py</code> は検知して警告し、<code>--reservations</code> で補完できる</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2>3-5. 次に何をするか</h2>
+<ol>
+<li><strong>提示価格の記録を今日から始める</strong>（P17は実装済み。あとは運用）
+   1日遅れるごとに1日分が失われる。費用はゼロ。
+   <code>python3 scripts/log_rates.py</code></li>
+<li><strong>変動費の内訳を集める</strong>（P13の前提。社内でしか分からない）</li>
+<li><strong>SerpApi の契約を判断する</strong>（P16の前提。先に P6改 で必要額を出す）</li>
+</ol>
+<p>1 は今日できる。2 と 3 は人の判断が要る。
+コード側で先に進めるなら P5 → P6改 の順。</p>
+<footer>社内資料。競合施設の実名・価格ポジション・収益前提を含みます。
+取り扱いにご注意ください。</footer>
+</main></div></body></html>

@@ -58,10 +58,18 @@ footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
  nav .items{display:flex;flex-wrap:wrap;gap:4px}
  nav a.item{border-left:none;font-size:12.5px;padding:5px 9px}}
 </style></head>
-<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item on" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="06-survey-server.html">6. 調査サーバー構築</a><a class="item" href="07-open-issues.html">7. 未解決の不整合</a><a class="item" href="08-demand-signal.html">8. 内部需要シグナル</a><a class="item" href="09-decisions.html">9. 判断の記録</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>奈良春日 鹿のや — レベニューマネジメント基盤</h1>
+<body><div class="wrap"><nav><a class="brand" href="index.html">奈良春日 鹿のや<br>レベニューマネジメント基盤</a><div class="items"><a class="item on" href="index.html">概要</a><a class="item" href="01-proposal.html">1. 企画提案書</a><a class="item" href="02-data-collection.html">2. データ収集設計</a><a class="item" href="03-architecture.html">3. システム設計</a><a class="item" href="04-roadmap-roi.html">4. ロードマップとROI</a><a class="item" href="05-operations.html">5. 運用手順</a><a class="item" href="06-survey-server.html">6. 調査サーバー構築</a><a class="item" href="07-open-issues.html">7. 未解決の不整合</a><a class="item" href="08-demand-signal.html">8. 内部需要シグナル</a><a class="item" href="09-decisions.html">9. 判断の記録</a><a class="item" href="10-status.html">10. 現在の状態と残タスク</a><a class="item" href="adr-matrix-table.html">ADRマトリクス（表）</a><a class="item" href="engine.html">参照実装の使い方</a><a class="item" href="adr-matrix.html">ADRマトリクス（ヒートマップ）</a></div></nav><main><h1>奈良春日 鹿のや — レベニューマネジメント基盤</h1>
 <p>全5室オーベルジュ「奈良春日 鹿のや」を対象とした、<strong>レベニューマネージャーの経験・力量に依存しない</strong>ダイナミックプライシング基盤の企画書と参照実装。</p>
 <p>近隣競合のOTA掲出情報を自動収集・正規化し、需要シグナルと組み合わせて日次の最適ADRを算出、ガードレール内は自動でOTAへ配信、逸脱分のみ人が承認する——という運用を設計しています。</p>
 <blockquote>
+<h3>📍 いまのエンジンの状態（2026-09-18）</h3>
+<p><strong>価格水準は実績と同じ土俵に乗ったが、競合データが未接続でフロアが
+暫定値のため、まだ本番配信には使えない。</strong></p>
+<p>推奨部屋代（実売室夜で重み付け）の中央値は実績の -2.3%。ただしこれは
+「過去の自社の値付けと同じ土俵に乗った」という意味であって、精度が高い
+という意味ではありません（<a href="09-decisions.html">判断の記録</a>）。
+何が完了し、何がデータ待ちで、次に何をするかは
+<strong><a href="10-status.html">現在の状態と残タスク</a></strong> にまとめています。</p>
 <h3>⚠️ 公開範囲について</h3>
 <p>本リポジトリは<strong>社内資料</strong>です。競合施設の実名、価格ポジション、収益前提、
 原価にかかわるガードレール値を含みます。
@@ -331,6 +339,11 @@ python3 -m unittest discover -s tests          # 推奨価格が変わらない�
 <td>9</td>
 <td><a href="09-decisions.html">判断の記録</a></td>
 <td>なぜそうしなかったか。閾値を下げない決定・<strong>実績との一致は正しさの証明ではない</strong>・git履歴を書き換えない決定</td>
+</tr>
+<tr>
+<td>10</td>
+<td><a href="10-status.html">現在の状態と残タスク</a></td>
+<td><strong>間が空いたらここから読む。</strong> 何が完了し、何がデータ待ちで、次に何をするか</td>
 </tr>
 </tbody>
 </table></div>
