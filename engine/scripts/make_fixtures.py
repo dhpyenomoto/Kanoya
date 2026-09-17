@@ -75,17 +75,26 @@ class PaceScenario:
 #
 # 基準日から近いリード帯に置く。内部需要シグナルは期待室数が
 # min_expected_rooms(1.0室) 未満のリード帯では無効化されるため、
-# 実測カーブでは lead 0〜9日 しか有効帯が無い（それ以遠は期待室数が1室未満）。
-# 遠い日に乖離を置いてもシグナルに現れないので、意味のある検証にならない。
+# 乖離を作ってもシグナルに現れない日には置けない。
 #
-# 窓と倍率は「強く出るが、飽和の端に張り付かない」ところを総当たりで選んである
-# （lagging: raw_z −0.98〜−0.77 ／ leading: +0.79〜+0.99）。
+# **有効帯は基準日から3日しかない（2026-08-15〜17）。**
+# 2026-09 に最終稼働の見込みを経営目標（SHOULDER 0.75 など）から
+# 実測（0.28 など）へ置き換えた結果、期待室数が2.7分の1になり、
+# 1室に届くリードが lead 0〜9日から lead 0〜2日へ縮んだ。
+#   lead 0: 1.44室 ／ lead 1: 1.24室 ／ lead 2: 1.08室 ／ lead 3: 0.70室（無効）
+# min_expected_rooms は最終稼働の見込みとセットで決まる閾値であり、
+# 片方だけ動かすと有効帯が変わる。ここを広げたい場合は
+# min_expected_rooms 側を見直すこと（価格が動く変更になる）。
+#
+# そのため遅れ・先行の両方を、この3日を割って作る。窓は重ねない。
+# 倍率は「強く出るが、飽和の端に張り付かない」ところを選んである
+# （lagging: raw_z −0.75〜−0.68 ／ leading: +0.55）。
 # 端に寄りすぎるとOTBが何室でも似た値になり、進捗を見ていないのと同じになる。
 PACE_SCENARIOS: tuple[PaceScenario, ...] = (
     PaceScenario("lagging", "想定より大きく遅れている",
-                 date(2026, 8, 15), date(2026, 8, 17), 0.30),
+                 date(2026, 8, 15), date(2026, 8, 16), 0.30),
     PaceScenario("leading", "想定より大きく先行している",
-                 date(2026, 8, 20), date(2026, 8, 24), 4.00),
+                 date(2026, 8, 17), date(2026, 8, 17), 2.50),
 )
 
 
@@ -270,10 +279,10 @@ def _build_otb(settings, *,
     決める。こうすると取得日が宿泊日へ近づくにつれ OTB が単調増加し、
     実際の予約の積み上がり方と整合する（取得日ごとに乱数を引くと減ることがある）。
     """
-    from kanoya_rm.pace import expected_ratio  # 遅延importで循環回避
+    # 遅延importで循環回避
+    from kanoya_rm.pace import expected_final_occupancy, expected_ratio
 
     rooms = int(settings.property["property"]["rooms"])
-    target_occ = {"PEAK": .95, "HIGH": .88, "SHOULDER": .75, "LOW": .62, "DEEP_LOW": .50}
 
     # 宿泊日ごとに独立したシードを使う。共有の rng から引くと、
     # 他の箇所で乱数を1つ増やしただけで全日のOTBがずれてしまい、
@@ -297,8 +306,12 @@ def _build_otb(settings, *,
             season, _ = settings.season_of(stay)
             ratio = expected_ratio(settings, stay, offset)
             factor = divergence_for(stay, divergence, scenarios)
+            # 最終稼働の見込みはエンジンと同じ値を使う。別表を持つと
+            # 「乖離ゼロのはずのフィクスチャ」が全日ずれ、乖離注入の
+            # 効き具合が読めなくなる。
             otb = max(0, min(rooms, round(
-                rooms * target_occ[season] * ratio * demand[stay] * factor
+                rooms * expected_final_occupancy(settings, season)
+                * ratio * demand[stay] * factor
             )))
 
             # 現行の掲出価格＝手作業の「粗い料金表」（季節3区分 × 平日/週末の6階段）

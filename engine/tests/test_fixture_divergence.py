@@ -77,7 +77,11 @@ class DivergenceOptionTest(unittest.TestCase):
         signals = {}
         for div in (0.3, 1.0, 2.5):
             otb = self._otb_at_run_date(divergence=div, scenarios=())
-            stay = run + timedelta(days=10)
+            # 有効帯（期待室数 >= min_expected_rooms）の中で見る。
+            # 2026-09 に最終稼働の見込みを実測へ下げて以降、基準日から
+            # 有効なのは3日（lead 0〜2）しかない。それ以遠で見ると
+            # 倍率を何倍にしても z=0 のままで、比較にならない。
+            stay = run + timedelta(days=1)
             result = pace_mod.evaluate(self.settings, stay, run,
                                        otb[stay.isoformat()])
             signals[div] = round(result.z, 4)
@@ -197,16 +201,21 @@ class DefaultScenarioTest(unittest.TestCase):
 
         写像を tanh にしたのでハードクリップはもう起きない（±1 に漸近する
         だけで到達しない）。代わりに「飽和の端に寄る」ことを確認する。
+
+        遅れ側では端に寄せられない。期待室数が最大でも1.44室しかなく、
+        OTB 0室でも gap は −1.44 止まりで tanh(−0.96) = −0.74 にしかならない
+        （2026-09 に最終稼働の見込みを実測へ下げた結果）。先行側は
+        満室5室まで積めるので端に届く。上振れ側で確認する。
         """
         run = self.gen.RUN_DATE
-        rows = self.gen._build_otb(self.settings, divergence=0.0, scenarios=())
+        rows = self.gen._build_otb(self.settings, divergence=6.0, scenarios=())
         otb = {r["stay_date"]: r["rooms_otb"] for r in rows
                if r["snapshot_date"] == run.isoformat()}
         stay = run + timedelta(days=1)          # 期待室数が大きい短リード
         p = pace_mod.evaluate(self.settings, stay, run, otb[stay.isoformat()])
         self.assertFalse(p.below_min_expected)
-        self.assertLess(p.raw_z, -0.95)
-        self.assertGreater(p.raw_z, -1.0, "tanh なので ±1 には到達しないはず")
+        self.assertGreater(p.raw_z, 0.95)
+        self.assertLess(p.raw_z, 1.0, "tanh なので ±1 には到達しないはず")
 
     def test_guardrails_hold_on_scenario_days(self) -> None:
         """乖離を入れても、ガードレールの不変条件は破れないこと."""

@@ -156,6 +156,9 @@ def main() -> None:
     print(report.capacity_summary(settings, ctx.snapshot, args.days,
                                   sold_room_nights=sold, as_of=ctx.snapshot))
     print(report.summary(recs))  # type: ignore[arg-type]
+    coverage = report.demand_coverage(ctx.paces)
+    if coverage:
+        print(coverage)
 
     queue = [r for r in recs.values() if r.action == "APPROVAL_REQUIRED"]  # type: ignore[attr-defined]
     print("\n--- 承認キュー（自動適用帯を外れた推奨のみ人が判断する） ---")

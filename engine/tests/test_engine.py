@@ -162,7 +162,9 @@ class PaceTest(unittest.TestCase):
     def test_ahead_of_pace_gives_positive_z(self) -> None:
         # 期待室数が min_expected_rooms 以上ある帯で評価する。
         # それ未満の帯は意図的に無効化される（下のテスト参照）。
-        r = pace.evaluate(self.s, date(2026, 8, 20), date(2026, 8, 15), otb_rooms=5)
+        # 有効帯はリード0〜2日しかない（2026-09 に最終稼働の見込みを
+        # 経営目標から実測へ下げ、期待室数が2.7分の1になったため）。
+        r = pace.evaluate(self.s, date(2026, 8, 16), date(2026, 8, 15), otb_rooms=5)
         self.assertFalse(r.below_min_expected)
         self.assertGreater(r.z, 0.0)
 
