@@ -164,19 +164,36 @@ def recommend(
     notes: list[str] = []
     floor = float(guard["floor_room_rate"])
     ceiling = float(guard["ceiling_room_rate"])
+    unit = float(guard["rounding_unit"])
 
+    band_lo = band_hi = None
     if current_rate > 0:
         max_change = float(guard["max_change_per_day_pct"])
-        lo, hi = current_rate * (1 - max_change), current_rate * (1 + max_change)
-        if price < lo:
+        band_lo = current_rate * (1 - max_change)
+        band_hi = current_rate * (1 + max_change)
+        if price < band_lo:
             notes.append(f"日次変動幅 ±{max_change:.0%} で下方制限")
-            price = lo
-        elif price > hi:
+            price = band_lo
+        elif price > band_hi:
             notes.append(f"日次変動幅 ±{max_change:.0%} で上方制限")
-            price = hi
+            price = band_hi
 
-    unit = float(guard["rounding_unit"])
+    # 丸めは変動幅の後に来るため、最近接で丸めると宣言した幅を
+    # 最大 unit/2 だけはみ出す（±15% の設定で実効 ±15.3% になっていた）。
+    # バンドに挟まれた日だけの問題ではない。境界のすぐ内側にある値
+    # （例: バンド下限61,200 に対しモデル出力61,373）を最近接で丸めると
+    # 61,000 となり、挟まれていないのに幅を超える。
+    # そこで丸めた結果そのものをバンド内の格子点に収める。
+    # 安全装置は、宣言した範囲を超えない側に倒す。
     price = round(price / unit) * unit
+    if band_lo is not None:
+        lo_grid = math.ceil(band_lo / unit) * unit
+        hi_grid = math.floor(band_hi / unit) * unit
+        if lo_grid <= hi_grid:
+            price = min(max(price, lo_grid), hi_grid)
+        # バンド幅が丸め単位より狭いと、内側に格子点が存在しない。
+        # その場合は最近接のまま（丸め単位のほうが粗すぎるという設定の問題で、
+        # ここで無理に寄せても意味のある値にならない）。
 
     if price < floor:
         notes.append(f"貢献利益フロア {floor:,.0f}円で下限クリップ")
