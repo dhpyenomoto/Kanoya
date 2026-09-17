@@ -25,6 +25,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from kanoya_rm import request as request_mod  # noqa: E402
+from kanoya_rm.config import (  # noqa: E402
+    load_competitor_names, resolve_private_json,
+)
 from kanoya_rm.discovery import (  # noqa: E402
     assign_tiers, diff_against_existing, score_candidates, to_compset_config,
 )
@@ -47,9 +50,19 @@ def main() -> int:
     args = parser.parse_args()
 
     config = json.loads((root / "config" / "sources.json").read_text(encoding="utf-8"))
-    overrides = json.loads(
-        (root / "config" / "compset_overrides.json").read_text(encoding="utf-8")
-    ).get("overrides", {})
+    # 人が確定した施設属性。施設名がキーなので Private 側（Kanoya-data）に置く。
+    # 無ければ本体同梱の架空サンプルで動くが、その場合できあがる
+    # コンペセットはコミット済みの compset.json とは別物になる。
+    overrides_doc, overrides_path = resolve_private_json(
+        root / "config", config, "overrides_path", "overrides_fallback_paths")
+    overrides = overrides_doc.get("overrides", {})
+    if overrides_path is None:
+        print("⚠️  compset_overrides が見つかりません。客室数・食事条件・uplift が"
+              "未確定のまま進みます。", file=sys.stderr)
+    elif overrides_path.name.endswith("_sample.json") or \
+            "config" in overrides_path.parts:
+        print(f"ℹ️  架空サンプルの確定値を使っています（{overrides_path}）。"
+              "実データは Kanoya-data 側にあります。", file=sys.stderr)
 
     prop = config["property"]
     radius = args.radius or int(config["discovery"]["radius_m"])
@@ -136,7 +149,9 @@ def main() -> int:
     out_path = root / args.out
     out_path.write_text(json.dumps(generated, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    diff = diff_against_existing(generated, root / "config" / "compset.json")
+    names, _names_path = load_competitor_names(root / "config", config)
+    diff = diff_against_existing(generated, root / "config" / "compset.json",
+                                 names)
     print(f"\n出力: {out_path}")
     print(f"  採用 {len(generated['competitors'])} 件"
           f"（PRIMARY {sum(1 for c in generated['competitors'] if c['tier'] == 'PRIMARY')} / "

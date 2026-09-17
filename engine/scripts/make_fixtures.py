@@ -48,7 +48,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from kanoya_rm.config import Settings  # noqa: E402
+from kanoya_rm.config import Settings, resolve_private_json  # noqa: E402
 from kanoya_rm.products import load as load_products  # noqa: E402
 
 RUN_DATE = date(2026, 8, 15)
@@ -110,38 +110,31 @@ def divergence_for(stay: date, base: float,
     return base
 
 
-# 公開情報に基づく近隣宿泊施設。座標は概算、価格アンカーは擬似値。
-# rate_anchor は「1室2名・素泊まりまたは掲出上の最安」を想定した擬似値（税別）。
-FACILITIES = [
-    # name, lat, lon, priceLevel, rating, reviews, class, rate_anchor
-    ("ふふ奈良",                   34.6790, 135.8395, "PRICE_LEVEL_VERY_EXPENSIVE", 4.6, 420,  5, 90000),
-    ("古都の宿 むさし野",           34.6890, 135.8420, "PRICE_LEVEL_EXPENSIVE",      4.5, 260,  4, 66000),
-    ("ANDO HOTEL 奈良若草山",       34.6883, 135.8480, "PRICE_LEVEL_EXPENSIVE",      4.4, 610,  4, 63000),
-    ("江戸三",                     34.6800, 135.8420, "PRICE_LEVEL_EXPENSIVE",      4.5, 180,  4, 60000),
-    ("NIPPONIA HOTEL 奈良ならまち", 34.6790, 135.8290, "PRICE_LEVEL_VERY_EXPENSIVE", 4.4, 210,  4, 48000),
-    ("奈良ホテル",                 34.6790, 135.8318, "PRICE_LEVEL_VERY_EXPENSIVE", 4.4, 2400, 5, 42000),
-    ("静観荘",                     34.6795, 135.8360, "PRICE_LEVEL_EXPENSIVE",      4.3, 150,  4, 44000),
-    ("春日ホテル",                 34.6840, 135.8290, "PRICE_LEVEL_EXPENSIVE",      4.2, 520,  4, 40000),
-    ("セトレ ならまち",             34.6770, 135.8280, "PRICE_LEVEL_EXPENSIVE",      4.3, 340,  4, 38000),
-    ("紀寺の家",                   34.6740, 135.8290, "PRICE_LEVEL_EXPENSIVE",      4.6, 120,  4, 36000),
-    ("奈良万葉若草の宿 三笠",       34.6960, 135.8500, "PRICE_LEVEL_MODERATE",       4.1, 780,  4, 36000),
-    ("飛鳥荘",                     34.6800, 135.8350, "PRICE_LEVEL_MODERATE",       4.0, 690,  3, 34000),
-    ("ホテルニューわかさ",          34.6830, 135.8300, "PRICE_LEVEL_MODERATE",       4.0, 830,  3, 30000),
-    ("奈良倶楽部",                 34.6930, 135.8330, "PRICE_LEVEL_MODERATE",       4.4, 95,   3, 26000),
-    ("月日亭",                     34.6872, 135.8545, "PRICE_LEVEL_VERY_EXPENSIVE", 4.5, 140,  5, 58000),
-    ("コンフォートホテル奈良",      34.6790, 135.8230, "PRICE_LEVEL_INEXPENSIVE",    4.0, 1500, 3, 14000),
-    ("東横INN近鉄奈良駅前",         34.6830, 135.8270, "PRICE_LEVEL_INEXPENSIVE",    3.9, 1900, 3, 12000),
-    # 半径2.5kmでは入らないが5kmでは入る帯（半径拡大の効果を確認するための対照）
-    ("スーパーホテルLohas JR奈良駅", 34.6820, 135.8195, "PRICE_LEVEL_INEXPENSIVE",   4.1, 2200, 3, 13000),
-    ("ホテル日航奈良",              34.6795, 135.8180, "PRICE_LEVEL_MODERATE",       4.2, 2100, 4, 26000),
-    ("奈良ロイヤルホテル",           34.6960, 135.7960, "PRICE_LEVEL_MODERATE",       4.1, 1400, 4, 24000),
-    # 5km圏外。半径フィルタで落ちることの確認用
-    ("奈良パークホテル",            34.7040, 135.7860, "PRICE_LEVEL_MODERATE",       3.9, 900,  3, 22000),
-    # 以下は discovery のフィルタで落ちることを確認するための対照
-    ("ゲストハウス奈良小町",        34.6800, 135.8250, "PRICE_LEVEL_INEXPENSIVE",    4.5, 210,  2, 7000),
-    ("奈良ならまち カプセルイン",   34.6780, 135.8240, "PRICE_LEVEL_INEXPENSIVE",    3.8, 60,   1, 4500),
-    ("春日野レビュー僅少ロッジ",    34.6850, 135.8450, "",                           4.8, 4,    0, 25000),
-]
+def load_facilities(root: Path, config: dict) -> tuple[list[tuple], Path | None]:
+    """近隣宿泊施設の一覧を読む.
+
+    施設名と座標は施設を同定できるため、本体（Public）ではなく
+    Kanoya-data（Private）に置いている。無ければ本体同梱の架空サンプル
+    （config/fixture_facilities_sample.json）で動く。
+
+    **価格（rate_anchor）はどちらの場合も擬似値であり、実勢ではない。**
+    """
+    doc, path = resolve_private_json(
+        root / "config", config, "fixtures_path", "fixtures_fallback_paths")
+    entries = doc.get("facilities") or []
+    if not entries:
+        raise SystemExit(
+            "近隣宿泊施設の一覧が見つかりません。\n"
+            "  config/sources.json の compset_names.fixtures_path を確認するか、\n"
+            "  config/fixture_facilities_sample.json を用意してください。")
+    rows = [(e["name"], float(e["latitude"]), float(e["longitude"]),
+             e.get("price_level", ""), float(e.get("rating") or 0.0),
+             int(e.get("review_count") or 0), int(e.get("class") or 0),
+             int(e.get("rate_anchor") or 0))
+            for e in entries]
+    return rows, path
+
+
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -164,6 +157,15 @@ def main(argv=None) -> None:
     fixtures = data_dir / "fixtures"
     (fixtures / "google_hotels").mkdir(parents=True, exist_ok=True)
     rng = random.Random(args.seed)
+    config = json.loads(
+        (root / "config" / "sources.json").read_text(encoding="utf-8"))
+    facilities, facilities_path = load_facilities(root, config)
+    if facilities_path and facilities_path.name.endswith("_sample.json"):
+        print(f"ℹ️  架空サンプルの施設一覧を使っています（{facilities_path.name}）。\n"
+              "   実在施設の一覧は Kanoya-data（Private）にあります。"
+              "サンプルから compset.json を再生成すると、\n"
+              "   コミット済みのものとは別のコンペセットになります。",
+              file=sys.stderr)
 
     # ---- Places API (New) 形式 ----
     places = {
@@ -179,7 +181,7 @@ def main(argv=None) -> None:
                 "userRatingCount": reviews,
                 **({"priceLevel": level} if level else {}),
             }
-            for i, (name, lat, lon, level, rating, reviews, _cls, _anchor) in enumerate(FACILITIES)
+            for i, (name, lat, lon, level, rating, reviews, _cls, _anchor) in enumerate(facilities)
         ]
     }
     _dump(fixtures / "places_nearby.json", places)
@@ -206,7 +208,7 @@ def main(argv=None) -> None:
         level = season_level[season] * dow_level[settings.dow_of(stay)] * (1 + 0.30 * event)
 
         properties = []
-        for i, (name, lat, lon, _lvl, rating, reviews, hclass, anchor) in enumerate(FACILITIES):
+        for i, (name, lat, lon, _lvl, rating, reviews, hclass, anchor) in enumerate(facilities):
             # 需要が強い日ほど売止が出る（＝レスポンスから消える）
             soldout_p = min(0.8, (0.55 * event + 0.35 * max(0.0, level - 1.05))
                             * max(0.0, 1 - max(0, offset) / 50))
@@ -252,7 +254,7 @@ def main(argv=None) -> None:
                           scenarios=scenarios, seed=args.seed)
     _write_csv(data_dir / "otb.csv", otb_rows)
 
-    print(f"places_nearby.json      : {len(FACILITIES)} 施設")
+    print(f"places_nearby.json      : {len(facilities)} 施設")
     print(f"google_hotels/*.json    : {HORIZON + BACKFILL} 日分")
     print(f"otb.csv                 : {len(otb_rows)} 行"
           f"（取得日 {BACKFILL + 1} 日分 × 宿泊日）")

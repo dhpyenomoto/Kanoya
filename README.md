@@ -25,6 +25,73 @@
 
 ---
 
+## 競合施設の実名は Private 側にあります
+
+本リポジトリは Public のため、**競合施設を同定できる情報は
+`Kanoya-data`（Private）へ分離しています**。削除ではなく移動であり、
+情報は失われていません。
+
+| 置き場所 | 内容 |
+|---|---|
+| `engine/config/compset.json`（Public） | `comp_id`・ティア・重み・課金方式・食事条件・uplift — **価格計算に必要な属性** |
+| `Kanoya-data/compset_names.json`（Private） | 実名・`place_id`・緯度経度・距離・評価・レビュー数・スコア内訳 |
+| `Kanoya-data/compset_overrides.json`（Private） | 人が確定した施設属性（施設名がキー） |
+| `Kanoya-data/fixture_facilities.json`（Private） | フィクスチャ生成に使う実在施設の一覧と座標 |
+
+**突き合わせは `comp_id`（auto01 など）で行います。表示名では行いません。**
+施設が改名した瞬間に静かに外れ、その施設だけ匿名表示に戻るうえ、
+誰も気づかないためです。
+
+対応表が無くてもエンジンは動きます。見つからなければ警告を出し、競合を
+`comp_id` のまま表示して続行します。価格計算に必要な属性は `compset.json`
+側に残っているため、**推奨価格は変わりません**。対応表にない `comp_id` が
+あれば、その施設だけが匿名表示になります。
+
+場所は `engine/config/sources.json` の `compset_names` で設定します。
+
+```jsonc
+"compset_names": {
+  "path": "../../Kanoya-data/compset_names.json",
+  "fallback_paths": ["../../kanoya-data/compset_names.json"]
+}
+```
+
+### 匿名化を解除する（将来 Private 化した後に戻す手順）
+
+リポジトリを Private にしたあと実名を本体側へ戻したくなった場合は、
+`compset_names.json` を `compset.json` へマージし直します。
+
+```bash
+cd engine
+python3 - <<'EOF'
+import json, pathlib
+compset = pathlib.Path("config/compset.json")
+names = pathlib.Path("../../Kanoya-data/compset_names.json")
+
+data = json.loads(compset.read_text(encoding="utf-8"))
+table = json.loads(names.read_text(encoding="utf-8"))["competitors"]
+
+for comp in data["competitors"]:
+    comp.update(table.get(comp["id"], {}))       # comp_id で突き合わせる
+data.pop("_anonymized", None)
+compset.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+                   encoding="utf-8")
+EOF
+python3 -m unittest discover -s tests          # 推奨価格が変わらないことを確認
+```
+
+同様に、`Kanoya-data/compset_overrides.json` を
+`engine/config/compset_overrides.json` へ、
+`Kanoya-data/fixture_facilities.json` を
+`engine/config/fixture_facilities_sample.json` へ上書きコピーすれば、
+再生成の経路も本体側だけで完結します。
+
+戻したあとは `engine/tests/test_compset_names.py` の
+`NoRealNamesInTheRepoTest` が落ちます（実名が本体側にある状態を検知する
+テストのため）。Private 化を確認したうえで、そのテストを外してください。
+
+---
+
 ## 運用モデル：定休日は固定ではない
 
 **定休日は固定ではなく、需要に応じた例外営業が通年で発生する。稼働率の分母は
@@ -197,12 +264,12 @@ python3 -m unittest discover -s tests                      # 回帰テスト（1
   競合NAR中央値 131,900 円 に対し 1.15 倍 ／ 紅葉ピーク
 
   競合内訳（NAR = 1室2名2食・税サ込 換算）  サンプル12件
-    ふふ奈良                             213,400 円
-    ANDO HOTEL 奈良若草山                 154,400 円
-    古都の宿 むさし野                        146,300 円
-    江戸三                              142,300 円
-    NIPPONIA HOTEL 奈良ならまち            131,900 円
-    奈良ホテル                            120,800 円
+    競合B        213,400 円
+    競合H        154,400 円
+    競合E        146,300 円
+    競合C        142,300 円
+    競合D        131,900 円
+    競合J        120,800 円
     ...
 ```
 

@@ -144,6 +144,113 @@ def warn_if_expected_occupancy_provenance_unknown(prop: dict[str, Any], *,
         print(f"⚠️  出所不明の稼働見込み{where}\n  {message}", file=sys.stderr)
 
 
+# 競合の識別情報のうち、対応表から取り込む項目。
+# ここに無い項目（tier / weight / pricing_basis / meal_included など）は
+# 価格計算に必要なので compset.json 側に残っている。
+IDENTITY_FIELDS = ("name", "place_id", "latitude", "longitude",
+                   "distance_km", "rating", "review_count")
+
+
+def private_data_paths(root: Path, sources: dict[str, Any], key: str = "path",
+                       fallback_key: str = "fallback_paths") -> list[Path]:
+    """Private 側データの探索先。engine/ からの相対、または絶対パス.
+
+    先に書いたものから順に探し、最初に見つかったものを使う。
+    末尾には本体に同梱した架空サンプルを置いてあり、Private 側が
+    無い環境でもパイプラインは最後まで通る。
+    """
+    block = sources.get("compset_names")
+    if not isinstance(block, dict):
+        return []
+    engine_root = root.parent          # root は engine/config
+    candidates = [block.get(key, "")] + list(block.get(fallback_key) or [])
+    out: list[Path] = []
+    for value in candidates:
+        if not str(value).strip():
+            continue
+        path = Path(value)
+        out.append(path if path.is_absolute() else (engine_root / path))
+    return out
+
+
+def resolve_private_json(root: Path, sources: dict[str, Any], key: str,
+                         fallback_key: str) -> tuple[dict, Path | None]:
+    """Private 側 JSON を読む。無ければ (空, None)."""
+    for path in private_data_paths(root, sources, key, fallback_key):
+        if path.exists():
+            return _load_json(path), path
+    return {}, None
+
+
+def _name_table_paths(root: Path, sources: dict[str, Any]) -> list[Path]:
+    return private_data_paths(root, sources)
+
+
+def load_competitor_names(root: Path, sources: dict[str, Any]
+                          ) -> tuple[dict[str, dict], Path | None]:
+    """comp_id → 識別情報 の対応表を読む（無ければ空）.
+
+    **突き合わせは comp_id で行う。表示名では行わない。**
+    表示名を鍵にすると、施設が改名した瞬間に静かに外れ、その施設だけが
+    匿名表示へ戻るうえ、誰も気づかない。comp_id は発見時に採番した
+    内部IDなので、改名しても動かない。
+    """
+    for path in _name_table_paths(root, sources):
+        if not path.exists():
+            continue
+        table = _load_json(path)
+        entries = table.get("competitors")
+        if isinstance(entries, dict):
+            return {str(k): dict(v) for k, v in entries.items()}, path
+        return {}, path
+    return {}, None
+
+
+def _apply_competitor_names(compset: dict[str, Any], table: dict[str, dict],
+                            table_path: Path | None) -> None:
+    """対応表を競合の定義へ流し込む（破壊的・読み込み時に1回だけ）.
+
+    対応表が無い、あるいは comp_id が載っていない競合は、表示名を
+    comp_id のままにする。落とさない: 価格計算に必要な項目は
+    compset.json 側に揃っているので、匿名のままでも推奨価格は出せる。
+    """
+    competitors = compset.get("competitors") or []
+    if not competitors:
+        return
+    missing: list[str] = []
+    for comp in competitors:
+        comp_id = comp.get("id", "")
+        entry = table.get(comp_id)
+        if not entry:
+            comp.setdefault("name", comp_id)
+            if not str(comp.get("name") or "").strip():
+                comp["name"] = comp_id
+            if table:
+                missing.append(comp_id)
+            continue
+        for field_name in IDENTITY_FIELDS:
+            if field_name in entry:
+                comp[field_name] = entry[field_name]
+        if not str(comp.get("name") or "").strip():
+            comp["name"] = comp_id
+
+    if table_path is None:
+        print(f"ℹ️  競合名の対応表が見つかりません（{len(competitors)}施設）。\n"
+              "  競合は comp_id（auto01 など）で表示します。"
+              "価格計算に必要な項目は compset.json 側にあるため、推奨価格は変わりません。\n"
+              "  実名で表示するには Kanoya-data を取得し、"
+              "sources.json の compset_names.path を合わせてください。",
+              file=sys.stderr)
+    elif missing:
+        head = ", ".join(missing[:5])
+        more = f" 他{len(missing) - 5}件" if len(missing) > 5 else ""
+        print(f"ℹ️  対応表に無い競合が {len(missing)}件 あります（{head}{more}）。\n"
+              f"  対応表: {table_path}\n"
+              "  該当分だけ comp_id のまま表示します。"
+              "発見（discover_compset.py）で増えた競合は対応表にも追記してください。",
+              file=sys.stderr)
+
+
 def _warn_about_product_pricing(settings) -> None:
     """商品形態別フロアと部屋代アンカーの整合を起動時に確認する.
 
@@ -205,6 +312,11 @@ class Settings:
             # あるいはカレンダーだけを使う検証データ生成時）。
             # ここで落とすとブートストラップができなくなるため、空で続行する。
             compset = {"competitors": [], "tiers": {}, "_missing": str(compset_path)}
+        # 競合の識別情報は Private 側（Kanoya-data）にある。無くても動く。
+        sources_path = root / "sources.json"
+        sources = _load_json(sources_path) if sources_path.exists() else {}
+        names, names_path = load_competitor_names(root, sources)
+        _apply_competitor_names(compset, names, names_path)
         calendar = _load_json(root / "calendar.json")
         warn_if_benchmark_provenance_unknown(calendar, source=str(root / "calendar.json"))
         _migrate_closed_days(calendar, source=str(root / "calendar.json"))
@@ -213,7 +325,7 @@ class Settings:
         competitors = {
             c["id"]: Competitor(
                 id=c["id"],
-                name=c["name"],
+                name=c.get("name") or c["id"],
                 tier=c["tier"],
                 weight=float(c["weight"]),
                 rooms=int(c.get("rooms") or 0),
