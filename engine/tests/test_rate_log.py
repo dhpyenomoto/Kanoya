@@ -483,6 +483,72 @@ class ConfirmedRangeTest(unittest.TestCase):
         self.assertFalse(self.log.exists())
 
 
+class RunsNoteTest(unittest.TestCase):
+    """実行記録が何を保証しているかを、ファイル自身に書いておくこと.
+
+    実行記録が保証しているのは「担当者がスクリプトを実行し、変更なしと
+    申告した」事実であって、OTA管理画面と突合したことではない。
+    この列を「検証済み」として扱われると、実行記録そのものが防ごうとした
+    誤解（確認していないことを確認済みと読む）が別の形で起きる。
+
+    docs にだけ書いても、CSVを表計算ソフトで開いた人には届かない。
+    """
+
+    def test_the_note_is_written_above_the_header(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "rate_log_runs.csv"
+            rate_log.write_runs(path, [])
+            lines = path.read_text(encoding="utf-8").splitlines()
+        self.assertTrue(lines[0].startswith("#"), "冒頭が注記で始まっていない")
+        header_at = next(i for i, line in enumerate(lines)
+                         if line.startswith("run_date,"))
+        note = "\n".join(lines[:header_at])
+        self.assertGreater(header_at, 0, "ヘッダより前に注記が無い")
+        self.assertIn("申告した", note)
+        self.assertIn("OTA管理画面との突合を保証するものではない", note)
+        self.assertIn("サイトコントローラー", note, "解消の条件が書かれていない")
+
+    def test_the_note_survives_an_append(self) -> None:
+        """append_run は書き直すので、注記が消えないことを確かめる."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "rate_log_runs.csv"
+            rate_log.write_runs(path, [])
+            rate_log.append_run(path, rate_log.Run(
+                run_date=date(2026, 9, 18), stay_from=date(2026, 9, 18),
+                stay_to=date(2026, 12, 31)))
+            text = path.read_text(encoding="utf-8")
+        self.assertIn("OTA管理画面との突合を保証するものではない", text)
+        self.assertIn("2026-09-18", text)
+
+    def test_comment_lines_are_skipped_when_reading(self) -> None:
+        """注記をヘッダとして読むと、以降の全行が静かに捨てられる."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "rate_log_runs.csv"
+            path.write_text(
+                "# 手で足した注記\n"
+                "run_date,stay_from,stay_to,product_type,channel,note\n"
+                "2026-09-18,2026-09-18,2026-12-31,room_only,,\n",
+                encoding="utf-8")
+            self.assertEqual(len(rate_log.read_runs(path)), 1)
+
+    def test_comment_lines_are_skipped_in_the_price_log_too(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "rate_log.csv"
+            path.write_text(
+                "# 手で足した注記\n"
+                "stay_date,snapshot_date,product_type,posted_rate,channel,note\n"
+                "2026-11-21,2026-11-01,room_only,60000,,\n",
+                encoding="utf-8")
+            self.assertEqual(len(rate_log.read(path)), 1)
+
+    def test_the_module_docstring_carries_the_same_caveat(self) -> None:
+        """スクリプトを読む人にも届くこと."""
+        doc = (ROOT / "scripts" / "log_rates.py").read_text(encoding="utf-8")
+        head = doc.split('"""')[1]
+        self.assertIn("OTA管理画面との突合を保証するものではない", head)
+        self.assertIn("担当者の運用に依存する", head)
+
+
 class NoNetworkTest(unittest.TestCase):
     """log_rates.py が外部通信をしないこと.
 

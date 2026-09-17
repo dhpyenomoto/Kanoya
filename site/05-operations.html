@@ -428,6 +428,56 @@ python3 scripts/adr_matrix.py    --from 2026-11-14 --to 2026-11-30
   （正規化ロジックは改善され続けるため、生値があれば遡って再計算できます）</li>
 </ul>
 <hr />
+<h2>5.5 提示価格の日次記録（rate_log）</h2>
+<p>「その日その宿泊日をいくらで出していたか」を残します。実績には成約価格しか
+残らないため、これが無いと値付けの良否が測れません。</p>
+<pre><code class="language-bash">cd engine
+python3 scripts/log_rates.py --show          # いまの提示価格を見る
+python3 scripts/log_rates.py                 # 変更分だけ入力する（変更なしなら Enter）
+python3 scripts/log_rates.py --import export.csv   # サイトコントローラーから
+</code></pre>
+<p>実体は <code>Kanoya-data/rate_log.csv</code>（変更履歴）と <code>Kanoya-data/rate_log_runs.csv</code>
+（実行記録）の2本立てです。前者は値が変わった日だけ行が増え、後者は
+実行するたびに1行増えます。</p>
+<h3>⚠️ 実行記録が保証していること／していないこと</h3>
+<blockquote>
+<p><strong>実行記録（<code>rate_log_runs.csv</code>）は「担当者がスクリプトを実行し、変更なしと
+申告した」事実の記録です。OTA管理画面との突合を保証するものではありません。</strong></p>
+<p><strong>サイトコントローラー連携が入るまで、この記録の信頼性は担当者の運用に
+依存します。</strong></p>
+</blockquote>
+<p>対話モードで画面に出るのは14行、うち価格の区間行は3行です。担当者が Enter を
+押した時点で表示期間ぜんぶが確認済みとして記録されますが、<strong>実際にOTA側を
+見たかどうかまでは、仕組みとして検証していません。</strong></p>
+<p>いま実害はありません。ただしこの列を「検証済み」として扱うと、<strong>実行記録
+そのものが防ごうとしたのと同じ種類の誤解</strong>が起きます。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>記録が意味すること</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>行がある</td>
+<td>担当者がその日、その範囲について「変わっていない／こう変えた」と<strong>申告した</strong></td>
+</tr>
+<tr>
+<td>行がない</td>
+<td>誰も見ていない（<code>current_public_rate</code> は解決されず、据え置きも仮定しない）</td>
+</tr>
+<tr>
+<td>—</td>
+<td><strong>どちらもOTA画面と突合したことの証明にはならない</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h4>解消される条件</h4>
+<p>サイトコントローラーから提示価格を<strong>機械的に取り込めるようになれば</strong>、
+申告ベースから実測ベースへ移行できます（<code>--import</code> がその入口です）。
+<strong>その時点でこの注記は不要になります。</strong></p>
+<hr />
 <h2>6. 障害時の挙動</h2>
 <div class="tablewrap"><table>
 <thead>
