@@ -27,6 +27,19 @@
     ],
     "_regeneration_note": "overrides_path / fixtures_path は**再生成のとき**だけ使う（discover_compset.py と make_fixtures.py）。価格推奨の計算では読まない。見つからなければ末尾のフォールバック（config/ 内の架空サンプル）で動くが、その場合 compset.json を再生成するとコミット済みのものとは別物になる。"
   },
+  "rate_log": {
+    "_note": "提示価格の日次記録（rate_log.csv）の置き場所。『その日その宿泊日をいくらで出していたか』を残す。実績には成約価格しか残らないため、これが無いと値付けの良否を測れない。実際に2026年6〜7月の値上げ実験は、提示価格が無かったため定量評価できなかった。顧客の予約に紐づく情報なので、実体は Kanoya-data（Private）側に置く。",
+    "path": "../../Kanoya-data/rate_log.csv",
+    "fallback_paths": [
+      "../../kanoya-data/rate_log.csv",
+      "data/rate_log.csv"
+    ],
+    "channel": "",
+    "_channel_note": "current_public_rate を解決するときに見る販路。空なら販路を問わない。自社サイトの掲出価格を基準にするなら \"direct\" を入れる。",
+    "stale_warning_days": 3,
+    "_stale_note": "記録は変更履歴なので、値が変わらない日は行が増えない。そのため『記録していない』と『変わっていない』が区別できない。最新行からこの日数以上空いたら、運用が止まっている可能性として警告する。",
+    "_semantics": "1行は『その基準日から、より新しい行に上書きされるまで有効』という意味を持つ。毎日すべての宿泊日を書き写す必要はない。変わったときだけ足す。"
+  },
   "discovery": {
     "radius_m": 5000,
     "_radius_note": "奈良公園・春日野・ならまち圏に加え、JR奈良駅周辺・高畑・紀寺まで覆う半径。広げても類似度スコアで並べ替えるため無関係な施設は下位に沈むが、Places APIのリクエスト数（＝費用）は半径の二乗で増える。discover_compset.py が実行前にリクエスト数と概算費用を表示する。",

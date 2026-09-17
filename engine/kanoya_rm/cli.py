@@ -11,12 +11,15 @@ from __future__ import annotations
 import argparse
 import sys
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 
-from . import channels, compset, pace, report
-from .config import Settings, load_csv, parse_date
+from . import channels, compset, pace, rate_log, report
+from .config import (
+    Settings, load_csv, parse_date, resolve_private_path,
+)
+from .products import load as load_products
 from .pricing import recommend
 from .restrictions import apply_mlos, detect_gap_nights
 
@@ -32,6 +35,41 @@ class Context:
     paces: dict
     otb: dict
     data_age: dict          # 宿泊日 → 競合レートの最大経過日数（鮮度）
+    posted: dict = field(default_factory=dict)   # 宿泊日 → 提示価格（部屋代）
+    rate_log_coverage: object = None             # 提示価格の記録の埋まり具合
+
+
+def _warn_about_rate_log(coverage, path, settings) -> None:
+    """提示価格の記録が無い／古いことを、黙って通さない.
+
+    記録が無いと current_public_rate が0になり、日次変動幅ガードがかからず、
+    delta_pct も比べる相手が無いまま計算される。その結果、全日が
+    AUTO_APPLY に落ちる。これは較正が良いのではなく、判定できていない。
+    実データ検証で自動配信100%と出たのは、まさにこの状態だった。
+    """
+    if coverage is None or coverage.total == 0:
+        return
+    if path is None:
+        print("⚠️  提示価格の記録（rate_log.csv）がありません。\n"
+              f"  対象{coverage.total}日すべてで『いくらで出していたか』が不明です。\n"
+              "  日次変動幅ガードがかからず、delta_pct も比べる相手が無いため、\n"
+              "  承認区分（自動配信／要承認）は判定できていません。\n"
+              "  scripts/log_rates.py で今日から記録を始めてください（過去分は復元できません）。",
+              file=sys.stderr)
+        return
+    if coverage.missing:
+        print(f"⚠️  提示価格の記録がない日が {coverage.missing} / {coverage.total} 日 あります"
+              f"（{path}）。\n"
+              "  その日は日次変動幅ガードがかからず、承認区分も判定できません。",
+              file=sys.stderr)
+    limit = int((settings.sources.get("rate_log") or {}).get("stale_warning_days", 3))
+    if coverage.stale_days is not None and coverage.stale_days > limit:
+        print(f"⚠️  提示価格の記録が {coverage.stale_days}日 止まっています"
+              f"（最終記録 {coverage.latest}）。\n"
+              "  記録は変更履歴なので、値が変わらない日は行が増えません。"
+              "そのため『変わっていない』のか\n"
+              "  『記録していない』のかは、この日数でしか分かりません。",
+              file=sys.stderr)
 
 
 def build_context(root: Path, snapshot: date | None, days: int, *,
@@ -77,6 +115,22 @@ def build_context(root: Path, snapshot: date | None, days: int, *,
             otb_latest[stay] = (taken, row)
     otb_by_stay = {stay: row for stay, (_taken, row) in otb_latest.items()}
 
+    # ---- 提示価格の日次記録（あれば current_public_rate より優先）----
+    log_path = resolve_private_path(root / "config", settings.sources, "rate_log")
+    entries = rate_log.read(log_path) if log_path else []
+    channel = str((settings.sources.get("rate_log") or {}).get("channel") or "")
+    products = load_products(settings)
+    horizon = [snapshot + timedelta(days=offset) for offset in range(days)]
+    open_horizon = [d for d in horizon if settings.is_open(d)]
+    posted = {}
+    for stay in open_horizon:
+        rate = rate_log.room_rate_as_of(entries, stay, snapshot, products,
+                                        channel=channel)
+        if rate > 0:
+            posted[stay] = rate
+    log_coverage = rate_log.coverage(entries, open_horizon, snapshot, products,
+                                     channel=channel)
+
     snapshots = {
         stay: compset.build_snapshot(settings, stay, rows)
         for stay, rows in by_stay.items()
@@ -104,9 +158,12 @@ def build_context(root: Path, snapshot: date | None, days: int, *,
         paces[stay] = pace_result
         snap = snapshots.get(stay)
         baseline = compset.baseline_median(snapshots, stay, settings)
+        # 提示価格は rate_log（変更履歴）を優先する。記録が無い日は
+        # otb.csv の値へ落ちる。どちらも無ければ 0 で、日次変動幅ガードは
+        # かからず、delta_pct も意味を持たない（下の警告を参照）。
+        current = posted.get(stay) or float(otb["current_public_rate"])
         recs[stay] = recommend(
-            settings, stay, pace_result, snap, baseline,
-            float(otb["current_public_rate"]),
+            settings, stay, pace_result, snap, baseline, current,
         )
 
     if closed_with_bookings:
@@ -123,9 +180,11 @@ def build_context(root: Path, snapshot: date | None, days: int, *,
 
     apply_mlos(settings, recs)          # type: ignore[arg-type]
     detect_gap_nights(settings, recs)   # type: ignore[arg-type]
+    _warn_about_rate_log(log_coverage, log_path, settings)
     return Context(settings=settings, snapshot=snapshot, recommendations=recs,
                    comp_snapshots=snapshots, paces=paces, otb=otb_by_stay,
-                   data_age=data_age)
+                   data_age=data_age, posted=posted,
+                   rate_log_coverage=log_coverage)
 
 
 def build(root: Path, snapshot: date | None, days: int) -> tuple[Settings, dict[date, object]]:
@@ -156,6 +215,9 @@ def main() -> None:
     print(report.capacity_summary(settings, ctx.snapshot, args.days,
                                   sold_room_nights=sold, as_of=ctx.snapshot))
     print(report.summary(recs))  # type: ignore[arg-type]
+    logged = report.rate_log_line(ctx.rate_log_coverage)
+    if logged:
+        print(logged)
     coverage = report.demand_coverage(settings, ctx.paces)
     if coverage:
         print(coverage)

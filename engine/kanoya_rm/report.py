@@ -197,6 +197,24 @@ def demand_coverage(settings, paces: dict) -> str:
     return "\n".join(lines)
 
 
+def rate_log_line(coverage) -> str:
+    """提示価格の記録がどれだけ埋まっているか.
+
+    埋まっていない日は current_public_rate が0になり、日次変動幅ガードが
+    かからず delta_pct も比べる相手が無い。その日の承認区分は「自動配信」
+    と出るが、それは判定した結果ではなく、判定できなかった結果である。
+    数字を見た人がそこを取り違えないよう、毎回の出力に出す。
+    """
+    if coverage is None or coverage.total == 0:
+        return ""
+    line = (f"提示価格の記録        : {coverage.covered} / {coverage.total} 日"
+            f"（最終記録 {coverage.latest or '—'}）")
+    if coverage.missing:
+        line += (f"\n　　　　　　　　　　    記録の無い {coverage.missing}日 は"
+                 "日次変動幅ガードがかからず、承認区分も判定できていない")
+    return line
+
+
 def summary(recs: dict[date, Recommendation]) -> str:
     if not recs:
         return "（推奨なし）"
